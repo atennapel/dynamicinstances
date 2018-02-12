@@ -156,11 +156,11 @@ Inductive step : comp -> comp -> Prop :=
     handle (handler cr o co) (ret v) ===> substcomp v cr
   | S_HandleOp1 : forall cr o co v c,
     handle (handler cr o co) (opc o v c) ===>
-      substcomp v (substcomp (abs (handle (handler (shiftcomp' 1 1 cr) o (shiftcomp' 1 1 co)) c)) co)
+      substcomp v (substcomp (abs (handle (handler (shiftcomp' 2 1 cr) o (shiftcomp' 2 2 co)) (shiftcomp' 1 1 c))) co)
   | S_HandleOp2 : forall cr o o' co v c,
     o <> o' ->
     handle (handler cr o co) (opc o' v c) ===>
-      opc o' v (handle (handler (shiftcomp' 1 1 cr) o (shiftcomp' 1 1 co)) c)
+      opc o' v (handle (handler (shiftcomp' 1 1 cr) o (shiftcomp' 1 2 co)) c)
 
 where "c1 '===>' c2" := (step c1 c2).
 
@@ -190,13 +190,13 @@ Inductive has_type_val : context -> val -> ty -> Prop :=
   | T_Var : forall Gamma x T,
     nth_error Gamma x = Some T ->
     Gamma |- var x in T
-  | T_Abs : forall Gamma t T1 E T2 E',
+  | T_Abs : forall Gamma t T1 E T2,
     (T1 :: Gamma) |-c t in T2 ; E ->
-    Gamma |- abs t in tarr T1 (union E E') T2
-  | T_Handler : forall Gamma cr o co E T1 E2 T2,
+    Gamma |- abs t in tarr T1 E T2
+  | T_Handler : forall Gamma cr o co T1 E2 T2 E3,
     (T1 :: Gamma) |-c cr in T2 ; E2 ->
-    (tarr (returnty o) E2 T2 :: paramty o :: Gamma) |-c co in T2 ; E2 ->
-    Gamma |- handler cr o co in thandler (union {[ eff_of o ]} E) T1 (union E2 E) T2
+    (tarr (returnty o) E2 T2 :: paramty o :: Gamma) |-c co in T2 ; E3 ->
+    Gamma |- handler cr o co in thandler {[ eff_of o ]} T1 (union E2 E3) T2
 
 where "Gamma '|-' t 'in' T" := (has_type_val Gamma t T)
 
@@ -204,10 +204,10 @@ with has_type_comp : context -> comp -> ty -> effs -> Prop :=
   | T_Return : forall Gamma v T E,
     Gamma |- v in T ->
     Gamma |-c ret v in T ; E
-  | T_App : forall Gamma t1 t2 T1 E T2,
+  | T_App : forall Gamma t1 t2 T1 E T2 E',
     Gamma |- t1 in tarr T1 E T2 ->
     Gamma |- t2 in T1 ->
-    Gamma |-c app t1 t2 in T2 ; E
+    Gamma |-c app t1 t2 in T2 ; union E E'
   | T_Do : forall Gamma t1 t2 T1 E1 T2 E2,
     Gamma |-c t1 in T1 ; E1 ->
     (T1 :: Gamma) |-c t2 in T2 ; E2 ->
@@ -215,11 +215,12 @@ with has_type_comp : context -> comp -> ty -> effs -> Prop :=
   | T_Op : forall Gamma o v c T E,
     Gamma |- v in paramty o ->
     (returnty o :: Gamma) |-c c in T ; E ->
-    Gamma |-c opc o v c in T ; union {[ eff_of o ]} E
-  | T_Handle : forall Gamma v c E1 T1 E2 T2,
+    Gamma |-c opc o v c in T ; union {[eff_of o]} E
+  | T_Handle : forall Gamma v c E1 T1 E2 T2 E',
     Gamma |- v in thandler E1 T1 E2 T2 ->
-    Gamma |-c c in T1 ; E1 ->
-    Gamma |-c handle v c in T2 ; E2
+    Gamma |-c c in T1 ; union E1 E' ->
+    E1 ## E' ->
+    Gamma |-c handle v c in T2 ; union E2 E'
 
 where "Gamma '|-c' t 'in' T ';' E" := (has_type_comp Gamma t T E).
 
@@ -309,26 +310,26 @@ Proof.
     exists o, v, c.
     auto.
   - inversion_try_solve H.
-    + rewrite nth_error_nil in H1. inversion H1.
+    + rewrite nth_error_nil in H2. inversion H2.
     + left. right.
       assert (@nil ty = []); auto.
-      apply IHhas_type_comp in H1.
-      inversion_try_solve H1.
+      apply IHhas_type_comp in H2.
       inversion_try_solve H2.
-      * inversion_try_solve H3.
+      inversion_try_solve H3.
+      * inversion_try_solve H4.
         exists (substcomp x cr).
         auto.
-      * destruct H3.
+      * destruct H4.
         exists (handle (handler cr o co) x).
         auto.
-      * destruct H2 as [o'], H2 as [v], H2 as [k].
+      * destruct H3 as [o'], H3 as [v], H3 as [k].
         subst.
         assert (D := Nat.eq_dec o o').
         destruct D.
         { subst.
-          exists (substcomp v (substcomp (abs (handle (handler (shiftcomp' 1 1 cr) o' (shiftcomp' 1 1 co)) k)) co)).
+          exists (substcomp v (substcomp (abs (handle (handler (shiftcomp' 2 1 cr) o' (shiftcomp' 2 2 co)) (shiftcomp' 1 1 k))) co)).
           auto. }
-        { exists (opc o' v (handle (handler (shiftcomp' 1 1 cr) o (shiftcomp' 1 1 co)) k)).
+        { exists (opc o' v (handle (handler (shiftcomp' 1 1 cr) o (shiftcomp' 1 2 co)) k)).
           auto. }
 Qed.
 
@@ -388,6 +389,7 @@ Proof.
   - apply T_Handle with (T1 := T1) (E1 := E1).
     + apply H.
     + apply H0.
+    + auto.
 Qed.
 
 Lemma subst_closed :
@@ -620,7 +622,7 @@ Proof.
   - inversion_try_solve H1.
     constructor; auto.
     + apply H with (U := U); auto.
-    + apply (H0 (returnty o :: Gamma) Gamma' (shiftval 1 v0) T U E0); auto.
+    + apply (H0 (returnty o :: Gamma) Gamma' (shiftval 1 v0) T U); auto.
       apply shift1; auto.
   - inversion_try_solve H1.
     apply T_Handle with (E1 := E1) (T1 := T1); auto.
@@ -649,75 +651,117 @@ Proof.
   - apply H1 with (U := U); auto.
 Qed.
 
-Lemma effect_weakening :
-  (forall Gamma t T,
-    Gamma |- t in T ->
-    forall T1 E T2,
-      Gamma = nil ->
-      T = tarr T1 E T2 ->
-      forall E',
-        Gamma |- t in tarr T1 (union E E') T2) /\
-  (forall Gamma t T E,
-    Gamma |-c t in T ; E ->
-    forall E',
-      Gamma = nil ->
-      Gamma |-c t in T ; union E E').
+Lemma effect_weakening : forall Gamma t T E E',
+  Gamma |-c t in T ; E ->
+  E ## E' ->
+  Gamma |-c t in T ; union E E'.
 Proof.
-  apply has_type_val_comp_mutind; intros; subst.
-  - inversion H0.
-  - rewrite nth_error_nil in e.
-    inversion e.
-  - inversion_try_solve H1.
+  intros.
+  generalize dependent Gamma.
+  generalize dependent T.
+  generalize dependent E.
+  generalize dependent E'.
+  induction t; intros; inversion_try_solve H; auto.
+  - replace (E0 ∪ E'0 ∪ E') with (E0 ∪ (E'0 ∪ E')); try set_solver.
+    apply T_App with (T1 := T1); auto.
+  - replace (E1 ∪ E2 ∪ E') with (E1 ∪ (E2 ∪ E')); try set_solver.
+    apply T_Do with (T1 := T1); auto.
+    apply IHt2; auto.
+    set_solver.
+  - replace ({[eff_of o]} ∪ E0 ∪ E') with ({[eff_of o]} ∪ (E0 ∪ E')); try set_solver.
+    apply T_Op; auto.
+    apply IHt; auto.
+    set_solver.
+  - replace (E2 ∪ E'0 ∪ E') with (E2 ∪ (E'0 ∪ E')); try set_solver.
+    apply T_Handle with (T1 := T1) (E1 := E1); auto.
+    replace (E1 ∪ (E'0 ∪ E')) with (E1 ∪ E'0 ∪ E'); try set_solver.
+    apply IHt; auto; try set_solver.
+    assert (E'0 ## E').
+    set_solver.
+    assert (E2 ## E').
+    set_solver.
     
+Qed.
 
-Theorem preservation : forall t t' T E,
-  nil |-c t in T ; E ->
+Theorem preservation : forall Gamma t t' T E,
+  Gamma |-c t in T ; E ->
   t ===> t' ->
-  nil |-c t' in T ; E.
+  Gamma |-c t' in T ; E.
 Proof with eauto.
-  remember nil as Gamma.
   intros.
   generalize dependent t'.
-  induction H; intros; subst; try solve [inversion H0].
-  - inversion_try_solve H1.
+  generalize dependent Gamma.
+  generalize dependent E.
+  generalize dependent T.
+  induction t; intros.
+  - inversion_try_solve H0.
+  - inversion_try_solve H0.
     inversion_try_solve H.
-    apply substitution_preserves_typing_nil with (U := T1); auto.
-  - inversion_try_solve H1.
-    + inversion_try_solve H; auto.
-      apply substitution_preserves_typing_nil with (U := T1); auto.
-      
-  + apply IHhas_type_comp1 in H5; auto.
+    inversion_try_solve H4.
+    unfold substcomp.
+    replace Gamma with ([] ++ Gamma); auto.
+    replace 0 with (@length ty []); auto.
+    apply substitution_preserves_typing with (U := T1); auto.
+    apply effect_weakening; auto.
+  - inversion_try_solve H0.
+    + inversion_try_solve H.
+      inversion_try_solve H4.
+      unfold substcomp.
+      replace Gamma with ([] ++ Gamma); auto.
+      replace 0 with (@length ty []); auto.
+      apply substitution_preserves_typing with (U := T1); auto.
+      replace (union E1 E2) with (union E2 E1); try set_solver.
+      apply effect_weakening; auto.
+    + inversion_try_solve H.
       apply T_Do with (T1 := T1); auto.
     + inversion_try_solve H.
-  - inversion_try_solve H1.
-  - inversion_try_solve H.
-    inversion_try_solve H1.
-    + apply IHhas_type_comp in H8; auto.
-      apply T_Handle with (E1 := E1) (T1 := T1); auto.
-    + inversion_try_solve H0.
-      apply substitution_preserves_typing_nil with (U := T1); auto.
-    + inversion_try_solve H0.
-      apply substitution_preserves_typing_nil with (U := paramty o); auto.
-      replace [paramty o] with ([] ++ [paramty o]); auto.
-      unfold substcomp.
-      replace 0 with (@length ty []); auto.
-      apply substitution_preserves_typing with (U := tarr (returnty o) E2 T2); simpl; auto.
-      constructor.
-      apply T_Handle with (T1 := T1) (E1 := E1); auto.
-      * constructor; auto.
-        { replace [T1; returnty o; paramty o] with ([T1] ++ [returnty o; paramty o]); auto.
-          apply context_invariance; auto. }
-        { replace [tarr (returnty o) E2 T2; paramty o; returnty o; paramty o] with ([tarr (returnty o) E2 T2; paramty o] ++ [returnty o; paramty o]); auto.
-          apply context_invariance; auto. }
-      * replace [returnty o; paramty o] with ([returnty o] ++ [paramty o]); auto.
-        apply context_invariance; auto.
-    + inversion_try_solve H0.
+      inversion_try_solve H4.
+      replace ({[eff_of o]} ∪ E ∪ E2) with ({[eff_of o]} ∪ (E ∪ E2)); try set_solver.
       apply T_Op; auto.
-      * apply T_Handle with (E1 := E1) (T1 := T1); auto.
-        replace [returnty o'] with ([] ++ [returnty o']); auto.
-        apply context_invariance; auto.
-      * 
-Qed.
+      apply T_Do with (T1 := T1); auto.
+      replace (T1 :: returnty o :: Gamma) with ((take 1 (T1 :: Gamma)) ++ [returnty o] ++ (drop 1 (T1 :: Gamma))); auto.
+      replace 1 with (length [returnty o]) at 1; auto.
+      apply shift_typing; auto.
+  - inversion_try_solve H0.
+  - inversion_try_solve H.
+    inversion_try_solve H4.
+    inversion_try_solve H0.
+    + apply T_Handle with (E1 := {[eff_of o]}) (T1 := T1); auto.
+    + inversion_try_solve H7.
+      unfold substcomp.
+      replace Gamma with ([] ++ Gamma); auto.
+      replace 0 with (@length ty []); auto.
+      apply substitution_preserves_typing with (U := T1); auto.
+      apply effect_weakening; auto.
+    + inversion_try_solve H7.
+      unfold substcomp.
+      replace Gamma with ([] ++ Gamma); auto.
+      replace 0 with (@length ty []) at 1; auto.
+      apply substitution_preserves_typing with (U := paramty o); auto.
+      replace 0 with (@length ty []) at 1; auto.
+      apply substitution_preserves_typing with (U := tarr (returnty o) E2 T); auto.
+      apply effect_weakening; auto.
+      simpl.
+      apply T_Abs.
+      replace E2 with (union E2 empty); try set_solver.
+      apply T_Handle with (E1 := {[eff_of o]}) (T1 := T1).
+      * apply T_Handler.
+        { replace 2 with (length [returnty o; paramty o]) at 1; auto.
+          replace (T1 :: returnty o :: paramty o :: Gamma) with ((take 1 (T1 :: Gamma)) ++ [returnty o; paramty o] ++ (drop 1 (T1 :: Gamma))); auto.
+          apply shift_typing; auto. }
+        { replace 2 with (length [returnty o; paramty o]) at 1; auto.
+          replace (tarr (returnty o) E2 T :: paramty o :: returnty o :: paramty o :: Gamma) with
+            ((take 2 (tarr (returnty o) E2 T :: paramty o :: Gamma)) ++ [returnty o; paramty o] ++
+              (drop 2 (tarr (returnty o) E2 T :: paramty o :: Gamma))); auto.
+          apply shift_typing; auto. }
+      * replace 1 with (length [paramty o]) at 1; auto.
+        replace (returnty o :: paramty o :: Gamma) with
+          ((take 1 (returnty o :: Gamma)) ++ [paramty o] ++ (drop 1 (returnty o :: Gamma))); auto.
+        apply shift_typing; auto.
+        replace ({[eff_of o]}) with E.
+        replace (union E empty) with E; auto.
+        set_solver.
+        
 
 Definition normal_form {X:Type} (R:relation X) (t:X) : Prop :=
   ~ exists t', R t t'.
