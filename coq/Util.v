@@ -20,6 +20,14 @@ Proof.
   induction i; auto.
 Qed.
 
+Lemma skipn_cons : forall {t} n l x,
+  @skipn t n l = skipn (S n) (x :: l).
+Proof.
+  intros.
+  simpl.
+  auto.
+Qed.
+
 Lemma nth_error_length : forall {t} l n x,
   @nth_error t l n = Some x -> n < length l.
 Proof.
@@ -141,6 +149,16 @@ Proof.
       rewrite plus_assoc.
       rewrite plus_comm.
       auto.
+Qed.
+
+Lemma nth_error_prefix_Some : forall {t} l l' n x,
+  nth_error l n = Some x ->
+  @nth_error t (l' ++ l) (n + length l') = Some x.
+Proof.
+  intros.
+  rewrite <- H.
+  symmetry.
+  apply nth_error_prefix.
 Qed.
 
 Lemma nth_error_cons_l : forall {t} h l n x,
@@ -315,10 +333,114 @@ Proof.
       auto.
 Qed.
 
-Lemma skipn_cons : forall {t} n l x,
-  @skipn t n l = skipn (S n) (x :: l).
+Lemma nth_error_skip : forall {t} a b i x,
+  i >= length a ->
+  @nth_error t (a ++ b) i = Some x ->
+  nth_error b (i - length a) = Some x.
+Proof.
+  induction a; intros.
+  - simpl.
+    rewrite <- minus_n_O.
+    simpl in H0.
+    auto.
+  - simpl.
+    simpl in H0.
+    apply nth_error_cons_l in H0.
+    + assert (i - S (length a0) = pred i - length a0).
+      omega.
+      rewrite H1.
+      apply IHa; auto.
+      simpl in H.
+      omega.
+    + simpl in H.
+      omega.
+Qed.
+
+Lemma nth_error_firstn_append_skipn_smaller : forall {t} l n i L x,
+  i < n ->
+  @nth_error t l i = Some x ->
+  nth_error (firstn n l ++ L ++ skipn n l) i = Some x.
 Proof.
   intros.
-  simpl.
+  apply nth_error_extension.
+  apply nth_error_firstn; auto.
+Qed.
+
+Lemma lt_exists : forall a b,
+  a <= b -> exists k, a = b - k.
+Proof.
+  intros.
+  exists (b - a).
+  induction b.
+  + inversion H. auto.
+  + omega.
+Qed.
+
+Lemma gt_exists : forall a b,
+  a >= b -> exists k, b = a - k.
+Proof.
+  intros.
+  exists (a - b).
+  induction b.
+  + inversion H.
+    auto.
+    omega.
+  + omega.
+Qed.
+
+Lemma gt_exists' : forall a b,
+  a >= b -> exists k, b + k = a.
+Proof.
+  intros.
+  exists (a - b).
+  induction a.
+  inversion H.
   auto.
+  omega.
+Qed.
+
+Lemma nth_error_firstn_append_skipn : forall {t} l n i L x,
+  i >= n ->
+  @nth_error t l i = Some x ->
+  nth_error (firstn n l ++ L ++ skipn n l) (i + (length L)) = Some x.
+Proof.
+  intros.
+  assert (Hd := ge_dec i (length l)).
+  destruct Hd.
+  + assert (length l <= i).
+    omega.
+    apply nth_error_None in H1.
+    rewrite H1 in H0.
+    inversion H0.
+  + induction L; simpl.
+    * rewrite firstn_skipn.
+      rewrite <- plus_n_O.
+      auto.
+    * assert (i < length l).
+      omega.
+      assert (n <= length l).
+      omega.
+      apply firstn_length_le in H2.
+      rewrite <- H2 in H.
+      assert (H' := H).
+      apply gt_exists' in H.
+      inversion H.
+      rewrite <- H3.
+      rewrite plus_comm.
+      rewrite plus_assoc.
+      rewrite plus_comm.
+      rewrite plus_assoc.
+      apply nth_error_prefix_Some.
+      rewrite plus_comm.
+      simpl.
+      rewrite plus_comm.
+      apply nth_error_prefix_Some.
+      rewrite H2 in H3.
+      assert (S := @nth_error_skipn t).
+      apply S with (l := l) (x := x) in H'; auto.
+      rewrite H2 in H'.
+      assert (x0 = i - n).
+      omega.
+      rewrite H4.
+      auto.
 Qed.
