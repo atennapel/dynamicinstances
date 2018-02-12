@@ -1,0 +1,27 @@
+-- Example program
+-- assume the following effects:
+-- IO (input/output), RND (non-determinism), State (mutable state)
+-- and the following functions:
+-- getBool : () -> {IO} Bool -- get boolean from standard input
+-- showBool : Bool -> {IO} () -- print boolean to standard output
+--
+-- randBool : () -> {RND} Bool -- get a random boolean
+--
+-- get : () -> {State} Bool -- get the current (boolean) state
+-- put : Bool -> {State} () -- change the state
+
+showRandBool : () -> {IO, RND} ()
+showRandBool = \u.
+  b <- randBool ();
+  showBool b
+
+changeBoolFromInput : () -> {IO, State} ()
+changeBoolFromInput = \u.
+  b <- getBool ();
+  put b
+
+changeBoolAndShowRandBool : () -> {IO, State, RND} ()
+changeBoolAndShowRandBool = \u.
+  changeBoolFromInput ();
+  showRandBool ()
+

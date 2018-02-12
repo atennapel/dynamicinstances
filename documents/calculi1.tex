@@ -1,0 +1,382 @@
+\documentclass[12pt]{article}
+
+\usepackage{listings}
+\usepackage{mathtools}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{minted}
+
+% effects
+\newcommand\eff[0]{\varepsilon}
+\newcommand\steffs[0]{E}
+\newcommand\effs[0]{\eff^*}
+\newcommand\eop[0]{\textit{op}}
+\newcommand\eops[1]{O^{#1}}
+\newcommand\insts[1]{I^{#1}}
+\newcommand\inst[0]{\iota}
+\newcommand\instss[0]{\inst^*}
+
+% types
+\newcommand\type[0]{\tau}
+\newcommand\tunit[0]{()}
+\newcommand\tbool[0]{\textit{Bool}}
+\newcommand\tarr[2]{#1 \rightarrow #2}
+\newcommand\tarre[3]{#1 \rightarrow #2 \; #3}
+\newcommand\thandler[4]{#1 \; #2 \Rightarrow #3 \; #4}
+\newcommand\tinst[1]{\textit{Inst} \; #1}
+
+% values
+\newcommand\val[0]{\nu}
+\newcommand\vunit[0]{()}
+\newcommand\vtrue[0]{\textit{true}}
+\newcommand\vfalse[0]{\textit{false}}
+\newcommand\vabs[2]{\lambda #1 . #2}
+\newcommand\vhandler[1]{\textit{handler} \; \{#1\}}
+\newcommand\vhandleri[2]{\textit{handler} (#1) \{#2\}}
+\newcommand\vhandlerc[0]{\vhandler{
+	\textit{return} \; x \rightarrow \comp,
+	\eop_1(x ; k) \rightarrow \comp,
+	...,
+	\eop_n(x ; k) \rightarrow \comp
+}}
+\newcommand\vhandlerci[1]{\vhandleri{#1}{
+	\textit{return} \; x \rightarrow \comp,
+	\eop_1(x ; k) \rightarrow \comp,
+	...,
+	\eop_n(x ; k) \rightarrow \comp
+}}
+
+% computations
+\newcommand\comp[0]{c}
+\newcommand\cif[3]{\textit{if} \; #1 \; \textit{then} \; #2 \; \textit{else} \; #3}
+\newcommand\creturn[1]{\textit{return} \; #1}
+\newcommand\capp[2]{#1 \; #2}
+\newcommand\cop[4]{#1(#2 ; \lambda #3 . #4)}
+\newcommand\copi[5]{#1 \# #2(#3 ; \lambda #4 . #5)}
+\newcommand\cnew[1]{\textit{new} \; #1}
+\newcommand\cdo[3]{#1 \leftarrow #2 ; #3}
+\newcommand\chandle[2]{\textit{with} \; #1 \; \textit{handle} \; #2}
+
+\lstset{
+	frame = single,
+	basicstyle=\ttfamily\footnotesize,
+	breaklines=true
+}
+
+\title{Thesis report}
+\author{Albert ten Napel}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Simply typed lambda calculus}
+
+As the core of the calculi that follow we have chosen the fine-grain call-by-value\cite{finegrain} variant of the simply typed lambda calculus (STLC-fg). Terms are divided in values and computations, which allows the system to be extended to have effects more easily, since values never have effects but computations do.
+
+\begin{align*}
+	\type \Coloneqq 	& 							\tag{types} \\
+				& \tunit						\tag{unit type} \\
+				& \tarr{\type}{\type}				\tag{type of functions} \\
+	\val \Coloneqq	&							\tag{values} \\
+				& x, y, z, k						\tag{variables} \\
+				& \vunit						\tag{unit value} \\
+				& \vabs{x}{\comp}					\tag{abstraction} \\
+	\comp \Coloneqq	&							\tag{computations} \\
+				& \creturn{\val}					\tag{return value as computation} \\
+				& \capp{\val}{\val}					\tag{application} \\
+				& \cdo{x}{\comp}{\comp}				\tag{sequencing} \\
+\end{align*}
+
+\newpage
+For the typing rules there are two judgements,
+$\Gamma \vdash \val : \type$ for assigning types to values and $\Gamma \vdash \comp : \type$ for assigning types to computations.
+
+\begin{minipage}{0.33\textwidth}
+	\[\frac{
+	}{
+		\Gamma, x : \type \vdash x : \type
+	}\]
+\end{minipage}
+\begin{minipage}{0.33\textwidth}
+	\[\frac{
+	}{
+		\Gamma \vdash \vunit : \tunit
+	}\]
+\end{minipage}
+\begin{minipage}{0.33\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma, x : \type_1 \vdash \comp : \type_2
+	\end{array}
+}{
+	\Gamma \vdash \vabs{x}{\comp} : \tarr{\type_1}{\type_2}
+}\]
+\end{minipage}
+
+\vspace{10pt}
+\begin{minipage}{0.33\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \val : \type
+	\end{array}
+}{
+	\Gamma \vdash \creturn{\val} : \type
+}\]
+\end{minipage}
+\begin{minipage}{0.33\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \val_1 : \tarr{\type_1}{\type_2} \\
+	\Gamma \vdash \val_2 : \type_1
+	\end{array}
+}{
+	\Gamma \vdash \capp{\val_1}{\val_2} : \type_2
+}\]
+\end{minipage}
+\begin{minipage}{0.33\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \comp_1 : \type_1 \\
+	\Gamma , x : \type_1 \vdash \comp_2 : \type_2 \\
+	\end{array}
+}{
+	\Gamma \vdash (\cdo{x}{\comp_1}{\comp_2}) : \type_2
+}\]
+\end{minipage}
+
+We define the relation $\rightsquigarrow$ for the small-step operational semantics. \\
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+}{
+	\capp{(\vabs{x}{\comp})}{\val} \rightsquigarrow \comp[\val / x]
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\comp_1 \rightsquigarrow \comp_1'
+}{
+	(\cdo{x}{\comp_1}{\comp_2}) \rightsquigarrow (\cdo{x}{\comp_1'}{\comp_2})
+}\]
+\end{minipage}
+\[\frac{
+}{
+	(\cdo{x}{\creturn{\val}}{\comp}) \rightsquigarrow \comp[\val / x]
+}\]
+
+\inputminted{haskell}{code1.txt}
+
+\newpage
+\section{STLC-fg with effects}
+We now add effects to STLC-fg. Computations can use effects, these will be annotated in function types.
+We assume there is a predefined set of effects $\steffs := \{ \eff_1, ..., \eff_n \}$, where $\eff$ is a single effect name and $\effs$ is some subset of $\steffs$.
+In a real programming language these effects would include IO, non-determinism, concurrency, mutable state and so on.\\
+In the syntax we only change the type of functions to include the effects that will be performed when applying the function.
+\begin{align*}
+	\type \Coloneqq 	& ...							\tag{types} \\
+				& \tarre{\type}{\effs}{\type}			\tag{type of functions} \\
+\end{align*}
+
+In the typing judgment of computations we now also capture the effects that are performed: $\Gamma \vdash \comp : \type \; ; \effs$. \\
+For the value typing rules only the abstraction rule changes:
+\[\frac{
+	\begin{array}{l}
+	\Gamma, x : \type_1 \vdash \comp : \type_2 \; ; \effs
+	\end{array}
+}{
+	\Gamma \vdash \vabs{x}{\comp} : \tarre{\type_1}{\effs}{\type_2}
+}\]
+In the computation typing rules we now have to pass through the effects:
+\begin{minipage}{0.33\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \val : \type
+	\end{array}
+}{
+	\Gamma \vdash \creturn{\val} : \type \; ; \varnothing
+}\]
+\end{minipage}
+\begin{minipage}{0.33\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \val_1 : \tarre{\type_1}{\effs}{\type_2} \\
+	\Gamma \vdash \val_2 : \type_1
+	\end{array}
+}{
+	\Gamma \vdash \capp{\val_1}{\val_2} : \type_2 \; ; \effs
+}\]
+\end{minipage}
+\begin{minipage}{0.33\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \comp_1 : \type_1 \; ; \effs \\
+	\Gamma , x : \type_1 \vdash \comp_2 : \type_2 \; ; \effs \\
+	\end{array}
+}{
+	\Gamma \vdash (\cdo{x}{\comp_1}{\comp_2}) : \type_2 \; ; \effs
+}\]
+\end{minipage}
+
+To be able to combine effects we need to allow weakening of effect sets.
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \comp : \type \; ; \effs_1 \\
+	\effs_1 \subseteq \effs_2 \\
+	\end{array}
+}{
+	\Gamma \vdash \comp : \type \; ; \effs_2
+}\]
+
+The semantics do not need to be changed.
+\newpage
+\inputminted{haskell}{code2.txt}
+
+\newpage
+\section{Algebraic effects}
+
+We extend the calculus with basic algebraic effects. For every effect $\eff$ we now have a set of operations $\eops{\eff}$, where $\eop$ is a single operation. Each operation $\eop$ has a parameter type $\type^0_\eop$ and a return type $\type^1_\eop$. We extend the syntax of the previous calculus as follows:
+
+\begin{align*}
+	\type \Coloneqq 	& ...							\tag{types} \\
+				& \thandler{\effs}{\type}{\effs}{\type}	\tag{type of handlers} \\
+	\val \Coloneqq	& ...							\tag{values} \\
+				& \vhandlerc						\tag{handler} \\
+	\comp \Coloneqq	& ...							\tag{computations} \\
+				& \cop{\eop}{\val}{x}{\comp}			\tag{operation call} \\
+				& \chandle{\val}{\comp}				\tag{handle computation} \\
+\end{align*}
+
+Note that the operation call also packages a value and a continuation inside of it, having the continuation makes the semantics easier.
+We can get back the simpler operation calls such as seen in Eff and Koka by defining $\eop := \vabs{x}{\cop{\eop}{x}{y}{\creturn{y}}}$ (Pretnar calls these Generic Effects in \cite{pretnar}).
+
+\subsection{Typing rules}
+
+We have to be able to weaken the handler types in order to make sure we can handle a computation that has more effects than just the ones that the handler handles. Note that we have to make sure the same effects are added on both sides of the arrow.
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \val : \thandler{\effs_1}{\type_1}{\effs_2}{\type_2} \\
+	\effs_1 \subseteq \effs_3 \\
+	\effs_2 \subseteq \effs_4 \\
+	\effs_3 - \effs_1 = \effs_4 - \effs_2
+	\end{array}
+}{
+	\begin{array}{l}
+	\Gamma \vdash \val : \thandler{\effs_3}{\type_1}{\effs_4}{\type_2}
+	\end{array}
+}\]
+\newpage
+The typing rules for the values of the previous calculus stay the same.
+For the handler we go over the operations in the handler, check that they are operations of the same effect and get the type of the computation in the cases. The effects in each case must match.
+\[\frac{
+	\begin{array}{l}
+	\eop_i \in \eops{\effs_1} \\
+	\Gamma , x_r : \type_1 \vdash \comp_r : \type_2 \; ; \effs_2 \\
+	\Gamma , x_i : \type^0_{\eop_i} , k_i : \tarre{\type^1_{\eop_i}}{\effs_2}{\type_2} \vdash \comp_i : \type_2 \; ; \effs_2
+	\end{array}
+}{
+	\begin{array}{l}
+	\Gamma \vdash \vhandler{
+		\textit{return} \; x_r \rightarrow \comp_r,
+		\eop_1 ( x_1 ; k_1 ) \rightarrow \comp_1,
+		...,
+		\eop_n ( x_n ; k_n ) \rightarrow \comp_n
+	} \\ \indent : \thandler{\effs_1}{\type_1}{\effs_2}{\type_2}
+	\end{array}
+}\]
+
+The typing rules of the computations of the previous calculus stay the same. For operation calls we have to check that the effect that belongs to the operation is contained in the resulting effect set. \\
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \val : \type^0_\eop \\
+	\Gamma , x : \type^1_\eop \vdash \comp : \type \; ; \effs \\
+	\eop \in \eops{\eff} \land \eff \in \effs
+	\end{array}
+}{
+	\Gamma \vdash \cop{\eop}{\val}{x}{\comp} : \type \; ; \effs
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \val : \thandler{\effs_1}{\type_1}{\effs_2}{\type_2} \\
+	\Gamma \vdash \comp : \type_1 \; ;\effs_1
+	\end{array}
+}{
+	\Gamma \vdash \chandle{\val}{\comp} : \type_2 \; ; \effs_2
+}\]
+\end{minipage}
+
+\subsection{Semantics}
+
+Following are the small-step operational semantics of the calculus taken from \cite{pretnar}.
+The rule for abstractions stays the same.
+With the computations we can always either get to $\creturn{\val}$ or $\cop{\eop}{\val}{x}{\comp}$ by floating out the operation call.
+This makes the semantics of the handle computation easier since we only have to consider the cases of return and operation calls.
+
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\comp_1 \rightsquigarrow \comp_1'
+}{
+	(\cdo{x}{\comp_1}{\comp_2}) \rightsquigarrow (\cdo{x}{\comp_1'}{\comp_2})
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+}{
+	(\cdo{x}{\creturn{\val}}{\comp}) \rightsquigarrow \comp[\val / x]
+}\]
+\end{minipage}
+\[\frac{
+}{
+	(\cdo{x}{\cop{\eop}{\val}{y}{\comp_1}}{\comp_2}) \rightsquigarrow \cop{\eop}{\val}{y}{(\cdo{x}{\comp_1}{\comp_2})}
+}\]
+
+\vspace{20pt}
+$h := \vhandler{
+		\textit{return} \; x_r \rightarrow \comp_r,
+		\eop_1 (  x_1 ; k_1 ) \rightarrow \comp_1,
+		...,
+		\eop_n ( x_n ; k_n ) \rightarrow \comp_n
+	}$, in the following rules:\\
+	
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\comp \rightsquigarrow \comp'
+}{
+	\chandle{h}{\comp} \rightsquigarrow \chandle{h}{\comp'}
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+}{
+	\chandle{h}{(\creturn{\val})} \rightsquigarrow \comp_r[\val / x_r]
+}\]
+\end{minipage}
+\vspace{20pt}
+\[\frac{
+	\eop_i \in \{ \eop_1, ..., \eop_n \}
+}{
+	\chandle{h}{\cop{\eop_i}{\val}{x}{\comp}} \rightsquigarrow \comp_i[\val / x_i, (\vabs{x}{\chandle{h}{\comp}}) / k_i]
+}\]
+
+\[\frac{
+	\eop \notin \{ \eop_1, ..., \eop_n \}
+}{
+	\chandle{h}{\cop{\eop}{\val}{x}{\comp}} \rightsquigarrow \cop{\eop}{\val}{x}{\chandle{h}{\comp}}
+}\]
+
+\subsection{Examples}
+\inputminted{haskell}{code3.txt}
+
+\begin{thebibliography}{9}
+\bibitem{finegrain}
+Levy, PaulBlain, John Power, and Hayo Thielecke. "Modelling environments in call-by-value programming languages." Information and computation 185.2 (2003): 182-210.
+\bibitem{pretnar}
+Pretnar, Matija. "An introduction to algebraic effects and handlers. invited tutorial paper." Electronic Notes in Theoretical Computer Science 319 (2015): 19-35.
+\bibitem{effectsystem}
+Bauer, Andrej, and Matija Pretnar. "An effect system for algebraic effects and handlers." International Conference on Algebra and Coalgebra in Computer Science. Springer, Berlin, Heidelberg, 2013.
+\end{thebibliography}
+
+\end{document}

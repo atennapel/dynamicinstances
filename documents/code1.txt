@@ -1,0 +1,11 @@
+-- As an example we define a forking combinator.
+
+-- In the usual formulation of
+-- the simply typed lambda calculus:
+\f g h x . f (g x) (h x)
+
+-- In the fine-grain call-by-value
+-- simply typed lambda calculus:
+\f g h x . (y <- g x; z <- h x; f y z)
+-- In this system we have to be explicit
+-- about the order of evaluation.

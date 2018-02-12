@@ -1,0 +1,27 @@
+-- Assume the following effects, operations and operation signatures.
+effect Flip {
+  flip : () -> Bool
+}
+
+-- Defining generic effects for easier use
+flip : () -> {Flip} Bool
+flip = \u. flip((); \x.return x)
+
+-- Defining a handler for Flip
+flipTrue : {Flip} Bool => Bool
+flipTrue = handler {
+  return x -> return x
+  flip(x; k) -> k True
+}
+
+-- A program that uses Flip
+flipProgram : Bool -> {Flip} Bool
+flipProgram = \b.
+  x <- flip ();
+  b && x
+
+-- Handling the program
+flipProgramResult : () -> Bool
+flipProgramResult =
+  \u. with flipTrue handle (flipProgram False)
+
