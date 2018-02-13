@@ -1,3 +1,8 @@
+(*
+  A formalization of simple algebraic effects, with the following limitations:
+  - every effect has only one operation.
+  - a handler can only handle one operation.
+*)
 Require Import Coq.Lists.List.
 Require Import Coq.Init.Nat.
 Require Import Coq.omega.Omega.
@@ -9,9 +14,13 @@ Definition eff := nat.
 Notation effs := (gset eff).
 
 Definition op := nat.
+Notation ops := (gset op).
 
 (* get the effect that the operation is part of *)
 Axiom eff_of : op -> eff.
+
+(* all effects have a single operation *)
+Axiom op_unique : forall o o', o <> o' -> eff_of o <> eff_of o'.
 
 (* ast *)
 Inductive ty : Type :=
@@ -650,6 +659,13 @@ Proof.
   - apply H1 with (U := U); auto.
 Qed.
 
+(*
+Lemma subset_effects : forall x y E1 E2,
+  E1 ∖ {[x]} ⊆ E2 ->
+  y ∈ E1 ->
+  y ∈ E2.
+*)
+
 Theorem preservation : forall Gamma t t' T E,
   Gamma |-c t in T ; E ->
   t ===> t' ->
@@ -657,69 +673,60 @@ Theorem preservation : forall Gamma t t' T E,
 Proof with eauto.
   intros.
   generalize dependent t'.
-  generalize dependent Gamma.
-  generalize dependent E.
-  generalize dependent T.
-  induction t; intros.
+  induction H; intros.
   - inversion_try_solve H0.
-  - inversion_try_solve H0.
+  - inversion_try_solve H1.
     inversion_try_solve H.
-    inversion_try_solve H4.
     unfold substcomp.
     replace Gamma with ([] ++ Gamma); auto.
     replace 0 with (@length ty []); auto.
     apply substitution_preserves_typing with (U := T1); auto.
-  - inversion_try_solve H0.
+  - inversion_try_solve H1.
     + inversion_try_solve H.
-      inversion_try_solve H4.
       unfold substcomp.
       replace Gamma with ([] ++ Gamma); auto.
       replace 0 with (@length ty []); auto.
       apply substitution_preserves_typing with (U := T1); auto.
+    + apply T_Do with (T1 := T1); auto.
     + inversion_try_solve H.
-      apply T_Do with (T1 := T1); auto.
-    + inversion_try_solve H.
-      inversion_try_solve H4.
       apply T_Op; auto.
       apply T_Do with (T1 := T1); auto.
       replace (T1 :: returnty o :: Gamma) with ((take 1 (T1 :: Gamma)) ++ [returnty o] ++ (drop 1 (T1 :: Gamma))); auto.
       replace 1 with (length [returnty o]) at 1; auto.
       apply shift_typing; auto.
-  - inversion_try_solve H0.
+  - inversion_try_solve H2.
   - inversion_try_solve H.
-    inversion_try_solve H4.
-    inversion_try_solve H0.
+    inversion_try_solve H1.
     + apply T_Handle with (E1 := E1) (T1 := T1); auto.
-    + inversion_try_solve H7.
+    + inversion_try_solve H0.
       unfold substcomp.
       replace Gamma with ([] ++ Gamma); auto.
       replace 0 with (@length ty []); auto.
       apply substitution_preserves_typing with (U := T1); auto.
-    + inversion_try_solve H7.
+    + inversion_try_solve H0.
       unfold substcomp.
       replace Gamma with ([] ++ Gamma); auto.
       replace 0 with (@length ty []) at 1; auto.
       apply substitution_preserves_typing with (U := paramty o); auto.
       replace 0 with (@length ty []) at 1; auto.
-      apply substitution_preserves_typing with (U := tarr (returnty o) E T); auto.
+      apply substitution_preserves_typing with (U := tarr (returnty o) E2 T2); auto.
       simpl.
       apply T_Abs.
       apply T_Handle with (E1 := E1) (T1 := T1).
-      * apply T_Handler.
+      * apply T_Handler; auto.
         { replace 2 with (length [returnty o; paramty o]) at 1; auto.
           replace (T1 :: returnty o :: paramty o :: Gamma) with ((take 1 (T1 :: Gamma)) ++ [returnty o; paramty o] ++ (drop 1 (T1 :: Gamma))); auto.
           apply shift_typing; auto. }
         { replace 2 with (length [returnty o; paramty o]) at 1; auto.
-          replace (tarr (returnty o) E T :: paramty o :: returnty o :: paramty o :: Gamma) with
-            ((take 2 (tarr (returnty o) E T :: paramty o :: Gamma)) ++ [returnty o; paramty o] ++
-              (drop 2 (tarr (returnty o) E T :: paramty o :: Gamma))); auto.
+          replace (tarr (returnty o) E2 T2 :: paramty o :: returnty o :: paramty o :: Gamma) with
+            ((take 2 (tarr (returnty o) E2 T2 :: paramty o :: Gamma)) ++ [returnty o; paramty o] ++
+              (drop 2 (tarr (returnty o) E2 T2 :: paramty o :: Gamma))); auto.
           apply shift_typing; auto. }
-        { set_solver. }
       * replace 1 with (length [paramty o]) at 1; auto.
         replace (returnty o :: paramty o :: Gamma) with
           ((take 1 (returnty o :: Gamma)) ++ [paramty o] ++ (drop 1 (returnty o :: Gamma))); auto.
         apply shift_typing; auto.
-    + inversion_try_solve H7.
+    + inversion_try_solve H0.
       apply T_Op; auto.
       * apply T_Handle with (E1 := E1) (T1 := T1); auto.
         apply T_Handler; auto.
@@ -728,11 +735,12 @@ Proof with eauto.
             ((take 1 (T1 :: Gamma)) ++ [returnty o'] ++ (drop 1 (T1 :: Gamma))); auto.
           apply shift_typing; auto. }
         { replace 1 with (length [returnty o']) at 1; auto.
-          replace (tarr (returnty o) E T :: paramty o :: returnty o' :: Gamma) with
-            ((take 2 (tarr (returnty o) E T :: paramty o :: Gamma)) ++ [returnty o'] ++
-              (drop 2 (tarr (returnty o) E T :: paramty o :: Gamma))); auto.
+          replace (tarr (returnty o) E2 T2 :: paramty o :: returnty o' :: Gamma) with
+            ((take 2 (tarr (returnty o) E2 T2 :: paramty o :: Gamma)) ++ [returnty o'] ++
+              (drop 2 (tarr (returnty o) E2 T2 :: paramty o :: Gamma))); auto.
           apply shift_typing; auto. }
-      * Abort.
+      * apply op_unique in H8.
+        set_solver.
 Qed.
 
 Definition normal_form {X:Type} (R:relation X) (t:X) : Prop :=
