@@ -1,3 +1,8 @@
+(*
+  A formalization of simple algebraic effects, with the following limitations:
+  - every effect has only one operation.
+  - a handler can only handle one operation.
+*)
 Require Import Coq.Lists.List.
 Require Import Coq.Init.Nat.
 Require Import Coq.omega.Omega.
@@ -9,9 +14,13 @@ Definition eff := nat.
 Notation effs := (gset eff).
 
 Definition op := nat.
+Notation ops := (gset op).
 
 (* get the effect that the operation is part of *)
 Axiom eff_of : op -> eff.
+
+(* all effects have a single operation *)
+Axiom op_unique : forall o o', o <> o' -> eff_of o <> eff_of o'.
 
 (* ast *)
 Inductive ty : Type :=
@@ -193,10 +202,11 @@ Inductive has_type_val : context -> val -> ty -> Prop :=
   | T_Abs : forall Gamma t T1 E T2,
     (T1 :: Gamma) |-c t in T2 ; E ->
     Gamma |- abs t in tarr T1 E T2
-  | T_Handler : forall Gamma cr o co T1 E2 T2 E3,
+  | T_Handler : forall Gamma cr o co E1 T1 E2 T2,
     (T1 :: Gamma) |-c cr in T2 ; E2 ->
-    (tarr (returnty o) E2 T2 :: paramty o :: Gamma) |-c co in T2 ; E3 ->
-    Gamma |- handler cr o co in thandler {[ eff_of o ]} T1 (union E2 E3) T2
+    (tarr (returnty o) E2 T2 :: paramty o :: Gamma) |-c co in T2 ; E2 ->
+    (E1 ∖  {[eff_of o]}) ⊆ E2 ->
+    Gamma |- handler cr o co in thandler E1 T1 E2 T2
 
 where "Gamma '|-' t 'in' T" := (has_type_val Gamma t T)
 
@@ -204,23 +214,23 @@ with has_type_comp : context -> comp -> ty -> effs -> Prop :=
   | T_Return : forall Gamma v T E,
     Gamma |- v in T ->
     Gamma |-c ret v in T ; E
-  | T_App : forall Gamma t1 t2 T1 E T2 E',
+  | T_App : forall Gamma t1 t2 T1 E T2,
     Gamma |- t1 in tarr T1 E T2 ->
     Gamma |- t2 in T1 ->
-    Gamma |-c app t1 t2 in T2 ; union E E'
-  | T_Do : forall Gamma t1 t2 T1 E1 T2 E2,
-    Gamma |-c t1 in T1 ; E1 ->
-    (T1 :: Gamma) |-c t2 in T2 ; E2 ->
-    Gamma |-c do t1 t2 in T2; union E1 E2
+    Gamma |-c app t1 t2 in T2 ; E
+  | T_Do : forall Gamma t1 t2 T1 E T2,
+    Gamma |-c t1 in T1 ; E ->
+    (T1 :: Gamma) |-c t2 in T2 ; E ->
+    Gamma |-c do t1 t2 in T2; E
   | T_Op : forall Gamma o v c T E,
     Gamma |- v in paramty o ->
     (returnty o :: Gamma) |-c c in T ; E ->
-    Gamma |-c opc o v c in T ; union {[eff_of o]} E
-  | T_Handle : forall Gamma v c E1 T1 E2 T2 E',
+    eff_of o ∈ E ->
+    Gamma |-c opc o v c in T ; E
+  | T_Handle : forall Gamma v c E1 T1 E2 T2,
     Gamma |- v in thandler E1 T1 E2 T2 ->
-    Gamma |-c c in T1 ; union E1 E' ->
-    E1 ## E' ->
-    Gamma |-c handle v c in T2 ; union E2 E'
+    Gamma |-c c in T1 ; E1 ->
+    Gamma |-c handle v c in T2 ; E2
 
 where "Gamma '|-c' t 'in' T ';' E" := (has_type_comp Gamma t T E).
 
@@ -310,19 +320,19 @@ Proof.
     exists o, v, c.
     auto.
   - inversion_try_solve H.
-    + rewrite nth_error_nil in H2. inversion H2.
+    + rewrite nth_error_nil in H1. inversion H1.
     + left. right.
       assert (@nil ty = []); auto.
-      apply IHhas_type_comp in H2.
+      apply IHhas_type_comp in H1.
+      inversion_try_solve H1.
       inversion_try_solve H2.
-      inversion_try_solve H3.
-      * inversion_try_solve H4.
+      * inversion_try_solve H3.
         exists (substcomp x cr).
         auto.
-      * destruct H4.
+      * destruct H3.
         exists (handle (handler cr o co) x).
         auto.
-      * destruct H3 as [o'], H3 as [v], H3 as [k].
+      * destruct H2 as [o'], H2 as [v], H2 as [k].
         subst.
         assert (D := Nat.eq_dec o o').
         destruct D.
@@ -344,7 +354,6 @@ Proof.
   destruct O, H0.
   subst.
   inversion_try_solve H.
-  set_solver.
 Qed.
 
 Corollary typable_closed_empty :
@@ -389,7 +398,6 @@ Proof.
   - apply T_Handle with (T1 := T1) (E1 := E1).
     + apply H.
     + apply H0.
-    + auto.
 Qed.
 
 Lemma subst_closed :
@@ -651,37 +659,12 @@ Proof.
   - apply H1 with (U := U); auto.
 Qed.
 
-Lemma effect_weakening : forall Gamma t T E E',
-  Gamma |-c t in T ; E ->
-  E ## E' ->
-  Gamma |-c t in T ; union E E'.
-Proof.
-  intros.
-  generalize dependent Gamma.
-  generalize dependent T.
-  generalize dependent E.
-  generalize dependent E'.
-  induction t; intros; inversion_try_solve H; auto.
-  - replace (E0 ∪ E'0 ∪ E') with (E0 ∪ (E'0 ∪ E')); try set_solver.
-    apply T_App with (T1 := T1); auto.
-  - replace (E1 ∪ E2 ∪ E') with (E1 ∪ (E2 ∪ E')); try set_solver.
-    apply T_Do with (T1 := T1); auto.
-    apply IHt2; auto.
-    set_solver.
-  - replace ({[eff_of o]} ∪ E0 ∪ E') with ({[eff_of o]} ∪ (E0 ∪ E')); try set_solver.
-    apply T_Op; auto.
-    apply IHt; auto.
-    set_solver.
-  - replace (E2 ∪ E'0 ∪ E') with (E2 ∪ (E'0 ∪ E')); try set_solver.
-    apply T_Handle with (T1 := T1) (E1 := E1); auto.
-    replace (E1 ∪ (E'0 ∪ E')) with (E1 ∪ E'0 ∪ E'); try set_solver.
-    apply IHt; auto; try set_solver.
-    assert (E'0 ## E').
-    set_solver.
-    assert (E2 ## E').
-    set_solver.
-    
-Qed.
+(*
+Lemma subset_effects : forall x y E1 E2,
+  E1 ∖ {[x]} ⊆ E2 ->
+  y ∈ E1 ->
+  y ∈ E2.
+*)
 
 Theorem preservation : forall Gamma t t' T E,
   Gamma |-c t in T ; E ->
@@ -690,86 +673,83 @@ Theorem preservation : forall Gamma t t' T E,
 Proof with eauto.
   intros.
   generalize dependent t'.
-  generalize dependent Gamma.
-  generalize dependent E.
-  generalize dependent T.
-  induction t; intros.
+  induction H; intros.
   - inversion_try_solve H0.
-  - inversion_try_solve H0.
+  - inversion_try_solve H1.
     inversion_try_solve H.
-    inversion_try_solve H4.
     unfold substcomp.
     replace Gamma with ([] ++ Gamma); auto.
     replace 0 with (@length ty []); auto.
     apply substitution_preserves_typing with (U := T1); auto.
-    apply effect_weakening; auto.
-  - inversion_try_solve H0.
+  - inversion_try_solve H1.
     + inversion_try_solve H.
-      inversion_try_solve H4.
       unfold substcomp.
       replace Gamma with ([] ++ Gamma); auto.
       replace 0 with (@length ty []); auto.
       apply substitution_preserves_typing with (U := T1); auto.
-      replace (union E1 E2) with (union E2 E1); try set_solver.
-      apply effect_weakening; auto.
+    + apply T_Do with (T1 := T1); auto.
     + inversion_try_solve H.
-      apply T_Do with (T1 := T1); auto.
-    + inversion_try_solve H.
-      inversion_try_solve H4.
-      replace ({[eff_of o]} ∪ E ∪ E2) with ({[eff_of o]} ∪ (E ∪ E2)); try set_solver.
       apply T_Op; auto.
       apply T_Do with (T1 := T1); auto.
       replace (T1 :: returnty o :: Gamma) with ((take 1 (T1 :: Gamma)) ++ [returnty o] ++ (drop 1 (T1 :: Gamma))); auto.
       replace 1 with (length [returnty o]) at 1; auto.
       apply shift_typing; auto.
-  - inversion_try_solve H0.
+  - inversion_try_solve H2.
   - inversion_try_solve H.
-    inversion_try_solve H4.
-    inversion_try_solve H0.
-    + apply T_Handle with (E1 := {[eff_of o]}) (T1 := T1); auto.
-    + inversion_try_solve H7.
+    inversion_try_solve H1.
+    + apply T_Handle with (E1 := E1) (T1 := T1); auto.
+    + inversion_try_solve H0.
       unfold substcomp.
       replace Gamma with ([] ++ Gamma); auto.
       replace 0 with (@length ty []); auto.
       apply substitution_preserves_typing with (U := T1); auto.
-      apply effect_weakening; auto.
-    + inversion_try_solve H7.
+    + inversion_try_solve H0.
       unfold substcomp.
       replace Gamma with ([] ++ Gamma); auto.
       replace 0 with (@length ty []) at 1; auto.
       apply substitution_preserves_typing with (U := paramty o); auto.
       replace 0 with (@length ty []) at 1; auto.
-      apply substitution_preserves_typing with (U := tarr (returnty o) E2 T); auto.
-      apply effect_weakening; auto.
+      apply substitution_preserves_typing with (U := tarr (returnty o) E2 T2); auto.
       simpl.
       apply T_Abs.
-      replace E2 with (union E2 empty); try set_solver.
-      apply T_Handle with (E1 := {[eff_of o]}) (T1 := T1).
-      * apply T_Handler.
+      apply T_Handle with (E1 := E1) (T1 := T1).
+      * apply T_Handler; auto.
         { replace 2 with (length [returnty o; paramty o]) at 1; auto.
           replace (T1 :: returnty o :: paramty o :: Gamma) with ((take 1 (T1 :: Gamma)) ++ [returnty o; paramty o] ++ (drop 1 (T1 :: Gamma))); auto.
           apply shift_typing; auto. }
         { replace 2 with (length [returnty o; paramty o]) at 1; auto.
-          replace (tarr (returnty o) E2 T :: paramty o :: returnty o :: paramty o :: Gamma) with
-            ((take 2 (tarr (returnty o) E2 T :: paramty o :: Gamma)) ++ [returnty o; paramty o] ++
-              (drop 2 (tarr (returnty o) E2 T :: paramty o :: Gamma))); auto.
+          replace (tarr (returnty o) E2 T2 :: paramty o :: returnty o :: paramty o :: Gamma) with
+            ((take 2 (tarr (returnty o) E2 T2 :: paramty o :: Gamma)) ++ [returnty o; paramty o] ++
+              (drop 2 (tarr (returnty o) E2 T2 :: paramty o :: Gamma))); auto.
           apply shift_typing; auto. }
       * replace 1 with (length [paramty o]) at 1; auto.
         replace (returnty o :: paramty o :: Gamma) with
           ((take 1 (returnty o :: Gamma)) ++ [paramty o] ++ (drop 1 (returnty o :: Gamma))); auto.
         apply shift_typing; auto.
-        replace ({[eff_of o]}) with E.
-        replace (union E empty) with E; auto.
+    + inversion_try_solve H0.
+      apply T_Op; auto.
+      * apply T_Handle with (E1 := E1) (T1 := T1); auto.
+        apply T_Handler; auto.
+        { replace 1 with (length [returnty o']) at 1; auto.
+          replace (T1 :: returnty o' :: Gamma) with
+            ((take 1 (T1 :: Gamma)) ++ [returnty o'] ++ (drop 1 (T1 :: Gamma))); auto.
+          apply shift_typing; auto. }
+        { replace 1 with (length [returnty o']) at 1; auto.
+          replace (tarr (returnty o) E2 T2 :: paramty o :: returnty o' :: Gamma) with
+            ((take 2 (tarr (returnty o) E2 T2 :: paramty o :: Gamma)) ++ [returnty o'] ++
+              (drop 2 (tarr (returnty o) E2 T2 :: paramty o :: Gamma))); auto.
+          apply shift_typing; auto. }
+      * apply op_unique in H8.
         set_solver.
-        
+Qed.
 
 Definition normal_form {X:Type} (R:relation X) (t:X) : Prop :=
   ~ exists t', R t t'.
 Definition stuck (t:comp) : Prop :=
   (normal_form step) t /\ ~(value t).
 
-Corollary soundness : forall t t' T E,
-  nil |-c t in T ; E ->
+Corollary soundness : forall t t' T,
+  nil |-c t in T ; empty ->
   t ===>* t' ->
   ~(stuck t').
 Proof.
