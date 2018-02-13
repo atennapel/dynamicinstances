@@ -243,12 +243,16 @@ We can get back the simpler operation calls such as seen in Eff and Koka by defi
 \subsection{Typing rules}
 
 The typing rules for the values of the previous calculus stay the same.
-For the handler we go over the operations in the handler, check that they are operations of the same effect and get the type of the computation in the cases. The effects in each case must match.
+For the handler we check that both the return case and the operation cases agree on the effects.
+A handler is allowed to have more effects in its type then it handles, these effects will simply
+remain unhandled and they will appear in both the input and output effect sets.
+The input effect set must atleast contain all effects that the operations belong to and the output effect set
+must agree on the unhandled effects of the input set.
 \[\frac{
 	\begin{array}{l}
-	\eop_i \in \eops{\effs_1} \\
 	\Gamma , x_r : \type_1 \vdash \comp_r : \type_2 \; ; \effs_2 \\
-	\Gamma , x_i : \type^0_{\eop_i} , k_i : \tarre{\type^1_{\eop_i}}{\effs_3}{\type_2} \vdash \comp_i : \type_2 \; ; \effs_3
+	\Gamma , x_i : \type^0_{\eop_i} , k_i : \tarre{\type^1_{\eop_i}}{\effs_2}{\type_2} \vdash \comp_i : \type_2 \; ; \effs_2 \\
+	\eop_i \in \eops{\effs} \land \effs \subseteq \effs_1 \land \effs_1 \setminus \effs \subseteq \effs_2 \\
 	\end{array}
 }{
 	\begin{array}{l}
@@ -257,7 +261,7 @@ For the handler we go over the operations in the handler, check that they are op
 		\eop_1 ( x_1 ; k_1 ) \rightarrow \comp_1,
 		...,
 		\eop_n ( x_n ; k_n ) \rightarrow \comp_n
-	} \\ \indent : \thandler{\effs_1}{\type_1}{(\effs_2 \cup \effs_3)}{\type_2}
+	} \\ \indent : \thandler{\effs_1}{\type_1}{\effs_2}{\type_2}
 	\end{array}
 }\]
 
@@ -268,20 +272,20 @@ The typing rules of the computations of the previous calculus stay the same. For
 	\eop \in \eops{\eff} \\
 	\Gamma \vdash \val : \type^0_\eop \\
 	\Gamma , x : \type^1_\eop \vdash \comp : \type \; ; \effs \\
+	\eff \in \effs \\
 	\end{array}
 }{
-	\Gamma \vdash \cop{\eop}{\val}{x}{\comp} : \type \; ; \{ \eff \} \cup \effs
+	\Gamma \vdash \cop{\eop}{\val}{x}{\comp} : \type \; ; \effs
 }\]
 \end{minipage}
 \begin{minipage}{0.5\textwidth}
 \[\frac{
 	\begin{array}{l}
 	\Gamma \vdash \val : \thandler{\effs_1}{\type_1}{\effs_2}{\type_2} \\
-	\Gamma \vdash \comp : \type_1 \; ; \effs_1 \cup \effs \\
-	\effs_1 \cap \effs = \varnothing
+	\Gamma \vdash \comp : \type_1 \; ; \effs_1 \\
 	\end{array}
 }{
-	\Gamma \vdash \chandle{\val}{\comp} : \type_2 \; ; \effs_2 \cup \effs
+	\Gamma \vdash \chandle{\val}{\comp} : \type_2 \; ; \effs_2
 }\]
 \end{minipage}
 
