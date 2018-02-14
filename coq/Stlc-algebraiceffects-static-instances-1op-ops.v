@@ -1,6 +1,5 @@
 (*
-  A formalization of simple algebraic effects, with the following limitations:
-  - every effect has only one operation.
+  A formalization of simple algebraic effects with static instances, with the following limitations:
   - a handler can only handle one operation.
 *)
 Require Import Coq.Lists.List.
@@ -9,44 +8,66 @@ Require Import Coq.omega.Omega.
 Require Import Util.
 From stdpp Require Import fin_collections gmap.
 
-(* effects *)
+(* effects and static instances *)
 Definition eff := nat.
 Notation effs := (gset eff).
+Definition eff_inst := nat.
+Notation eff_insts := (gset eff_inst).
+Definition eff_op := nat.
+Notation eff_ops := (gset eff_op).
 
-Definition op := nat.
-Notation ops := (gset op).
+Record eff_annot := EffAnnot {
+  eff_annot_inst : eff_inst;
+  eff_annot_op : eff_op;
+}.
 
-(* get the effect that the operation is part of *)
-Axiom eff_of : op -> eff.
+Instance eff_annot_eq_dec : EqDecision eff_annot.
+Proof. solve_decision. Defined.
 
-(* all effects have a single operation *)
-Axiom op_unique : forall o o', o <> o' -> eff_of o <> eff_of o'.
+Instance eff_annot_countable : Countable eff_annot.
+Proof.
+  apply (inj_countable' (fun a => (eff_annot_inst a, eff_annot_op a))
+                        (fun '(n,o) => EffAnnot n o)).
+  by intros [].
+Qed.
+
+(* effect annotation for types *)
+Notation eff_annots := (gset eff_annot).
 
 (* ast *)
 Inductive ty : Type :=
-  | tarr : ty -> effs -> ty -> ty
+  | tarr : ty -> eff_annots -> ty -> ty
   | tunit : ty
-  | thandler : effs -> ty -> effs -> ty -> ty.
+  | thandler : eff_annots -> ty -> eff_annots -> ty -> ty.
 
 Inductive val : Type :=
   | unit : val
   | var : nat -> val
   | abs : comp -> val
-  | handler : comp -> op -> comp -> val (* one comp for the return clause, one for the single operation *)
+  | handler : comp -> eff_annot -> comp -> val (* one comp for the return clause, one for the single operation *)
 with comp : Type :=
   | ret : val -> comp
   | app : val -> val -> comp
   | do : comp -> comp -> comp
-  | opc : op -> val -> comp -> comp
+  | opc : eff_annot -> val -> comp -> comp
   | handle : val -> comp -> comp.
 
 Scheme val_comp_ind := Induction for val Sort Prop
   with comp_val_ind := Induction for comp Sort Prop.
 Combined Scheme val_comp_mutind from val_comp_ind, comp_val_ind.
 
-(* parameter and return type of an operation *)
-Axiom paramty : op -> ty.
-Axiom returnty : op -> ty.
+(* effect environment *)
+Record eff_env := EffEnv {
+  eff_env_effs : effs;
+  eff_env_ops : eff_ops;
+  eff_env_insts : eff_insts;
+
+  eff_env_op_to_eff : eff_op -> eff;
+  eff_env_inst_to_eff : eff_inst -> eff;
+
+  eff_env_paramty : eff_op -> ty;
+  eff_env_returnty : eff_op -> ty;
+}.
 
 (* closed *)
 Inductive closedval' : nat -> val -> Prop :=
@@ -190,49 +211,56 @@ Notation "t1 '===>*' t2" := (multistep t1 t2) (at level 40).
 (* typing rules *)
 Definition context := list ty.
 
-Reserved Notation "Gamma '|-' t 'in' T" (at level 40).
-Reserved Notation "Gamma '|-c' t 'in' T ';' E" (at level 40).
+Reserved Notation "Env ',' Gamma '|-' t 'in' T" (at level 40).
+Reserved Notation "Env ',' Gamma '|-c' t 'in' T ';' E" (at level 40).
 
-Inductive has_type_val : context -> val -> ty -> Prop :=
-  | T_Unit : forall Gamma,
-    Gamma |- unit in tunit
-  | T_Var : forall Gamma x T,
+Definition valid_eff_annot (Env:eff_env) (o:eff_annot) :=
+  (eff_annot_inst o ∈ eff_env_insts Env) /\
+  (eff_annot_op o ∈ eff_env_ops Env) /\
+  (eff_env_inst_to_eff Env (eff_annot_inst o) = eff_env_op_to_eff Env (eff_annot_op o)).
+
+Inductive has_type_val : eff_env -> context -> val -> ty -> Prop :=
+  | T_Unit : forall Env Gamma,
+    Env, Gamma |- unit in tunit
+  | T_Var : forall Env Gamma x T,
     nth_error Gamma x = Some T ->
-    Gamma |- var x in T
-  | T_Abs : forall Gamma t T1 E T2,
-    (T1 :: Gamma) |-c t in T2 ; E ->
-    Gamma |- abs t in tarr T1 E T2
-  | T_Handler : forall Gamma cr o co E1 T1 E2 T2,
-    (T1 :: Gamma) |-c cr in T2 ; E2 ->
-    (tarr (returnty o) E2 T2 :: paramty o :: Gamma) |-c co in T2 ; E2 ->
-    (E1 ∖  {[eff_of o]}) ⊆ E2 ->
-    Gamma |- handler cr o co in thandler E1 T1 E2 T2
+    Env, Gamma |- var x in T
+  | T_Abs : forall Env Gamma t T1 E T2,
+    Env, (T1 :: Gamma) |-c t in T2 ; E ->
+    Env, Gamma |- abs t in tarr T1 E T2
+  | T_Handler : forall Env Gamma cr o co E1 T1 E2 T2,
+    valid_eff_annot Env o ->
+    Env, (T1 :: Gamma) |-c cr in T2 ; E2 ->
+    Env, (tarr (eff_env_returnty Env (eff_annot_op o)) E2 T2 :: (eff_env_paramty Env (eff_annot_op o)) :: Gamma) |-c co in T2 ; E2 ->
+    (E1 ∖  {[o]}) ⊆ E2 ->
+    Env, Gamma |- handler cr o co in thandler E1 T1 E2 T2
 
-where "Gamma '|-' t 'in' T" := (has_type_val Gamma t T)
+where "Env ',' Gamma '|-' t 'in' T" := (has_type_val Env Gamma t T)
 
-with has_type_comp : context -> comp -> ty -> effs -> Prop :=
-  | T_Return : forall Gamma v T E,
-    Gamma |- v in T ->
-    Gamma |-c ret v in T ; E
-  | T_App : forall Gamma t1 t2 T1 E T2,
-    Gamma |- t1 in tarr T1 E T2 ->
-    Gamma |- t2 in T1 ->
-    Gamma |-c app t1 t2 in T2 ; E
-  | T_Do : forall Gamma t1 t2 T1 E T2,
-    Gamma |-c t1 in T1 ; E ->
-    (T1 :: Gamma) |-c t2 in T2 ; E ->
-    Gamma |-c do t1 t2 in T2; E
-  | T_Op : forall Gamma o v c T E,
-    Gamma |- v in paramty o ->
-    (returnty o :: Gamma) |-c c in T ; E ->
-    eff_of o ∈ E ->
-    Gamma |-c opc o v c in T ; E
-  | T_Handle : forall Gamma v c E1 T1 E2 T2,
-    Gamma |- v in thandler E1 T1 E2 T2 ->
-    Gamma |-c c in T1 ; E1 ->
-    Gamma |-c handle v c in T2 ; E2
+with has_type_comp : eff_env -> context -> comp -> ty -> eff_annots -> Prop :=
+  | T_Return : forall Env Gamma v T E,
+    Env, Gamma |- v in T ->
+    Env, Gamma |-c ret v in T ; E
+  | T_App : forall Env Gamma t1 t2 T1 E T2,
+    Env, Gamma |- t1 in tarr T1 E T2 ->
+    Env, Gamma |- t2 in T1 ->
+    Env, Gamma |-c app t1 t2 in T2 ; E
+  | T_Do : forall Env Gamma t1 t2 T1 E T2,
+    Env, Gamma |-c t1 in T1 ; E ->
+    Env, (T1 :: Gamma) |-c t2 in T2 ; E ->
+    Env, Gamma |-c do t1 t2 in T2; E
+  | T_Op : forall Env Gamma o v c T E,
+    valid_eff_annot Env o ->
+    Env, Gamma |- v in eff_env_paramty Env (eff_annot_op o) ->
+    Env, ((eff_env_returnty Env (eff_annot_op o)) :: Gamma) |-c c in T ; E ->
+    o ∈ E ->
+    Env, Gamma |-c opc o v c in T ; E
+  | T_Handle : forall Env Gamma v c E1 T1 E2 T2,
+    Env, Gamma |- v in thandler E1 T1 E2 T2 ->
+    Env, Gamma |-c c in T1 ; E1 ->
+    Env, Gamma |-c handle v c in T2 ; E2
 
-where "Gamma '|-c' t 'in' T ';' E" := (has_type_comp Gamma t T E).
+where "Env ',' Gamma '|-c' t 'in' T ';' E" := (has_type_comp Env Gamma t T E).
 
 Scheme has_type_val_comp_ind := Induction for has_type_val Sort Prop
   with has_type_comp_val_ind := Induction for has_type_comp Sort Prop.
@@ -261,8 +289,8 @@ Proof.
 Qed.
 
 Lemma typable_closed_length :
-  (forall Gamma t T, Gamma |- t in T -> closedval' (length Gamma) t) /\
-  (forall Gamma t T E, Gamma |-c t in T ; E -> closedcomp' (length Gamma) t).
+  (forall Env Gamma t T, Env, Gamma |- t in T -> closedval' (length Gamma) t) /\
+  (forall Env Gamma t T E, Env, Gamma |-c t in T ; E -> closedcomp' (length Gamma) t).
 Proof.
   apply has_type_val_comp_mutind; intros; auto.
   constructor.
@@ -282,8 +310,8 @@ Proof.
     auto.
 Qed.
 
-Lemma progress_effects : forall t T E,
-  nil |-c t in T ; E ->
+Lemma progress_effects : forall Env t T E,
+  Env, nil |-c t in T ; E ->
   (value t \/ exists t', t ===> t') \/ (exists o v k, t = opc o v k).
 Proof.
   remember (@nil ty) as Gamma.
@@ -334,8 +362,7 @@ Proof.
         auto.
       * destruct H2 as [o'], H2 as [v], H2 as [k].
         subst.
-        assert (D := Nat.eq_dec o o').
-        destruct D.
+        destruct (eff_annot_eq_dec o o').
         { subst.
           exists (substcomp v (substcomp (abs (handle (handler (shiftcomp' 2 1 cr) o' (shiftcomp' 2 2 co)) (shiftcomp' 1 1 k))) co)).
           auto. }
@@ -343,8 +370,8 @@ Proof.
           auto. }
 Qed.
 
-Theorem progress : forall t T,
-  nil |-c t in T ; empty ->
+Theorem progress : forall Env t T,
+  Env, nil |-c t in T ; empty ->
   value t \/ exists t', t ===> t'.
 Proof.
   intros.
@@ -357,8 +384,8 @@ Proof.
 Qed.
 
 Corollary typable_closed_empty :
-  (forall Gamma t T, Gamma |- t in T -> Gamma = nil -> closedval t) /\
-  (forall Gamma t T E, Gamma |-c t in T ; E -> Gamma = nil -> closedcomp t).
+  (forall Env Gamma t T, Env, Gamma |- t in T -> Gamma = nil -> closedval t) /\
+  (forall Env Gamma t T E, Env, Gamma |-c t in T ; E -> Gamma = nil -> closedcomp t).
 Proof.
   assert (H' := typable_closed_length).
   split; intros; subst;
@@ -378,8 +405,8 @@ Proof.
 Qed.
 
 Lemma context_invariance :
-  (forall Gamma t T, Gamma |- t in T -> forall Gamma', (Gamma ++ Gamma') |- t in T) /\
-  (forall Gamma t T E, Gamma |-c t in T ; E -> forall Gamma', (Gamma ++ Gamma') |-c t in T ; E).
+  (forall Env Gamma t T, Env, Gamma |- t in T -> forall Gamma', Env, (Gamma ++ Gamma') |- t in T) /\
+  (forall Env Gamma t T E, Env, Gamma |-c t in T ; E -> forall Gamma', Env, (Gamma ++ Gamma') |-c t in T ; E).
 Proof.
   apply has_type_val_comp_mutind;
     intros;
@@ -433,14 +460,14 @@ Proof.
 Qed.
 
 Lemma shift_typing :
-  (forall Gamma t T,
-    Gamma |- t in T ->
+  (forall Env Gamma t T,
+    Env, Gamma |- t in T ->
     forall m L,
-      (firstn m Gamma ++ L ++ skipn m Gamma) |- shiftval' (length L) m t in T) /\
-  (forall Gamma t T E,
-    Gamma |-c t in T ; E ->
+      Env, (firstn m Gamma ++ L ++ skipn m Gamma) |- shiftval' (length L) m t in T) /\
+  (forall Env Gamma t T E,
+    Env, Gamma |-c t in T ; E ->
     forall m L,
-      (firstn m Gamma ++ L ++ skipn m Gamma) |-c shiftcomp' (length L) m t in T ; E).
+      Env, (firstn m Gamma ++ L ++ skipn m Gamma) |-c shiftcomp' (length L) m t in T ; E).
 Proof.
   apply has_type_val_comp_mutind; intros; simpl; try constructor; auto.
   - destruct (x <? m) eqn:eq; constructor.
@@ -466,14 +493,14 @@ Proof.
 Qed.
 
 Lemma shift_typing1 :
-  (forall Gamma t T,
-    Gamma |- t in T ->
+  (forall Env Gamma t T,
+    Env, Gamma |- t in T ->
     forall m U,
-      (firstn m Gamma ++ U :: skipn m Gamma) |- shiftval' 1 m t in T) /\
-  (forall Gamma t T E,
-    Gamma |-c t in T ; E ->
+      Env, (firstn m Gamma ++ U :: skipn m Gamma) |- shiftval' 1 m t in T) /\
+  (forall Env Gamma t T E,
+    Env, Gamma |-c t in T ; E ->
     forall m U,
-      (firstn m Gamma ++ U :: skipn m Gamma) |-c shiftcomp' 1 m t in T ; E).
+      Env, (firstn m Gamma ++ U :: skipn m Gamma) |-c shiftcomp' 1 m t in T ; E).
 Proof.
   split; intros.
   - assert (U :: drop m Gamma = [U] ++ drop m Gamma).
@@ -487,14 +514,14 @@ Proof.
 Qed.
 
 Lemma shift1 :
-  (forall Gamma t T,
-    Gamma |- t in T ->
+  (forall Env Gamma t T,
+    Env, Gamma |- t in T ->
     forall U,
-      (U :: Gamma) |- shiftval 1 t in T) /\
-  (forall Gamma t T E,
-    Gamma |-c t in T ; E ->
+      Env, (U :: Gamma) |- shiftval 1 t in T) /\
+  (forall Env Gamma t T E,
+    Env, Gamma |-c t in T ; E ->
     forall U,
-      (U :: Gamma) |-c shiftcomp 1 t in T ; E).
+      Env, (U :: Gamma) |-c shiftcomp 1 t in T ; E).
 Proof.
   split; intros.
   - assert (U :: Gamma = [] ++ [U] ++ Gamma).
@@ -524,14 +551,14 @@ Proof.
 Qed.
 
 Lemma shiftn :
-  (forall Gamma t T,
-    Gamma |- t in T ->
+  (forall Env Gamma t T,
+    Env, Gamma |- t in T ->
     forall L,
-      (L ++ Gamma) |- shiftval (length L) t in T) /\
-  (forall Gamma t T E,
-    Gamma |-c t in T ; E ->
+      Env, (L ++ Gamma) |- shiftval (length L) t in T) /\
+  (forall Env Gamma t T E,
+    Env, Gamma |-c t in T ; E ->
     forall L,
-      (L ++ Gamma) |-c shiftcomp (length L) t in T ; E).
+      Env, (L ++ Gamma) |-c shiftcomp (length L) t in T ; E).
 Proof.
   split; intros.
   - assert (L ++ Gamma = (take 0 Gamma) ++ L ++ (drop 0 Gamma)); auto.
@@ -545,14 +572,14 @@ Proof.
 Qed.
 
 Lemma substitution_preserves_typing :
-  (forall (t:val) Gamma Gamma' v T U,
-    (Gamma ++ U :: Gamma') |- t in T ->
-    (Gamma ++ Gamma') |- v in U ->
-    (Gamma ++ Gamma') |- substval' (length Gamma) v t in T) /\
-  (forall (t:comp) Gamma Gamma' v T U E,
-    (Gamma ++ U :: Gamma') |-c t in T ; E ->
-    (Gamma ++ Gamma') |- v in U ->
-    (Gamma ++ Gamma') |-c substcomp' (length Gamma) v t in T ; E).
+  (forall (t:val) Env Gamma Gamma' v T U,
+    Env, (Gamma ++ U :: Gamma') |- t in T ->
+    Env, (Gamma ++ Gamma') |- v in U ->
+    Env, (Gamma ++ Gamma') |- substval' (length Gamma) v t in T) /\
+  (forall (t:comp) Env Gamma Gamma' v T U E,
+    Env, (Gamma ++ U :: Gamma') |-c t in T ; E ->
+    Env, (Gamma ++ Gamma') |- v in U ->
+    Env, (Gamma ++ Gamma') |-c substcomp' (length Gamma) v t in T ; E).
 Proof.
   apply val_comp_mutind; intros; simpl; auto; simpl.
   - inversion_try_solve H; auto.
@@ -561,8 +588,8 @@ Proof.
     + apply nat_compare_eq in eq.
       subst.
       rewrite <- beq_nat_refl.
-      rewrite nth_error_app in H3.
-      inversion_try_solve H3.
+      rewrite nth_error_app in H4.
+      inversion_try_solve H4.
       auto.
     + rewrite <- nat_compare_lt in eq.
       assert (eq' := eq).
@@ -576,7 +603,7 @@ Proof.
       assert (eq'' := eq).
       apply nth_error_contraction with (l' := U :: Gamma') in eq; auto.
       apply nth_error_contraction with (l' := Gamma') in eq''; auto.
-      rewrite <- H3.
+      rewrite <- H4.
       rewrite eq.
       rewrite eq''.
       auto.
@@ -593,7 +620,7 @@ Proof.
       remember (pred n - length Gamma) as m.
       assert (pred n = m + length Gamma).
       omega.
-      rewrite H4.
+      rewrite H3.
       apply nth_error_pred_app with (h := U).
       assert (n = S (m + length Gamma)).
       omega.
@@ -601,16 +628,16 @@ Proof.
       auto.
   - inversion_try_solve H0.
     constructor.
-    apply (H (T1 :: Gamma) Gamma' (shiftval 1 v) T2 U); auto.
+    apply (H Env (T1 :: Gamma) Gamma' (shiftval 1 v) T2 U); auto.
     simpl.
     apply shift1; auto.
   - inversion_try_solve H1.
     constructor; auto.
-    + apply (H (T1 :: Gamma)) with (U := U); auto.
+    + apply (H Env (T1 :: Gamma)) with (U := U); auto.
       simpl.
       apply shift1; auto.
-    + apply (H0 (tarr (returnty o) E2 T2 :: paramty o :: Gamma)) with (U := U); auto.
-      assert ((tarr (returnty o) E2 T2 :: paramty o :: Gamma) ++ Gamma' = (tarr (returnty o) E2 T2 :: paramty o :: nil) ++ (Gamma ++ Gamma')); auto.
+    + apply (H0 Env (tarr (eff_env_returnty Env (eff_annot_op e)) E2 T2 :: (eff_env_paramty Env (eff_annot_op e)) :: Gamma)) with (U := U); auto.
+      assert ((tarr (eff_env_returnty Env (eff_annot_op e)) E2 T2 :: eff_env_paramty Env (eff_annot_op e) :: Gamma) ++ Gamma' = (tarr (eff_env_returnty Env (eff_annot_op e)) E2 T2 :: eff_env_paramty Env (eff_annot_op e) :: nil) ++ (Gamma ++ Gamma')); auto.
       rewrite H3.
       apply shiftn; auto.
   - constructor.
@@ -630,7 +657,7 @@ Proof.
   - inversion_try_solve H1.
     constructor; auto.
     + apply H with (U := U); auto.
-    + apply (H0 (returnty o :: Gamma) Gamma' (shiftval 1 v0) T U); auto.
+    + apply (H0 Env (eff_env_returnty Env (eff_annot_op e) :: Gamma) Gamma' (shiftval 1 v0) T U); auto.
       apply shift1; auto.
   - inversion_try_solve H1.
     apply T_Handle with (E1 := E1) (T1 := T1); auto.
@@ -639,14 +666,14 @@ Proof.
 Qed.
 
 Lemma substitution_preserves_typing_nil :
-  (forall (t:val) v T U,
-    (U :: nil) |- t in T ->
-    nil |- v in U ->
-    nil |- substval v t in T) /\
-  (forall (t:comp) v T U E,
-    (U :: nil) |-c t in T ; E ->
-    nil |- v in U ->
-    nil |-c substcomp v t in T ; E).
+  (forall (t:val) Env v T U,
+    Env, (U :: nil) |- t in T ->
+    Env, nil |- v in U ->
+    Env, nil |- substval v t in T) /\
+  (forall (t:comp) Env v T U E,
+    Env, (U :: nil) |-c t in T ; E ->
+    Env, nil |- v in U ->
+    Env, nil |-c substcomp v t in T ; E).
 Proof.
   unfold substval, substcomp.
   replace 0 with (@length nat nil); auto.
@@ -659,22 +686,10 @@ Proof.
   - apply H1 with (U := U); auto.
 Qed.
 
-Lemma effect_through : forall o o' Gamma cr co v c T E,
-  o <> o' ->
-  eff_of o = eff_of o' ->
-  Gamma |-c handle (handler cr o co) (opc o' v c) in T ; E ->
-  eff_of o ∈ E.
-Proof.
-  intros.
-  inversion_try_solve H1.
-  inversion_try_solve H5.
-  inversion_try_solve H8.
-  
-
-Theorem preservation : forall Gamma t t' T E,
-  Gamma |-c t in T ; E ->
+Theorem preservation : forall Env Gamma t t' T E,
+  Env, Gamma |-c t in T ; E ->
   t ===> t' ->
-  Gamma |-c t' in T ; E.
+  Env, Gamma |-c t' in T ; E.
 Proof with eauto.
   intros.
   generalize dependent t'.
@@ -696,8 +711,8 @@ Proof with eauto.
     + inversion_try_solve H.
       apply T_Op; auto.
       apply T_Do with (T1 := T1); auto.
-      replace (T1 :: returnty o :: Gamma) with ((take 1 (T1 :: Gamma)) ++ [returnty o] ++ (drop 1 (T1 :: Gamma))); auto.
-      replace 1 with (length [returnty o]) at 1; auto.
+      replace (T1 :: eff_env_returnty Env (eff_annot_op o) :: Gamma) with ((take 1 (T1 :: Gamma)) ++ [eff_env_returnty Env (eff_annot_op o)] ++ (drop 1 (T1 :: Gamma))); auto.
+      replace 1 with (length [eff_env_returnty Env (eff_annot_op o)]) at 1; auto.
       apply shift_typing; auto.
   - inversion_try_solve H2.
   - inversion_try_solve H.
@@ -712,40 +727,39 @@ Proof with eauto.
       unfold substcomp.
       replace Gamma with ([] ++ Gamma); auto.
       replace 0 with (@length ty []) at 1; auto.
-      apply substitution_preserves_typing with (U := paramty o); auto.
+      apply substitution_preserves_typing with (U := eff_env_paramty Env (eff_annot_op o)); auto.
       replace 0 with (@length ty []) at 1; auto.
-      apply substitution_preserves_typing with (U := tarr (returnty o) E2 T2); auto.
+      apply substitution_preserves_typing with (U := tarr (eff_env_returnty Env (eff_annot_op o)) E2 T2); auto.
       simpl.
       apply T_Abs.
       apply T_Handle with (E1 := E1) (T1 := T1).
       * apply T_Handler; auto.
-        { replace 2 with (length [returnty o; paramty o]) at 1; auto.
-          replace (T1 :: returnty o :: paramty o :: Gamma) with ((take 1 (T1 :: Gamma)) ++ [returnty o; paramty o] ++ (drop 1 (T1 :: Gamma))); auto.
+        { replace 2 with (length [eff_env_returnty Env (eff_annot_op o); eff_env_paramty Env (eff_annot_op o)]) at 1; auto.
+          replace (T1 :: eff_env_returnty Env (eff_annot_op o) :: eff_env_paramty Env (eff_annot_op o) :: Gamma) with ((take 1 (T1 :: Gamma)) ++ [eff_env_returnty Env (eff_annot_op o); eff_env_paramty Env (eff_annot_op o)] ++ (drop 1 (T1 :: Gamma))); auto.
           apply shift_typing; auto. }
-        { replace 2 with (length [returnty o; paramty o]) at 1; auto.
-          replace (tarr (returnty o) E2 T2 :: paramty o :: returnty o :: paramty o :: Gamma) with
-            ((take 2 (tarr (returnty o) E2 T2 :: paramty o :: Gamma)) ++ [returnty o; paramty o] ++
-              (drop 2 (tarr (returnty o) E2 T2 :: paramty o :: Gamma))); auto.
+        { replace 2 with (length [eff_env_returnty Env (eff_annot_op o); eff_env_paramty Env (eff_annot_op o)]) at 1; auto.
+          replace (tarr (eff_env_returnty Env (eff_annot_op o)) E2 T2 :: eff_env_paramty Env (eff_annot_op o) :: eff_env_returnty Env (eff_annot_op o) :: eff_env_paramty Env (eff_annot_op o) :: Gamma) with
+            ((take 2 (tarr (eff_env_returnty Env (eff_annot_op o)) E2 T2 :: eff_env_paramty Env (eff_annot_op o) :: Gamma)) ++ [eff_env_returnty Env (eff_annot_op o); eff_env_paramty Env (eff_annot_op o)] ++
+              (drop 2 (tarr (eff_env_returnty Env (eff_annot_op o)) E2 T2 :: eff_env_paramty Env (eff_annot_op o) :: Gamma))); auto.
           apply shift_typing; auto. }
-      * replace 1 with (length [paramty o]) at 1; auto.
-        replace (returnty o :: paramty o :: Gamma) with
-          ((take 1 (returnty o :: Gamma)) ++ [paramty o] ++ (drop 1 (returnty o :: Gamma))); auto.
+      * replace 1 with (length [eff_env_paramty Env (eff_annot_op o)]) at 1; auto.
+        replace (eff_env_returnty Env (eff_annot_op o) :: eff_env_paramty Env (eff_annot_op o) :: Gamma) with
+          ((take 1 (eff_env_returnty Env (eff_annot_op o) :: Gamma)) ++ [eff_env_paramty Env (eff_annot_op o)] ++ (drop 1 (eff_env_returnty Env (eff_annot_op o) :: Gamma))); auto.
         apply shift_typing; auto.
     + inversion_try_solve H0.
       apply T_Op; auto.
       * apply T_Handle with (E1 := E1) (T1 := T1); auto.
         apply T_Handler; auto.
-        { replace 1 with (length [returnty o']) at 1; auto.
-          replace (T1 :: returnty o' :: Gamma) with
-            ((take 1 (T1 :: Gamma)) ++ [returnty o'] ++ (drop 1 (T1 :: Gamma))); auto.
+        { replace 1 with (length [eff_env_returnty Env (eff_annot_op o')]) at 1; auto.
+          replace (T1 :: eff_env_returnty Env (eff_annot_op o') :: Gamma) with
+            ((take 1 (T1 :: Gamma)) ++ [eff_env_returnty Env (eff_annot_op o')] ++ (drop 1 (T1 :: Gamma))); auto.
           apply shift_typing; auto. }
-        { replace 1 with (length [returnty o']) at 1; auto.
-          replace (tarr (returnty o) E2 T2 :: paramty o :: returnty o' :: Gamma) with
-            ((take 2 (tarr (returnty o) E2 T2 :: paramty o :: Gamma)) ++ [returnty o'] ++
-              (drop 2 (tarr (returnty o) E2 T2 :: paramty o :: Gamma))); auto.
+        { replace 1 with (length [eff_env_returnty Env (eff_annot_op o')]) at 1; auto.
+          replace (tarr (eff_env_returnty Env (eff_annot_op o)) E2 T2 :: eff_env_paramty Env (eff_annot_op o) :: eff_env_returnty Env (eff_annot_op o') :: Gamma) with
+            ((take 2 (tarr (eff_env_returnty Env (eff_annot_op o)) E2 T2 :: eff_env_paramty Env (eff_annot_op o) :: Gamma)) ++ [eff_env_returnty Env (eff_annot_op o')] ++
+              (drop 2 (tarr (eff_env_returnty Env (eff_annot_op o)) E2 T2 :: eff_env_paramty Env (eff_annot_op o) :: Gamma))); auto.
           apply shift_typing; auto. }
-      * apply op_unique in H8.
-        set_solver.
+      * set_solver.
 Qed.
 
 Definition normal_form {X:Type} (R:relation X) (t:X) : Prop :=
@@ -753,8 +767,8 @@ Definition normal_form {X:Type} (R:relation X) (t:X) : Prop :=
 Definition stuck (t:comp) : Prop :=
   (normal_form step) t /\ ~(value t).
 
-Corollary soundness : forall t t' T,
-  nil |-c t in T ; empty ->
+Corollary soundness : forall Env t t' T,
+  Env, nil |-c t in T ; empty ->
   t ===>* t' ->
   ~(stuck t').
 Proof.
