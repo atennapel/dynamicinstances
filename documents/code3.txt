@@ -4,18 +4,18 @@ effect Flip {
 }
 
 -- Defining generic effects for easier use
-flip : () -> {Flip} Bool
+flip : () -> {flip} Bool
 flip = \u. flip((); \x.return x)
 
 -- Defining a handler for Flip
-flipTrue : {Flip} Bool => Bool
+flipTrue : {flip} Bool => Bool
 flipTrue = handler {
   return x -> return x
   flip(x; k) -> k True
 }
 
 -- A program that uses Flip
-flipProgram : Bool -> {Flip} Bool
+flipProgram : Bool -> {flip} Bool
 flipProgram = \b.
   x <- flip ();
   b && x

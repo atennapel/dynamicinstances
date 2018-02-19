@@ -1,0 +1,36 @@
+-- Assume the following effects, operations and operation signatures.
+effect Flip {
+  flip : () -> Bool
+}
+
+-- Creating instances
+instance Flip flip1
+instance Flip flip2
+
+-- Defining generic effects for easier use
+flip1g : () -> {flip1#flip} Bool
+flip1g = \u. flip1#flip((); \x.return x)
+
+flip2g : () -> {flip2#flip} Bool
+flip2g = \u. flip2#flip((); \x.return x)
+
+-- Defining a handler for all flip instances
+flipTrue : Inst ? -> ({f#flip} Bool => Bool)
+flipTrue i = handler {
+  return x -> return x
+  i#flip(x; k) -> k True
+}
+
+-- A program that uses flip1 and flip2
+flipProgram : () -> {flip1#flip, flip2#flip} Bool
+flipProgram = \u.
+  x <- flip1g ();
+  y <- flip2g ();
+  x && y
+
+-- Handling the program
+flipProgramResult : () -> Bool
+flipProgramResult =
+  \u. with (flipTrue flip1) handle
+      with (flipTrue flip2) handle (flipProgram ())
+
