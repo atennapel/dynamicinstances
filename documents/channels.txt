@@ -1,0 +1,58 @@
+In order show the usefulness of dynamic instances we will take communication channels as a running example.
+One can either write to or read from a channel.
+Examples include reading from or writing to a file, socket or standard output, or message passing between processes.
+
+As example programs we take the following two tasks:
+1. Give a channel c, read a natural number n from c and write 0 to n (excluding) to c.
+2. Given a channel c and d, read a natural number n from c and write 0 to n (excluding) to d. 
+
+Basic algebraic effects and handlers
+
+In a system with basic algebraic effects and handlers we can view channels as an effect with two operations, read and write.
+This provides a common interface for all the different kinds of channels.
+
+effect Channel
+  read : () -> Nat
+  write : Nat -> ()
+
+Operations have an parameter type and a return type.
+In the case of read we give the unit value and we get back a natural number from the channel.
+In the case of write we give the natural number to write and we get back the unit value.
+
+We can then implement program 1 as following:
+
+program1 () =
+  n <- read ();
+  program1loop 0
+    where
+      program1loop i =
+        if i == n then
+          ()
+        else
+          write i;
+          program1loop (i + 1)
+
+Here we are first reading from the channel to get the number n, after we are using recursion to loop from 0 to n and writing the current number to the channel each time.
+Program1 implements the program abstractly, it does not refer to a specific channel and so can be used for any channel that supports the Channel interface.
+To give an implementation for a specific channel we use handlers:
+
+logHandler = handler
+  read () k ->
+    k (getNat ())
+  write v k ->
+    putNat v;
+    k ()
+
+Here we define the implementation of the Channel interface for reading from and writing to the standard output.
+We assume the existence of the functions getNat and putNat that get and write a natural number from/to the standard output.
+In each case we define how to handle the operations of the Channel effect.
+We have access to the argument to the operation and the continuation (named k).
+With the continuation we can continue the program at the point of the operation call, with a value of the return type of that operation.
+In the case of read we get a natural number from the standard output and continue the program with this number.
+
+We can run program1 with the logHandler as follows:
+
+program1result = with logHandler handle (program1 ())
+
+Using other channels is possible by handling the program with different handlers.
+

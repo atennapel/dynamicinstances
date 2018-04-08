@@ -1,0 +1,86 @@
+Local effects
+
+Assume we are given some function f, that takes a numerical function and returns an integer:
+
+  f : (Int -> Int) -> Int
+
+If we call the function parameter g, then how can we count how many times g is called?
+We would like to define the following function:
+
+  count : ((Int -> Int) -> Int) -> (Int -> Int) -> Int
+
+Where count takes such an f and g and returns the amount of times g was called.
+
+Basic algebraic effects and handlers
+
+-- define a tick effect to count
+effect Tick {
+  tick : () -> ()
+}
+
+-- a handler that evaluates Tick and returns the final tick count
+tickHandler = handler {
+  return x -> \s -> s
+  tick () k -> \s -> k () (s + 1)
+}
+
+-- implementation of count
+count f g =
+  (with tickHandler handle
+    f (\x -> tick (); g x)) 0
+
+-- will evaluate to 3
+count (\g -> g (g (g 10))) (\x -> x + 1)
+
+This works for simple functions but will fail when either f or g uses the tick operations.
+This is because the handler inside of count will handle all tick operations, irregardles of if the are called by count or by f or g:
+
+-- will evaluate to 4 instead of 3
+count (\g -> tick (); g (g (g 10))) (\x -> x + 1)
+
+-- will evaluate to 6 instead of 3
+count (\g -> g (g (g 10))) (\x -> tick (); x + 1)
+
+To solve this we could define a seperate effect just for count:
+
+effect CountTick {
+  countTick : () -> ()
+}
+
+This would not solve the problem though since this effect has to be defined globally and so the tick operation can still be called by f or g.
+
+To solve this we need to have a notion of local effects.
+We want to define and handle an instance of the state effect locally such that the operations of this instance cannot be used anywhere else.
+Dynamic instances allow us to do this.
+
+Dynamic instances
+
+-- define the tick effect
+effect Tick {
+  tick : () -> ()
+}
+
+-- a handler that, given an instance of Tick, evaluates and returns the final tick count
+tickHandler r = handler {
+  return x -> \s -> s
+  r#tick () k -> \s -> k () (s + 1)
+}
+
+-- implementation of count
+count f g =
+  let inst = new Tick in
+  (with tickHandler inst handle
+    f (\x -> inst#tick (); g x)) 0
+
+The tick handler used inside of count only handles tick operations on the locally generated Tick instance.
+Nobody else has access to this tick instance and so this solves the problem we had.
+
+Local exceptions
+
+effect Exception {
+  throw : (() -> Int) -> Void
+}
+
+doThing =
+  let inst = new Exception in
+  (\x -> if x == 42 then () else throw "Invalid number!", handler { inst#throw _ k ->  })
