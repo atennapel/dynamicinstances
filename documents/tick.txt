@@ -75,12 +75,62 @@ count f g =
 The tick handler used inside of count only handles tick operations on the locally generated Tick instance.
 Nobody else has access to this tick instance and so this solves the problem we had.
 
-Local exceptions
+Local exception
+
+We can easily model exceptions with algebraic effects if we ignore the continuation in the handler.
 
 effect Exception {
-  throw : (() -> Int) -> Void
+  throw : () -> Void
 }
 
-doThing =
+exc = new Exception
+
+trycatch f g = with handler {
+  exc#throw () k -> g ()
+} handle f ()
+
+div a b =
+  if b == 0 then
+    exc#throw ()
+  else
+    a / b
+
+-- return 0 if b == 0
+saveDiv a b =
+  trycatch
+    (\() -> div a b)
+    (\() -> 0)
+
+Where normally exception handlers can catch all exceptions, with dynamic instances we can have local exceptions that can only be caught when one has access to the instance.
+The following function will always result in unhandled operations, since the fresh instance inside of notcatchable is not exposed:
+
+notcatchable =
   let inst = new Exception in
-  (\x -> if x == 42 then () else throw "Invalid number!", handler { inst#throw _ k ->  })
+  inst#throw ()
+
+Using dynamic instances we can then have exceptions that can only be caught in a specific way.
+Catchable returns both a function that might throw and a function that given a function f catches the exception and calls f.
+Since the instance is not exposed in any way, one can only catch the exception with the function that is returned.
+
+catchable =
+  let inst = new Exception in
+  (
+    \x -> if x == 0 then inst#throw () else x,
+    \f -> handler { inst#throw () _ -> f () }
+  )
+
+Generalizing this idea we can have libraries that require the user to call a certain function at some point or else their program won't typecheck.
+
+effect Required {
+  require : () -> ()
+}
+
+getLibraryFunction =
+  let inst = new Required;
+  (
+    someLibraryFunction,
+    onlyHandlerThatHandlesInst
+  )
+
+When the user calls someLibraryFunction it calls the operation require.
+Using an effect system this results in an unhandled operation, where the only way to resolve this type error is by wrapping the call to someLibraryFunction with onlyHandlerThatHandlesInst at some point.
