@@ -1,0 +1,81 @@
+empty : NatMap
+find : NatMap -> Nat -> Maybe Nat
+update : NatMap -> Nat -> Nat -> NatMap
+
+effect State {
+  get : () -> NatMap
+  set : NatMap -> ()
+}
+
+state : IntMap -> (Nat!{State} => Nat)
+state s = handler {
+  return v -> \s -> v
+  get () k -> \s -> k s s
+  set v k -> \_ -> k () v
+  finally f -> f s 
+}
+
+fib : Nat -> Nat!{State}
+fib n =
+  map <- get ();
+  case find map n of
+    Just m -> m
+    Nothing ->
+      let result =
+        if n < 2 then
+          n
+        else
+          fib (n - 1) + fib (n - 2);
+      set (update map n result);
+      result
+
+result1 = with state empty handle fib 5
+
+result3 = with state empty handle
+  x <- fib 4;
+  y <- fib 5;
+  x * y
+
+fibState = new State
+
+fib : Nat -> Nat!{fibState}
+fib n =
+  map <- fibState#get ();
+  case find map n of
+    Just m -> m
+    Nothing ->
+      let result =
+        if n < 2 then
+          n
+        else
+          fib (n - 1) + fib (n - 2);
+      fibState#set (update map n result);
+      result
+
+result3 = with state fibState empty handle
+  fib 4 * fib 5
+
+memo : ((Nat -> Nat) -> Nat -> Nat) -> ((Nat -> Nat), Inst State)
+memo f =
+  let inst = new State;
+  let rec n =
+    map <- inst#get ();
+    case find map n of
+      Just m -> m
+      Nothing ->
+        let result = f rec n;
+        inst#set (update map n result);
+        result;
+  (rec, inst)
+
+fibR f n =
+  if n < 2 then
+    n
+  else
+    f (n - 1) + f (n - 2)
+
+(fib, fibState) = memo fibR
+
+result3 = with state fibState empty handle
+  fib 4 * fib 5
+
