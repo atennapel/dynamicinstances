@@ -131,6 +131,46 @@ result =
     fib 4 * fac 5
 \end{minted}
 
-\it{Can fibState or facState escape the handlers?}
+Problem: we have to manually manage fibState and facState and they have become global references instead of local.
+
+\newpage
+\subsection{Resources}
+
+With resources we can give an instance a default handler that manipulates a piece of state.
+When the operations on the instance remain unhandled they will get handled by this default handler at the top-level.
+This way we don't have to return the instance from it's scope and so it will remain local, but at the same time we know it won't be unhandled.
+In fact in our case there is no other way to handle the instance generated in memo, except for it's default handler.
+ 
+\begin{minted}{haskell}
+memo : ((Nat -> Nat) -> Nat -> Nat) -> (Nat -> Nat)
+memo f =
+  let inst = new State @ empty {
+    get () s -> s @ s
+    set s _ -> () @ s
+  };
+  let rec n =
+    map <- inst#get ();
+    case find map n of
+      Just m -> m
+      Nothing ->
+        let result = f rec n;
+        inst#set (update map n result);
+        result;
+  rec
+
+fibR f n =
+  if n < 2 then
+    n
+  else
+    f (n - 1) + f (n - 2)
+fib = memo fibR
+facR f n =
+  if n < 3 then
+    n
+  else
+    n * f (n - 1)
+fac = memo facR
+result = fib 4 * fac 5
+\end{minted}
 
 \end{document}
