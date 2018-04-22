@@ -1,0 +1,116 @@
+\documentclass[12pt]{article}
+
+\usepackage{listings}
+\usepackage{mathtools}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{minted}
+
+\lstset{
+	frame = single,
+	basicstyle=\ttfamily\footnotesize,
+	breaklines=true
+}
+
+\title{Thesis report on dynamic instances}
+\author{Albert ten Napel}
+\date{}
+
+\begin{document}
+\maketitle
+
+In order to show how dynamic instances can be used to define local effects.
+We will follow an example from \cite{handlewithcare}.
+
+Given a function \texttt{f} of type $(a \rightarrow b) \rightarrow b$.
+\texttt{f} takes a function \texttt{g} from $a$ to $b$ and returns a value of type $b$.
+We would like to count how many times \texttt{f g} uses \texttt{g}.
+We will use an effect \texttt{Tick} with a single operation \texttt{tick} to count.
+Implementing this without instances would look something like:
+\begin{minted}[tabsize=2]{haskell}
+effect Tick {
+	tick : () -> ()
+}
+
+countf g =
+	(with handler {
+		return _ -> \n -> n
+		tick () k -> \n -> k () (n + 1)
+	} handle f (\x -> tick (); g x)) 0
+\end{minted}
+Similar to how $f_{cnt}$ is defined in \cite{handlewithcare}, we apply \texttt{f} to a function that wraps \texttt{g}.
+This wrapper function, in addition to calling \texttt{g}, also calls the tick operation.
+We then handle the resulting computation by using the familiar function-passing style to implement a stateful computation which
+increases the state by $1$ every time \texttt{tick} is called.
+We start the computation with the initial value $0$ and discard the result of calling \texttt{f}, we return the resulting state of the computation, which is equal to the amount of times that \texttt{g} is called.\\
+This implementation will not work for any \texttt{f} and \texttt{g} though, since if \texttt{f} or \texttt{g} call the \texttt{tick} operation then these will be handled by the handler in \texttt{countf} instead of being passed on.\\
+To solve this problem we will move to a system with dynamic instances.\\
+With dynamic instances we call the operations of an effect on an instance of that effect.
+Because we are able to create instances dynamically we can have \textit{local} effects.
+These effects are created and handled locally and so are unable to interfere with any other effects.
+We correctly implement \texttt{countf} as follows:
+\begin{minted}[tabsize=2]{haskell}
+countf' g =
+	inst <- new Tick;
+	(with handler {
+		return _ -> \n -> n
+		inst#tick () k -> \n -> k () (n + 1)
+	} handle f (\x -> inst#tick (); g x)) 0
+\end{minted}
+Now, because the instance of \texttt{Tick} is created locally, it is impossible that \texttt{f} or \texttt{g} call any operations on this instance and so we are sure that the handler will only handle the operations that are called in the wrapper function around \texttt{g}.
+\\\\
+Another example where dynamic instances are useful are when modeling external resources such as files.
+Similar to \cite{kokaresources} we will use two effects to model files.
+First a \texttt{Filesystem} effect with operations to open, close and read from files.
+Secondly a \texttt{File} effect that represents a single file with an operation to read from the file.
+\begin{minted}[tabsize=2]{haskell}
+effect Filesystem {
+	open : String -> FileHandle
+	read : FileHandle -> String
+	close : FileHandle -> ()
+}
+
+effect File {
+	read : () -> String
+}
+\end{minted}
+To implement the \texttt{Filesystem} effect we can create a special instance \texttt{fs} which gets implicitly handled at the top-level, where the actual IO effects are performed.\\
+\newpage
+To allow a programmer to safely work with files we can write a wrapper function that opens a file, applies a function to the filehandle and closes it after the function is done, just like how \texttt{file} is defined in \cite{kokaresources}.
+\begin{minted}[tabsize=2]{haskell}
+file path action =
+	handle <- fs#open path;
+	file <- new File;
+	x <- with handler {
+		file#read () k ->
+			text <- fs#read handle;
+			k text
+	} handle action file;
+	fs#close handle;
+	x
+\end{minted}
+\texttt{file} takes as arguments the path to the file and the action you want to perform using the file.
+First we open the file using the \texttt{open} operation on the \texttt{fs} instance which returns a filehandle.
+Instead of giving the filehandle to the action, we create an instance of the \texttt{File} effect.
+This instance will be an abstract representation of the file.
+We call \texttt{action} on the \texttt{File} instance and handle any \texttt{read} operations by calling the \texttt{read} operation on the \texttt{fs} instance using the filehandle.
+We store the result of the action in \texttt{x}, close the filehandle and return \texttt{x}.\\
+By using instances in this way we make sure that the programmer does not have access to the actual filehandle, but only to the abstract representation of it in the form of a \texttt{File} instance. In the end we can be sure that the file gets closed after the action is done.\\
+
+\textit{TODO: problem of escaping instances through lambda abstractions, solution of resources}
+
+\begin{thebibliography}{9}
+\bibitem{finegrain}
+Levy, PaulBlain, John Power, and Hayo Thielecke. ``Modelling environments in call-by-value programming languages.'' Information and computation 185.2 (2003): 182-210.
+\bibitem{pretnar}
+Pretnar, Matija. ``An introduction to algebraic effects and handlers. invited tutorial paper.'' Electronic Notes in Theoretical Computer Science 319 (2015): 19-35.
+\bibitem{effectsystem}
+Bauer, Andrej, and Matija Pretnar. ``An effect system for algebraic effects and handlers.'' International Conference on Algebra and Coalgebra in Computer Science. Springer, Berlin, Heidelberg, 2013.
+\bibitem{handlewithcare}
+Dariusz Biernacki, Maciej Piróg, Piotr Polesiuk, and Filip Sieczkowski. ``Handle with Care: Relational Interpretation of Algebraic Effects and Handlers'' POPL 2018
+\bibitem{kokaresources}
+Leijen, Daan. ``Algebraic Effect Handlers with Resources and Deep Finalization''
+\end{thebibliography}
+
+\end{document}
