@@ -3,4 +3,4 @@
 *.vo
 documents/*.log
 documents/*.synctex.gz
-documents/_minted-calculi*
+documents/_minted-*
