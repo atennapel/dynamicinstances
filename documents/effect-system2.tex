@@ -1,0 +1,472 @@
+\documentclass[12pt]{article}
+
+\usepackage{listings}
+\usepackage{mathtools}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{minted}
+
+% effects
+\newcommand\Eff[0]{E}
+\newcommand\eff[0]{\varepsilon}
+\newcommand\Op[0]{O}
+\newcommand\op[0]{op}
+\newcommand\inst[0]{\iota}
+
+\newcommand\pty[1]{\ty^1_{#1}}
+\newcommand\rty[1]{\ty^2_{#1}}
+
+% types
+\newcommand\ty[0]{\tau}
+\newcommand\tunit[0]{()}
+\newcommand\tarr[2]{#1 \rightarrow #2}
+\newcommand\thandler[2]{#1 \Rightarrow #2}
+
+% computation type
+\newcommand\cty[0]{\underline{\ty}}
+\newcommand\aty[2]{#1 \; ! \; #2}
+\newcommand\texists[3]{\exists(#1:#2) . #3}
+
+% values
+\newcommand\val[0]{\nu}
+\newcommand\vunit[0]{()}
+\newcommand\vabs[2]{\lambda #1 . #2}
+\newcommand\vhandler[1]{\textit{handler} \; \{#1\}}
+\newcommand\vhandleri[2]{\textit{handler} ( #1 ) \; \{#2\}}
+\newcommand\vhandlerc[0]{\vhandler{
+	\textit{return} \; x \rightarrow \comp,
+	\op_1(x ; k) \rightarrow \comp,
+	...,
+	\op_n(x ; k) \rightarrow \comp
+}}
+\newcommand\vhandlerci[1]{\vhandleri{#1}{
+	\textit{return} \; x \rightarrow \comp,
+	\op_1(x ; k) \rightarrow \comp,
+	...,
+	\op_n(x ; k) \rightarrow \comp
+}}
+
+% computations
+\newcommand\comp[0]{c}
+\newcommand\creturn[1]{\textit{return} \; #1}
+\newcommand\capp[2]{#1 \; #2}
+\newcommand\cdo[3]{#1 \leftarrow #2 ; #3}
+\newcommand\cop[4]{#1(#2 ; \lambda #3 . #4)}
+\newcommand\copi[5]{#1 \# #2(#3 ; \lambda #4 . #5)}
+\newcommand\chandle[2]{\textit{with} \; #1 \; \textit{handle} \; #2}
+\newcommand\cnew[1]{\textit{new} \; #1}
+
+% misc
+\newcommand\subty[2]{#1 <: #2}
+
+\lstset{
+	frame = single,
+	basicstyle=\ttfamily\footnotesize,
+	breaklines=true
+}
+
+\title{An effect system for dynamic instances}
+\author{Albert ten Napel}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Basic effect handler effect system}
+
+The following system is a simplification of the effect system described by Bauer and Pretnar in \cite{effectsystem}.
+Instances are removed and handlers can only handle a single effect.
+Handlers also should always handle every operations of an effect.
+In the effect annotations we will keep track of effect and not operations.
+
+\subsection{Syntax}
+We assume there is set of effect names $\Eff = \{ \eff_1, ..., \eff_n \}$.
+Each effect has a set of operation names $\Op_\eff = \{ \op_1, ..., \op_n \}$.
+We every operation name only corresponds to a single effect.
+Each operation has a parameter type $\pty{\op}$ and a return type $\rty{\op}$.
+Annotations $e$ are a subset of $\Eff$.
+\\
+\begin{align*}
+	\ty \Coloneqq 	& 											\tag{value types} \\
+									& \tunit								\tag{unit type} \\
+									& \tarr{\ty}{\cty}			\tag{type of functions} \\
+									& \thandler{\cty}{\cty}	\tag{type of handlers} \\
+	\cty \Coloneqq 	& 											\tag{computation types} \\
+									& \aty{\ty}{e}					\tag{annotated type} \\
+	\val \Coloneqq	&												\tag{values} \\
+									& x, y, z, k						\tag{variables} \\
+									& \vunit								\tag{unit value} \\
+									& \vabs{x}{\comp}				\tag{abstraction} \\
+									& \vhandlerc						\tag{handler} \\
+	\comp \Coloneqq	&												\tag{computations} \\
+									& \creturn{\val}				\tag{return value as computation} \\
+									& \capp{\val}{\val}			\tag{application} \\
+									& \cdo{x}{\comp}{\comp}	\tag{sequencing} \\
+									& \cop{\op}{\val}{x}{\comp}	\tag{operation call} \\
+									& \chandle{\val}{\comp}	\tag{handler application} \\
+\end{align*}
+
+\subsection{Subtyping rules}
+
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+}{
+	\subty{\tunit}{\tunit}
+}\]
+\vspace{10pt}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\subty{a'}{a} \\
+	\subty{b}{b'}
+	\end{array}
+}{
+	\subty{\tarr{a}{b}}{\tarr{a'}{b'}}
+}\]
+\vspace{10pt}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\subty{a'}{a} \\
+	\subty{b}{b'}
+	\end{array}
+}{
+	\subty{\thandler{a}{b}}{\thandler{a'}{b'}}
+}\]\vspace{10pt}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\subty{a}{a'} \\
+	e \subseteq e'
+	\end{array}
+}{
+	\subty{\aty{a}{e}}{\aty{a'}{e'}}
+}\]\vspace{10pt}
+\end{minipage}
+
+The following rule says that we can add effects to both sides of a handler type as long as these effects are the same.
+This is necessary when applying a handler to a computation that has more effects than the handler handles.
+With this subtyping rule we can simply extend the type knowing that the effects will appear on the right-hand side of the handler type and so the extra effects will not become lost.
+\[\frac{
+}{
+	\subty{\thandler{\aty{a}{e_1}}{\aty{b}{e_2}}}{\thandler{\aty{a}{(e_1 \cup e)}}{\aty{b}{(e_2 \cup e)}}}
+}\]
+
+\subsection{Typing rules}
+For the typing rules there are two judgments,
+$\Gamma \vdash \val : \ty$ for assigning types to values and $\Gamma \vdash \comp : \cty$ for assigning computation types to computations. $\Gamma$ stores bindings of variables to types.
+
+\begin{minipage}{0.25\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \val : \ty_1 \\
+	\subty{\ty_1}{\ty_2}
+	\end{array}
+}{
+	\Gamma \vdash \val : \ty_2
+}\]
+\end{minipage}
+\begin{minipage}{0.25\textwidth}
+\[\frac{
+}{
+	\Gamma, x : \ty \vdash x : \ty
+}\]
+\end{minipage}
+\begin{minipage}{0.25\textwidth}
+\[\frac{
+}{
+	\Gamma \vdash \vunit : \tunit
+}\]
+\end{minipage}
+\begin{minipage}{0.25\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma, x : \ty_1 \vdash \comp : \cty_2
+	\end{array}
+}{
+	\Gamma \vdash \vabs{x}{\comp} : \tarr{\ty_1}{\cty_2}
+}\]
+\end{minipage}
+
+\vspace{10pt}
+In the following rule \\$h = 
+	\vhandler{
+		\textit{return} \; x_r \rightarrow \comp_r,
+		\op_1(x_1 ; k_1) \rightarrow \comp_1,
+		...,
+		\op_n(x_n ; k_n) \rightarrow \comp_n
+	}$.
+\[\frac{
+	\begin{array}{l}
+	\Op_\eff = \{ op_1, ..., op_n \} \\
+	\Gamma, x_r : \ty_1 \vdash \comp_r : \cty_2 \\
+	\Gamma, x_i : \pty{\op_i}, k_i : \tarr{\rty{\op_i}}{\cty_2} \vdash \comp_i : \cty_2 \\
+	\end{array}
+}{
+	\Gamma \vdash h :
+	\thandler{\aty{\ty_1}{\{\eff\}}}{\cty_2}
+}\]
+
+%%%
+
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \comp : \cty_1 \\
+	\subty{\cty_1}{\cty_2}
+	\end{array}
+}{
+	\Gamma \vdash \comp : \cty_2
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\Gamma \vdash \val : \ty
+}{
+	\Gamma \vdash \creturn{\val} : \aty{\ty}{\varnothing}
+}\]
+\end{minipage}
+\\
+\begin{minipage}{0.333\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \val_1 : \tarr{\ty_1}{\cty_2} \\
+	\Gamma \vdash \val_2 : \ty_1
+	\end{array}
+}{
+	\Gamma \vdash \capp{\val_1}{\val_2} : \cty_2
+}\]
+\end{minipage}
+\begin{minipage}{0.333\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \comp_1 : \aty{\ty_1}{e} \\
+	\Gamma, x : \ty_1 \vdash \comp_2 : \aty{\ty_2}{e}
+	\end{array}
+}{
+	\Gamma \vdash \cdo{x}{\comp_1}{\comp_2} : \aty{\ty_2}{e}
+}\]
+\end{minipage}
+\begin{minipage}{0.333\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \val : \thandler{\cty_1}{\cty_2} \\
+	\Gamma \vdash \comp : \cty_1 \\
+	\end{array}
+}{
+	\Gamma \vdash \chandle{\val}{\comp} : \cty_2
+}\]
+\end{minipage}
+\\
+\vspace{10pt}
+\[\frac{
+	\begin{array}{l}
+	\op \in \Op_\eff\\
+	\Gamma \vdash \val : \pty{\op} \\
+	\Gamma , x : \rty{\op} \vdash \comp : \aty{\ty}{e} \\
+	\eff \in e
+	\end{array}
+}{
+	\Gamma \vdash \cop{\op}{\val}{x}{\comp} : \aty{\ty}{e}
+}\]
+
+\newpage
+\section{Dynamic instances}
+
+\subsection{Syntax}
+We extend the system from the previous section with dynamic instances.
+We add instances variables to the types.
+Annotation $r$ in this system are sets of instance variables.
+We add existential quantifiers to the computation types.
+Handlers now take an instance as argument.
+Operations are called on instances.
+We add a new computation to create fresh instances.
+
+\begin{align*}
+	\ty \Coloneqq 	& ...											\tag{extended value types} \\
+									& i, j, k									\tag{instance variables} \\
+	\cty \Coloneqq 	& 												\tag{computation types} \\
+									& \aty{\ty}{r}						\tag{annotated type} \\
+									& \texists{i}{\eff}{\cty}	\tag{existential} \\
+	\val \Coloneqq	&													\tag{updated values} \\
+									& \vhandlerci{x}					\tag{handler} \\
+	\comp \Coloneqq	&	...											\tag{updated/extended computations} \\
+									& \copi{x}{\op}{\val}{y}{\comp}	\tag{operation call} \\
+									& \cnew{\eff}							\tag{instance creation} \\
+\end{align*}
+
+\subsection{Subtyping}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+}{
+	\subty{i}{i}
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\subty{a}{b}
+}{
+	\subty{\texists{i}{\eff}{a}}{\texists{i}{\eff}{b}}
+}\]
+\end{minipage}
+
+\newpage
+\section{Typing rules}
+We update the judgments to include an environment for the instance variables:
+$\Delta;\Gamma \vdash \val : \ty$ and $\Delta;\Gamma \vdash \val : \ty$.
+$\Delta$ contains bindings of instance variables to effects.
+
+In the following rule \\$h = \vhandleri{x}{
+		\textit{return} \; x_r \rightarrow \comp_r,
+		\op_1(x_1 ; k_1) \rightarrow \comp_1,
+		...,
+		\op_n(x_n ; k_n) \rightarrow \comp_n
+	}$.
+\[\frac{
+	\begin{array}{l}
+	\Op_\eff = \{ op_1, ..., op_n \} \\
+	\Delta;\Gamma \vdash x : i \\
+	\Delta \vdash i : \eff \\
+	\Delta;\Gamma, x_r : \ty_1 \vdash \comp_r : \cty_2 \\
+	\Delta;\Gamma, x_i : \pty{\op_i}, k_i : \tarr{\rty{\op_i}}{\cty_2} \vdash \comp_i : \cty_2 \\
+	\end{array}
+}{
+	\Delta;\Gamma \vdash h :
+	\thandler{\aty{\ty_1}{\{i\}}}{\cty_2}
+}\]
+
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\op \in \Op_\eff\\
+	\Delta;\Gamma \vdash x : i \\
+	\Delta \vdash i : \eff \\
+	\Delta;\Gamma \vdash \val : \pty{\op} \\
+	\Delta;\Gamma , y : \rty{\op} \vdash \comp : \aty{\ty}{r} \\
+	i \in r
+	\end{array}
+}{
+	\Delta;\Gamma \vdash \copi{x}{\op}{\val}{y}{\comp} : \aty{\ty}{r}
+}\]
+\vspace{10pt}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	i\textnormal{ is a fresh instance variable}
+	\end{array}
+}{
+	\Delta;\Gamma \vdash \cnew{\eff} : \aty{i}{\varnothing}
+}\]
+\vspace{10pt}
+\end{minipage}
+\\
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\Delta,i:\eff;\Gamma \vdash \comp : \cty
+}{
+	\Delta;\Gamma \vdash \comp : \texists{i}{\eff}{\cty}
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\Delta;\Gamma \vdash \comp : \texists{i}{\eff}{\cty}
+}{
+	\Delta;\Gamma \vdash \comp : \cty
+}\]
+\end{minipage}
+
+\section{Examples}
+
+Given a boolean type $Bool$ and an effect $Flip$ with one operation\\ $flip : \tarr{\tunit}{Bool}$.
+The following short example results in the derivations below.
+
+\begin{minted}[tabsize=2]{haskell}
+\() ->
+	x <- new Flip;
+	x#flip ()
+\end{minted}
+
+\[\frac{
+	\cdot;u:\tunit \vdash \cdo{x}{\cnew{Flip}}{\copi{x}{flip}{\vunit}{y}{\creturn{y}}} :
+	\texists{i}{Flip}{\aty{Bool}{\{i\}}}
+}{
+	\cdot;\cdot \vdash \vabs{u}{\cdo{x}{\cnew{Flip}}{\copi{x}{flip}{\vunit}{y}{\creturn{y}}}}
+	: \tarr{\tunit}{\texists{i}{Flip}{\aty{Bool}{\{i\}}}}
+}\]
+
+\[
+\frac{
+	i:Flip;u:\tunit \vdash \cdo{x}{\cnew{Flip}}{\copi{x}{flip}{\vunit}{y}{\creturn{y}}} :
+	\aty{Bool}{\{i\}}
+	}{
+	\cdot;u:\tunit \vdash \cdo{x}{\cnew{Flip}}{\copi{x}{flip}{\vunit}{y}{\creturn{y}}} :
+	\texists{i}{Flip}{\aty{Bool}{\{i\}}}
+	}
+\]
+
+\[\frac{
+\begin{array}{l}
+	i:Flip;u:\tunit \vdash \cnew{Flip} : \aty{i}{\{i\}} \\
+	i:Flip;u:\tunit,x:i \vdash \copi{x}{flip}{\vunit}{y}{\creturn{y}} : \aty{Bool}{\{i\}} \\
+\end{array}
+}{
+i:Flip;u:\tunit \vdash \cdo{x}{\cnew{Flip}}{\copi{x}{flip}{\vunit}{y}{\creturn{y}}} :
+	\aty{Bool}{\{i\}}
+}\]
+
+\[\frac{
+\begin{array}{l}
+i:Flip;u:\tunit \vdash \cnew{Flip} : \aty{i}{\varnothing} \\
+\subty{\aty{i}{\varnothing}}{\aty{i}{\{i\}}}
+\end{array}
+}{
+i:Flip;u:\tunit \vdash \cnew{Flip} : \aty{i}{\{i\}}
+}\]
+
+\[\frac{
+\begin{array}{l}
+i:Flip;u:\tunit,x:i \vdash x : i \\
+i:Flip \vdash i : Flip \\
+i:Flip;u:\tunit,x:i \vdash \vunit : \tunit \\
+i:Flip;u:\tunit,x:i,y:Bool \vdash \creturn{y} : \aty{Bool}{\{i\}} \\
+\end{array}
+}{
+i:Flip;u:\tunit,x:i \vdash \copi{x}{flip}{\vunit}{y}{\creturn{y}} : \aty{Bool}{\{i\}}
+}\]
+
+\[\frac{
+\begin{array}{l}
+i:Flip;u:\tunit,x:i,y:Bool \vdash \creturn{y} : \aty{Bool}{\varnothing} \\
+\subty{\aty{Bool}{\varnothing}}{\aty{Bool}{\{i\}}}
+\end{array}
+}{
+i:Flip;u:\tunit,x:i,y:Bool \vdash \creturn{y} : \aty{Bool}{\{i\}}
+}\]
+
+Similarly the following program:
+\begin{minted}[tabsize=2]{haskell}
+\() ->
+	inst <- new Exception;
+	(
+		\x -> if x == 0 then inst#throw () else x,
+		\f -> handler(inst) { throw () k -> f () }
+	)
+:
+() -> exists (i : Exception).
+	(
+		Int -> Int!{i},
+		(() -> t!e) -> (Int!{i} => t!e)
+	)
+\end{minted}
+
+\begin{thebibliography}{9}
+\bibitem{effectsystem}
+Bauer, Andrej, and Matija Pretnar. ``An effect system for algebraic effects and handlers.'' International Conference on Algebra and Coalgebra in Computer Science. Springer, Berlin, Heidelberg, 2013.
+\end{thebibliography}
+
+\end{document}
