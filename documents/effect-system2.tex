@@ -380,7 +380,7 @@ In the following rule \\$h = \vhandleri{x}{
 }\]
 \end{minipage}
 
-\section{Examples}
+\section{Example}
 
 Given a boolean type $Bool$ and an effect $Flip$ with one operation\\ $flip : \tarr{\tunit}{Bool}$.
 The following short example results in the derivations below.
@@ -463,6 +463,39 @@ Similarly the following program:
 		(() -> t!e) -> (Int!{i} => t!e)
 	)
 \end{minted}
+
+\section{Alternative rules for existentials}
+
+Another idea is to have $\cnew{\eff}$ return an existential type and to unpack existentials only when sequencing.
+If the instance is mentioned in the return type of the sequencing we have to repack the existential.
+
+\[\frac{
+}{
+	\Delta;\Gamma \vdash \cnew{\eff} : \texists{i}{\eff}{\aty{i}{\varnothing}}
+}\]
+
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Delta;\Gamma \vdash \comp_1 : \texists{i}{\eff}{\aty{\ty_1}{e}} \\
+	\Delta,i:\eff;\Gamma,x:\ty_1 \vdash \comp_2 : \aty{\ty_2}{e} \\
+	i \notin \ty_2
+	\end{array}
+}{
+	\Delta;\Gamma \vdash \cdo{x}{\comp_1}{\comp_2} : \aty{\ty_2}{e}
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Delta;\Gamma \vdash \comp_1 : \texists{i}{\eff}{\aty{\ty_1}{e}} \\
+	\Delta,i:\eff;\Gamma,x:\ty_1 \vdash \comp_2 : \aty{\ty_2}{e} \\
+	i \in \ty_2
+	\end{array}
+}{
+	\Delta;\Gamma \vdash \cdo{x}{\comp_1}{\comp_2} : \texists{i}{\eff}{\aty{\ty_2}{e}}
+}\]
+\end{minipage}
 
 \begin{thebibliography}{9}
 \bibitem{effectsystem}
