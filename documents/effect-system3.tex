@@ -103,13 +103,13 @@ Annotations $r$ are sets of instance variables.
 									& x, y, z, k								\tag{variables} \\
 									& \vunit									\tag{unit value} \\
 									& \vabs{x}{\comp}					\tag{abstraction} \\
-									& \vhandlerci{x}						\tag{handler} \\
+									& \vhandlerci{\val}						\tag{handler} \\
 	\comp \Coloneqq		&											\tag{computations} \\
 									& \creturn{\val}						\tag{return value as computation} \\
 									& \capp{\val}{\val}					\tag{application} \\
 									& \cdo{x}{\comp}{\comp}			\tag{sequencing} \\
 									& \chandle{\val}{\comp}			\tag{handler application} \\
-									& \copi{x}{\op}{\val}{y}{\comp}	\tag{operation call} \\
+									& \copi{\val}{\op}{\val}{y}{\comp}	\tag{operation call} \\
 									& \cnew{\eff}							\tag{instance creation} \\
 \end{align*}
 
@@ -172,8 +172,8 @@ These are as you would expect.
 }\]
 \end{minipage}
 
-\subsection{Welformedness judgement}
-We have a welformedness judgement for both value and computation types $\Delta \vdash \ty$ and $\Delta \vdash \cty$.
+\subsection{Well-formedness judgement}
+We have a well-formedness judgement for both value and computation types $\Delta \vdash \ty$ and $\Delta \vdash \cty$.
 Where $\Delta$ stores bindings of instance variables to effects.
 For instance variables we simply check that they occur in $\Delta$.
 For computation types we check that all the variables in the annotation occur in $\Delta$.
@@ -190,7 +190,7 @@ For computation types we check that all the variables in the annotation occur in
 \begin{minipage}{0.25\textwidth}
 \[\frac{
 	\begin{array}{l}
-	\Delta[i : \eff]  \\
+	\Delta[i] = \eff  \\
 	\end{array}
 }{
 	\Delta \vdash i
@@ -239,7 +239,8 @@ For computation types we check that all the variables in the annotation occur in
 \newpage
 \subsection{Typing rules}
 For the typing rules there are two judgments,
-$\Delta;\Gamma \vdash \val : \ty$ for assigning types to values and $\Delta;\Gamma \vdash \comp : \cty$ for assigning computation types to computations. $\Gamma$ stores bindings of variables to types and $\Delta$ stores bindings of instance variables to effects $\eff$.  The function $FIV$ returns the set of free instances of a type. \\
+$\Delta;\Gamma \vdash \val : \ty$ for assigning types to values and $\Delta;\Gamma \vdash \comp : \cty$ for assigning computation types to computations. $\Gamma$ stores bindings of variables to types and $\Delta$ stores bindings of instance variables to effects $\eff$.  The function $FIV$ returns the set of free instances of a type and the function $IV$ returns the set of all instance variable of a type, bound or not. \\
+In the sub-typing and abstraction rules we check that the introduced types are well-formed, so that we don't introduce ill-formed types in the context.
 
 \begin{minipage}{0.25\textwidth}
 \[\frac{
@@ -254,7 +255,7 @@ $\Delta;\Gamma \vdash \val : \ty$ for assigning types to values and $\Delta;\Gam
 \end{minipage}
 \begin{minipage}{0.25\textwidth}
 \[\frac{
-	\Gamma[x : \ty]
+	\Gamma[x] = \ty
 }{
 	\Delta;\Gamma \vdash x : \ty
 }\]
@@ -268,6 +269,7 @@ $\Delta;\Gamma \vdash \val : \ty$ for assigning types to values and $\Delta;\Gam
 \begin{minipage}{0.25\textwidth}
 \[\frac{
 	\begin{array}{l}
+	\Delta \vdash \ty_1 \\
 	\Delta;\Gamma, x : \ty_1 \vdash \comp : \cty_2
 	\end{array}
 }{
@@ -277,16 +279,21 @@ $\Delta;\Gamma \vdash \val : \ty$ for assigning types to values and $\Delta;\Gam
 
 \vspace{10pt}
 In the following rule \\$h = 
-	\vhandleri{x}{
+	\vhandleri{\val}{
 		\textit{return} \; x_r \rightarrow \comp_r,
 		\op_1(x_1 ; k_1) \rightarrow \comp_1,
 		...,
 		\op_n(x_n ; k_n) \rightarrow \comp_n
-	}$.
+	}$.\\
+For the handlers we first check that value $\val$ is bound to an instance variable $i$ of effect $\eff$.
+We check that the operations in the handlers are exactly the operations belonging to $\eff$.
+After we check that all the cases in the handler agree on the return type and annotations.
+We have the condition $r_1 \backslash \{ i \} \subseteq r_2$ to make sure that any extra effects before the handler remain unhandled after the handler is evaluated.
+We check that the types on the left and right sides of the handler type are well-formed to make sure that no instance variables are introduced that are not in the context $\Delta$.
 \[\frac{
 	\begin{array}{l}
-	\Delta;\Gamma \vdash x : i \\
-	\Delta[i : \eff] \\
+	\Delta;\Gamma \vdash \val : i \\
+	\Delta[i] = \eff \\
 	\Op_\eff = \{ op_1, ..., op_n \} \\
 	\Delta;\Gamma, x_r : \ty_1 \vdash \comp_r : \aty{\ty_2}{r_2} \\
 	\Delta;\Gamma, x_i : \pty{\op_i}, k_i : \tarr{\rty{\op_i}}{\aty{\ty_2}{r_2}} \vdash \comp_i : \aty{\ty_2}{r_2} \\
@@ -299,8 +306,9 @@ In the following rule \\$h =
 	\thandler{\aty{\ty_1}{r_1}}{\aty{\ty_2}{r_2}}
 }\]
 
+\newpage
 %%%
-
+The following rules are straightforward and similar to the corresponding rules in \cite{effectsystem}.\\
 \begin{minipage}{0.5\textwidth}
 \[\frac{
 	\begin{array}{l}
@@ -345,18 +353,23 @@ In the following rule \\$h =
 \end{minipage}
 \\
 
+For the operation calls we check that the value $\val_1$ is bound to an instance variable $i$ of effect $\eff$.
+We check that the operation belongs to $\eff$ and that the value $\val_2$ is of the parameter type of the operation.
+We then typecheck the continuation $c$ and make sure that the instance variable $i$ is in the annotation on the type of $c$. \\
+For the creation of instances we return an existential type to account for the newly created instance. \\
+
 \begin{minipage}{0.5\textwidth}
 \[\frac{
 	\begin{array}{l}
-	\Delta;\Gamma \vdash x : i \\
-	\Delta[i : \eff] \\
+	\Delta;\Gamma \vdash \val_1 : i \\
+	\Delta[i] = \eff \\
 	\op \in \Op_\eff\\
-	\Delta;\Gamma \vdash \val : \pty{\op} \\
+	\Delta;\Gamma \vdash \val_2 : \pty{\op} \\
 	\Delta;\Gamma , y : \rty{\op} \vdash \comp : \aty{\ty}{e} \\
 	i \in e
 	\end{array}
 }{
-	\Delta;\Gamma \vdash \copi{x}{\op}{\val}{y}{\comp} : \aty{\ty}{e}
+	\Delta;\Gamma \vdash \copi{\val_1}{\op}{\val_2}{y}{\comp} : \aty{\ty}{e}
 }\]
 \vspace{10pt}
 \end{minipage}
@@ -367,17 +380,19 @@ In the following rule \\$h =
 }\]
 \vspace{10pt}
 \end{minipage}
-\begin{minipage}{0.5\textwidth}
+
+We can introduce and remove existential quantifiers at any point so long as the instance variable is not contained in the free instance variable of the type. With the third rule we can also rename instance variables if the name is not contained in the type. \\
+\begin{minipage}{0.333\textwidth}
 \[\frac{
 	\begin{array}{l}
 	\Delta;\Gamma \vdash c : \cty \\
-	i \notin Dom(\Delta)
+	i \notin FIV(\cty)
 	\end{array}
 }{
 	\Delta;\Gamma \vdash c : \texists{i}{\eff}{\cty}
 }\]
 \end{minipage}
-\begin{minipage}{0.5\textwidth}
+\begin{minipage}{0.333\textwidth}
 \[\frac{
 	\begin{array}{l}
 	\Delta;\Gamma \vdash c : \texists{i}{\eff}{\cty} \\
@@ -387,6 +402,21 @@ In the following rule \\$h =
 	\Delta;\Gamma \vdash c : \cty
 }\]
 \end{minipage}
+\begin{minipage}{0.333\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Delta;\Gamma \vdash c : \texists{i}{\eff}{\cty} \\
+	j \notin IV(\cty)
+	\end{array}
+}{
+	\Delta;\Gamma \vdash c : \texists{j}{\eff}{\cty[i := j]}
+}\]
+\end{minipage}
+
+\newpage
+
+For sequencing we want both $c_1$ and $c_2$ to have existential types, where $\overline{i}$ and $\overline{j}$ are sequenced of bindings. If either $c_1$ or $c_2$ do not have existential types we can introduce them with the previous rule.
+To typecheck $c_2$ with all the bindings $\overline{i}$ introduced in the context $\Delta$. For the return type we concatenate all the bindings $\overline{i}$ and $\overline{j}$ and we take the union of the annotations $r_1$ of $c_1$ and the annotations $r_2$ of $c_2$. \\
 
 \[\frac{
 	\begin{array}{l}
@@ -398,6 +428,59 @@ In the following rule \\$h =
 }\]
 
 \subsection{Examples}
+We will show some examples together with the types that the discussed type system will assign to them.
+For the examples we will assume that the following effect is in the context.
+\begin{minted}[tabsize=2]{haskell}
+effect Flip {
+	flip : () -> Bool
+}
+\end{minted}
+
+The following function $f$ creates a new instances and calls an operation on it, but does not return the instance itself.
+In the type we have an existential but we see that the instance does not appear in the value type, but only in the effect annotation. This way we know that we do not have access to the instance and so are unable to handle the effect.
+\begin{minted}[tabsize=2]{haskell}
+f : () -> exists (i:Flip). Bool!{i}
+f () =
+	inst <- new Flip;
+	inst#flip ()
+\end{minted}
+
+\newpage
+In the following function $g$ we create a new instance, call an operation on it and then immediately handle this effect.
+The type of this function is pure, since the effect is immediately handled.
+\begin{minted}[tabsize=2]{haskell}
+g : () -> Bool!{}
+g () =
+	inst <- new Flip;
+	with handle(inst) {
+		flip () k -> k True
+	} handle inst#flip ()
+\end{minted}
+
+The following function is also pure because although an instance is created, this instance is never used or returned.
+\begin{minted}[tabsize=2]{haskell}
+g : () -> ()!{}
+g () =
+	inst <- new Flip;
+	()
+\end{minted}
+
+The following function simply wraps the creation of a $Flip$ instance.
+\begin{minted}[tabsize=2]{haskell}
+h' : () -> exists (i:Flip). i!{}
+h' () =
+	inst <- new Flip;
+	inst
+\end{minted}
+
+In $h''$ we use $h'$ twice. This means that we create two distinct $Flip$ instances and we also expect two instance variables bound in the type.
+\begin{minted}[tabsize=2]{haskell}
+h'' : () -> exists (i:Flip) (j:Flip). (i, j)!{}
+h'' () =
+	i1 <- h' ();
+	i2 <- h' ();
+	(i1, i2)
+\end{minted}
 
 \begin{thebibliography}{9}
 \bibitem{effectsystem}
