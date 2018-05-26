@@ -365,11 +365,11 @@ For the creation of instances we return an existential type to account for the n
 	\Delta[i] = \eff \\
 	\op \in \Op_\eff\\
 	\Delta;\Gamma \vdash \val_2 : \pty{\op} \\
-	\Delta;\Gamma , y : \rty{\op} \vdash \comp : \aty{\ty}{e} \\
-	i \in e
+	\Delta;\Gamma , y : \rty{\op} \vdash \comp : \aty{\ty}{r} \\
+	i \in r
 	\end{array}
 }{
-	\Delta;\Gamma \vdash \copi{\val_1}{\op}{\val_2}{y}{\comp} : \aty{\ty}{e}
+	\Delta;\Gamma \vdash \copi{\val_1}{\op}{\val_2}{y}{\comp} : \aty{\ty}{r}
 }\]
 \vspace{10pt}
 \end{minipage}
@@ -381,18 +381,7 @@ For the creation of instances we return an existential type to account for the n
 \vspace{10pt}
 \end{minipage}
 
-We can introduce and remove existential quantifiers at any point so long as the instance variable is not contained in the free instance variable of the type. With the third rule we can also rename instance variables if the name is not contained in the type. \\
-\begin{minipage}{0.333\textwidth}
-\[\frac{
-	\begin{array}{l}
-	\Delta;\Gamma \vdash c : \cty \\
-	i \notin FIV(\cty)
-	\end{array}
-}{
-	\Delta;\Gamma \vdash c : \texists{i}{\eff}{\cty}
-}\]
-\end{minipage}
-\begin{minipage}{0.333\textwidth}
+We can remove existential quantifiers at any point so long as the instance variable is not contained in the free instance variable of the type. \\
 \[\frac{
 	\begin{array}{l}
 	\Delta;\Gamma \vdash c : \texists{i}{\eff}{\cty} \\
@@ -401,17 +390,6 @@ We can introduce and remove existential quantifiers at any point so long as the 
 }{
 	\Delta;\Gamma \vdash c : \cty
 }\]
-\end{minipage}
-\begin{minipage}{0.333\textwidth}
-\[\frac{
-	\begin{array}{l}
-	\Delta;\Gamma \vdash c : \texists{i}{\eff}{\cty} \\
-	j \notin IV(\cty)
-	\end{array}
-}{
-	\Delta;\Gamma \vdash c : \texists{j}{\eff}{\cty[i := j]}
-}\]
-\end{minipage}
 
 \newpage
 

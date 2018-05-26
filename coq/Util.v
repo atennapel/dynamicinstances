@@ -13,6 +13,7 @@ Ltac solve_by_invert :=
 Ltac inversion_try_solve H := inversion H; subst; try reflexivity; try solve_by_invert.
 Ltac apply_rewrite_solve H H' := apply H in H'; rewrite H'; auto.
 Ltac assert_rewrite H := assert (H_ := H); auto; rewrite H.
+Ltac inv H := inversion_try_solve H; auto.
 
 Lemma nth_error_nil : forall {t} i,
   @nth_error t nil i = None.

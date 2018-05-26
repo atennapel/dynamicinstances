@@ -41,6 +41,17 @@ const Flip = ['flip'];
 const State = ['get', 'put'];
 const New = ['new'];
 
+const Printf = ['show'];
+const printf = i => handler({
+  [i.show]: (f, k) => x => k(f(x)),
+});
+
+const Delim = ['shift'];
+const delim = i => handler({
+  [i.shift]: (f, k) => f(k),
+});
+const reset = (i, f) => delim(i)(f());
+
 const flipHandler = i => handler({
   [i.flip]: (_, k) => k(true),
 });
@@ -92,4 +103,27 @@ const p2 =
   do_(perform(r.get), v_ =>
   return_([v, v_])));
 
-console.log(newHandler(p));
+const show = new_(Printf);
+
+const str = x => x;
+const num = x => ''+x;
+const arr = x => '['+x.join(', ')+']';
+
+const pr =
+  do_(perform(show.show, str), a =>
+  do_(perform(show.show, arr), b =>
+  return_("hey " + a + " " + b)));
+
+const i = new_(Delim);
+const reset_ = f => reset(i, f);
+const shift_ = f => perform(i.shift, f);
+const shifti = (i, f) => perform(i.shift, f);
+
+const testdelim =
+  reset(i, () => {
+    const j = new_(Delim);
+    return do_(shifti(i, k => k(2)), z => reset(j, () =>
+      do_(shifti(j, k => k(z)), x => return_(x + 1))));
+  });
+
+console.log(testdelim);

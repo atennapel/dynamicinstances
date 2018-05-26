@@ -814,11 +814,15 @@ Proof.
     apply sub_trans with (b := T); auto.
 Qed.
 
-Lemma ret_is_dty : forall E G c T,
-  E,G |-c c in T -> wf_context E G -> forall v, c = ret v ->
-  exists a e, sub_dirty (dty a e) T /\
-    wf_annots E e /\
-    E,G |- v in a.
+Lemma ret_is_dty : forall P E G c T,
+  E,G |-c c in T -> wf_context E G ->
+  match c with
+  | ret v => forall a e, sub_dirty (dty a e) T ->
+    wf_annots E e ->
+    E,G |- v in a -> P
+  
+  end ->
+  P.
 Proof.
   intros.
   generalize dependent v.
