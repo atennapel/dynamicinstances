@@ -113,8 +113,6 @@ Record env := Env {
   env_ops : eff -> ops;
   env_paramty : op -> ty;
   env_returnty : op -> ty;
-
-  env_unique_ops : forall e e', (env_ops e) ∩ (env_ops e') = empty;
 }.
 
 (* subtyping *)
@@ -262,6 +260,100 @@ Combined Scheme has_type_mut_ind from has_type_val_mut_ind, has_type_comp_mut_in
 Hint Constructors has_type_val.
 Hint Constructors has_type_comp.
 Hint Constructors has_type_hlist.
+
+(* examples *)
+
+(* effect E { op : () -> () } *)
+Definition exE := 0.
+Definition exOp := 0.
+Definition exEnv: env := Env
+  {[ exE ]}
+  (fun e => match e with
+    | 0 => {[ exOp ]}
+    | _ => ∅
+    end)
+  (fun o => tunit)
+  (fun o => tunit).
+
+(* \() -> inst <- new E; inst#op () : () -> exists (i:E). ()!{i} *)
+Example ex1 :
+  has_type_val exEnv [] []
+    (abs (do (new exE) (opc (var 0) exOp unit (ret (var 0)))))
+    (tarr tunit (texists exE (tannot tunit {[0]}))).
+Proof.
+  apply T_abs; auto.
+  replace {[0]} with (union ∅ {[0]} : annots); try set_solver.
+  replace (texists exE (tannot tunit (∅ ∪ {[0]}))) with
+    (texists' ([exE] ++ []) (tannot tunit (∅ ∪ {[0]}))); auto.
+  apply T_do with (t1 := texists exE (tannot (tinst 0) ∅)) (t2 := tannot tunit {[0]}) (t1' := tinst 0); auto.
+  apply T_opc with (i := 0) (E := exE); auto; try set_solver.
+  apply T_sub_cty with (t1 := tannot tunit ∅); auto.
+  - simpl.
+    apply WF_tannot; auto.
+    intros.
+    assert (i = 0); try set_solver; subst.
+    apply WF_tinst with (e := 0); auto.
+  - apply Sub_tannot; auto; try set_solver.
+Qed.
+
+(* \() -> inst <- new E; with handler(inst) { return x -> x, op x k -> k () } handle inst#op ()
+  : () -> ()!{} *)
+Example ex2 :
+  has_type_val exEnv [] []
+    (abs (do (new exE) (
+      handle
+        (handler (var 0) (ret (var 0)) (hcons exOp (app (var 1) unit) hnil))
+        (opc (var 0) exOp unit (ret (var 0))))))
+    (tarr tunit (tannot tunit ∅)).
+Proof.
+  apply T_abs; auto.
+  apply T_exists with (E := exE); auto.
+  - replace ∅ with (∅ ∪ ∅ : annots); try set_solver.
+    replace (texists exE (tannot tunit (∅ ∪ ∅))) with
+      (texists' ([exE] ++ []) (tannot tunit (∅ ∪ ∅))); auto.
+    apply T_do with (t1 := texists exE (tannot (tinst 0) ∅)) (t2 := tannot tunit ∅) (t1' := tinst 0); auto.
+    apply T_handle with (t1 := tannot tunit {[0]}); auto.
+    + apply T_handler with (E := exE) (i := 0); auto; try set_solver.
+      * simpl.
+        apply WF_tannot; auto.
+        intros.
+        assert (i = 0); try set_solver.
+        subst.
+        apply WF_tinst with (e := exE); auto.
+      * intros.
+        split; intros.
+        { assert (o = exOp); try set_solver; subst.
+          exists (app (var 1) unit); auto. }
+        { simpl.
+          destruct H as [c].
+          inv H. }
+      * apply T_hcons; auto.
+        apply T_app with (t1 := tunit); auto.
+    + apply T_opc with (i := 0) (E := exE); auto; try set_solver.
+      apply T_sub_cty with (t1 := tannot tunit ∅); auto.
+      * simpl.
+        apply WF_tannot; auto.
+        intros.
+        assert (i = 0); try set_solver; subst; auto.
+        apply WF_tinst with (e := exE); auto.
+      * apply Sub_tannot; auto; try set_solver.
+  - apply F_tannot; auto; try set_solver.
+Qed.
+
+(* \() -> inst <- new E; return () : () -> ()!{} *)
+Example ex3 :
+  has_type_val exEnv [] []
+    (abs (do (new exE) (ret unit)))
+    (tarr tunit (tannot tunit ∅)).
+Proof.
+  apply T_abs; auto.
+  apply T_exists with (E := exE); auto.
+  - replace ∅ with (∅ ∪ ∅ : annots); try set_solver.
+    replace (texists exE (tannot tunit (∅ ∪ ∅))) with
+      (texists' ([exE] ++ []) (tannot tunit (∅ ∪ ∅))); auto.
+    apply T_do with (t1 := texists exE (tannot (tinst 0) ∅)) (t2 := tannot tunit ∅) (t1' := tinst 0); auto.
+  - apply F_tannot; auto; try set_solver.
+Qed.
 
 (* lemmas & theorems *)
 Lemma hlist_has_dec : forall hl o,
