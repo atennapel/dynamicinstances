@@ -27,7 +27,7 @@
 \newcommand\cty[0]{\underline{\ty}}
 \newcommand\aty[2]{#1 \; ! \; #2}
 \newcommand\texists[3]{\exists(#1:#2) . #3}
-\newcommand\texistss[2]{\exists \overline{#1} . #2}
+\newcommand\texistss[2]{\exists \overrightarrow{#1} . #2}
 
 % values
 \newcommand\val[0]{\nu}
@@ -289,17 +289,16 @@ For the handlers we first check that value $\val$ is bound to an instance variab
 We check that the operations in the handlers are exactly the operations belonging to $\eff$.
 After we check that all the cases in the handler agree on the return type and annotations.
 We have the condition $r_1 \backslash \{ i \} \subseteq r_2$ to make sure that any extra effects before the handler remain unhandled after the handler is evaluated.
-We check that the types on the left and right sides of the handler type are well-formed to make sure that no instance variables are introduced that are not in the context $\Delta$.
+We check that the types on the left and right sides of the handler type are well-formed to make sure that no instance variables are introduced that are not in the context $\Delta$. Note that both the left and right side of the handler type cannot be an existential type.
 \[\frac{
 	\begin{array}{l}
 	\Delta;\Gamma \vdash \val : i \\
 	\Delta[i] = \eff \\
 	\Op_\eff = \{ op_1, ..., op_n \} \\
+	\Delta \vdash \ty_1 \\
 	\Delta;\Gamma, x_r : \ty_1 \vdash \comp_r : \aty{\ty_2}{r_2} \\
 	\Delta;\Gamma, x_i : \pty{\op_i}, k_i : \tarr{\rty{\op_i}}{\aty{\ty_2}{r_2}} \vdash \comp_i : \aty{\ty_2}{r_2} \\
 	r_1 \backslash \{ i \} \subseteq r_2 \\
-	\Delta \vdash \aty{\ty_1}{r_1} \\
-	\Delta \vdash \aty{\ty_2}{r_2}
 	\end{array}
 }{
 	\Delta;\Gamma \vdash h :
@@ -343,11 +342,11 @@ The following rules are straightforward and similar to the corresponding rules i
 \begin{minipage}{0.5\textwidth}
 \[\frac{
 	\begin{array}{l}
-	\Delta;\Gamma \vdash \val : \thandler{\cty_1}{\cty_2} \\
-	\Delta;\Gamma \vdash \comp : \cty_1 \\
+	\Delta,\overrightarrow{i};\Gamma \vdash \val : \thandler{\cty_1}{\cty_2} \\
+	\Delta;\Gamma \vdash \comp : \texistss{i}{\cty_1} \\
 	\end{array}
 }{
-	\Delta;\Gamma \vdash \chandle{\val}{\comp} : \cty_2
+	\Delta;\Gamma \vdash \chandle{\val}{\comp} : \texistss{i}{\cty_2}
 }\]
 \vspace{10pt}
 \end{minipage}
@@ -365,11 +364,11 @@ For the creation of instances we return an existential type to account for the n
 	\Delta[i] = \eff \\
 	\op \in \Op_\eff\\
 	\Delta;\Gamma \vdash \val_2 : \pty{\op} \\
-	\Delta;\Gamma , y : \rty{\op} \vdash \comp : \aty{\ty}{r} \\
+	\Delta;\Gamma , y : \rty{\op} \vdash \comp : \texistss{j}{\aty{\ty}{r}} \\
 	i \in r
 	\end{array}
 }{
-	\Delta;\Gamma \vdash \copi{\val_1}{\op}{\val_2}{y}{\comp} : \aty{\ty}{r}
+	\Delta;\Gamma \vdash \copi{\val_1}{\op}{\val_2}{y}{\comp} : \texistss{j}{\aty{\ty}{r}}
 }\]
 \vspace{10pt}
 \end{minipage}
@@ -393,13 +392,13 @@ We can remove existential quantifiers at any point so long as the instance varia
 
 \newpage
 
-For sequencing we want both $c_1$ and $c_2$ to have existential types, where $\overline{i}$ and $\overline{j}$ are sequenced of bindings. If either $c_1$ or $c_2$ do not have existential types we can introduce them with the previous rule.
-To typecheck $c_2$ with all the bindings $\overline{i}$ introduced in the context $\Delta$. For the return type we concatenate all the bindings $\overline{i}$ and $\overline{j}$ and we take the union of the annotations $r_1$ of $c_1$ and the annotations $r_2$ of $c_2$. \\
+For sequencing we want both $c_1$ and $c_2$ to have existential types, where $\overrightarrow{i}$ and $\overrightarrow{j}$ are sequenced of bindings. If either $c_1$ or $c_2$ do not have existential types we can introduce them with the previous rule.
+To typecheck $c_2$ with all the bindings $\overrightarrow{i}$ introduced in the context $\Delta$. For the return type we concatenate all the bindings $\overrightarrow{i}$ and $\overrightarrow{j}$ and we take the union of the annotations $r_1$ of $c_1$ and the annotations $r_2$ of $c_2$. \\
 
 \[\frac{
 	\begin{array}{l}
 	\Delta;\Gamma \vdash c_1 : \texistss{i}{\aty{\ty_1}{r_1}} \\
-	\Delta,\overline{i} ; \Gamma, x : \ty_1 \vdash c_2 : \texistss{j}{\aty{\ty_2}{r_2}}
+	\Delta,\overrightarrow{i} ; \Gamma, x : \ty_1 \vdash c_2 : \texistss{j}{\aty{\ty_2}{r_2}}
 	\end{array}
 }{
 	\Delta;\Gamma \vdash \cdo{x}{c_1}{c_2} : \texistss{i}{\texistss{j}{\aty{\ty_2}{(r_1 \cup r_2)}}}
@@ -418,7 +417,7 @@ The following function $f$ creates a new instances and calls an operation on it,
 In the type we have an existential but we see that the instance does not appear in the value type, but only in the effect annotation. This way we know that we do not have access to the instance and so are unable to handle the effect.
 \begin{minted}[tabsize=2]{haskell}
 f : () -> exists (i:Flip). Bool!{i}
-f () =
+f _ =
 	inst <- new Flip;
 	inst#flip ()
 \end{minted}
@@ -428,37 +427,53 @@ In the following function $g$ we create a new instance, call an operation on it 
 The type of this function is pure, since the effect is immediately handled.
 \begin{minted}[tabsize=2]{haskell}
 g : () -> Bool!{}
-g () =
+g _ =
 	inst <- new Flip;
-	with handle(inst) {
-		flip () k -> k True
+	with handler(inst) {
+		flip _ k -> k True
 	} handle inst#flip ()
 \end{minted}
 
 The following function is also pure because although an instance is created, this instance is never used or returned.
 \begin{minted}[tabsize=2]{haskell}
 g : () -> ()!{}
-g () =
+g _ =
 	inst <- new Flip;
-	()
+	return ()
 \end{minted}
 
 The following function simply wraps the creation of a $Flip$ instance.
 \begin{minted}[tabsize=2]{haskell}
 h' : () -> exists (i:Flip). i!{}
-h' () =
+h' _ =
 	inst <- new Flip;
-	inst
+	return inst
 \end{minted}
 
 In $h''$ we use $h'$ twice. This means that we create two distinct $Flip$ instances and we also expect two instance variables bound in the type.
 \begin{minted}[tabsize=2]{haskell}
 h'' : () -> exists (i:Flip) (j:Flip). (i, j)!{}
-h'' () =
+h'' _ =
 	i1 <- h' ();
 	i2 <- h' ();
-	(i1, i2)
+	return (i1, i2)
 \end{minted}
+
+\newpage
+In the following function $nested$ we create a new instance and handle it, but in the computation we want to handle another instance is created and used. Only one operation call will be handled by the handler, the one called on $i1$. The operation call made on $i2$ is unhandled and so we are left with one existential quantifier.
+\begin{minted}[tabsize=2]{haskell}
+nested : () -> exists (i:Flip). Bool!{i}
+nested _ =
+	i1 <- new Flip;
+	with handler(i1) {
+		flip _ k -> k True
+	} handle (
+		i2 <- new Flip;
+		x <- i1#flip ();
+		y <- i2#flip ();
+		return (x && y)
+	)
+\end{minted} 
 
 \begin{thebibliography}{9}
 \bibitem{effectsystem}
