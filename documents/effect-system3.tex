@@ -6,6 +6,7 @@
 \usepackage{amssymb}
 \usepackage{capt-of}
 \usepackage{minted}
+\usepackage{fitch}
 
 % effects
 \newcommand\Eff[0]{E}
@@ -60,6 +61,7 @@
 
 % misc
 \newcommand\subty[2]{#1 <: #2}
+\newcommand\sep[0]{\;;\;}
 
 \lstset{
 	frame = single,
@@ -190,7 +192,7 @@ For computation types we check that all the variables in the annotation occur in
 \begin{minipage}{0.25\textwidth}
 \[\frac{
 	\begin{array}{l}
-	\Delta[i] = \eff  \\
+	(i : \eff) \in \Delta \\
 	\end{array}
 }{
 	\Delta \vdash i
@@ -243,6 +245,19 @@ $\Delta;\Gamma \vdash \val : \ty$ for assigning types to values and $\Delta;\Gam
 In the sub-typing and abstraction rules we check that the introduced types are well-formed, so that we don't introduce ill-formed types in the context.
 
 \begin{minipage}{0.25\textwidth}
+\textbf{T-SubVal}
+\end{minipage}
+\begin{minipage}{0.25\textwidth}
+\textbf{T-Var}
+\end{minipage}
+\begin{minipage}{0.25\textwidth}
+\textbf{T-Unit}
+\end{minipage}
+\begin{minipage}{0.25\textwidth}
+\textbf{T-Abs}
+\end{minipage}
+
+\begin{minipage}{0.25\textwidth}
 \[\frac{
 	\begin{array}{l}
 	\Delta;\Gamma \vdash \val : \ty_1 \\
@@ -255,7 +270,7 @@ In the sub-typing and abstraction rules we check that the introduced types are w
 \end{minipage}
 \begin{minipage}{0.25\textwidth}
 \[\frac{
-	\Gamma[x] = \ty
+	(x:\ty) \in \Gamma
 }{
 	\Delta;\Gamma \vdash x : \ty
 }\]
@@ -290,10 +305,11 @@ We check that the operations in the handlers are exactly the operations belongin
 After we check that all the cases in the handler agree on the return type and annotations.
 We have the condition $r_1 \backslash \{ i \} \subseteq r_2$ to make sure that any extra effects before the handler remain unhandled after the handler is evaluated.
 We check that the types on the left and right sides of the handler type are well-formed to make sure that no instance variables are introduced that are not in the context $\Delta$. Note that both the left and right side of the handler type cannot be an existential type.
+\\\textbf{T-Handler}
 \[\frac{
 	\begin{array}{l}
 	\Delta;\Gamma \vdash \val : i \\
-	\Delta[i] = \eff \\
+	(i:\eff)\in\Delta \\
 	\Op_\eff = \{ op_1, ..., op_n \} \\
 	\Delta \vdash \ty_1 \\
 	\Delta;\Gamma, x_r : \ty_1 \vdash \comp_r : \aty{\ty_2}{r_2} \\
@@ -307,7 +323,13 @@ We check that the types on the left and right sides of the handler type are well
 
 \newpage
 %%%
-The following rules are straightforward and similar to the corresponding rules in \cite{effectsystem}.\\
+Explain...\\
+\begin{minipage}{0.5\textwidth}
+\textbf{T-SubComp}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\textbf{T-Return}
+\end{minipage}
 \begin{minipage}{0.5\textwidth}
 \[\frac{
 	\begin{array}{l}
@@ -327,6 +349,12 @@ The following rules are straightforward and similar to the corresponding rules i
 	\Delta;\Gamma \vdash \creturn{\val} : \aty{\ty}{\varnothing}
 }\]
 \vspace{10pt}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\textbf{T-App}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\textbf{T-Handle}
 \end{minipage}
 \begin{minipage}{0.5\textwidth}
 \[\frac{
@@ -356,12 +384,17 @@ For the operation calls we check that the value $\val_1$ is bound to an instance
 We check that the operation belongs to $\eff$ and that the value $\val_2$ is of the parameter type of the operation.
 We then typecheck the continuation $c$ and make sure that the instance variable $i$ is in the annotation on the type of $c$. \\
 For the creation of instances we return an existential type to account for the newly created instance. \\
-
+\begin{minipage}{0.5\textwidth}
+\textbf{T-Op}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\textbf{T-New}
+\end{minipage}
 \begin{minipage}{0.5\textwidth}
 \[\frac{
 	\begin{array}{l}
 	\Delta;\Gamma \vdash \val_1 : i \\
-	\Delta[i] = \eff \\
+	(i:\eff)\in\Delta \\
 	\op \in \Op_\eff\\
 	\Delta;\Gamma \vdash \val_2 : \pty{\op} \\
 	\Delta;\Gamma , y : \rty{\op} \vdash \comp : \texistss{j}{\aty{\ty}{r}} \\
@@ -379,8 +412,9 @@ For the creation of instances we return an existential type to account for the n
 }\]
 \vspace{10pt}
 \end{minipage}
-
+\newpage
 We can remove existential quantifiers at any point so long as the instance variable is not contained in the free instance variable of the type. \\
+\textbf{T-ExistsRemove}
 \[\frac{
 	\begin{array}{l}
 	\Delta;\Gamma \vdash c : \texists{i}{\eff}{\cty} \\
@@ -390,11 +424,9 @@ We can remove existential quantifiers at any point so long as the instance varia
 	\Delta;\Gamma \vdash c : \cty
 }\]
 
-\newpage
-
 For sequencing we want both $c_1$ and $c_2$ to have existential types, where $\overrightarrow{i}$ and $\overrightarrow{j}$ are sequenced of bindings. If either $c_1$ or $c_2$ do not have existential types we can introduce them with the previous rule.
 To typecheck $c_2$ with all the bindings $\overrightarrow{i}$ introduced in the context $\Delta$. For the return type we concatenate all the bindings $\overrightarrow{i}$ and $\overrightarrow{j}$ and we take the union of the annotations $r_1$ of $c_1$ and the annotations $r_2$ of $c_2$. \\
-
+\textbf{T-Do}
 \[\frac{
 	\begin{array}{l}
 	\Delta;\Gamma \vdash c_1 : \texistss{i}{\aty{\ty_1}{r_1}} \\
@@ -404,8 +436,73 @@ To typecheck $c_2$ with all the bindings $\overrightarrow{i}$ introduced in the 
 	\Delta;\Gamma \vdash \cdo{x}{c_1}{c_2} : \texistss{i}{\texistss{j}{\aty{\ty_2}{(r_1 \cup r_2)}}}
 }\]
 
+\subsection{Semantics}
+We give the small-step operational semantics for the system.
+We have the relation $\comp; \mathbb{N} \rightsquigarrow \comp;\mathbb{N}$ where $\comp$ is the current computation and $\mathbb{N}$ the id of the next instance that will be created. \\
+For abstractions we have the usual beta-reduction rule.\\
+\[\frac{
+}{
+	\capp{(\vabs{x}{\comp})}{\val}\sep i \rightsquigarrow \comp[\val/x]\sep i
+}\]
+For instance creation we replace the call to $new$ with the instance constant and we increase the instance id counter.\\
+\[\frac{
+}{
+	\cnew{E}\sep i \rightsquigarrow \creturn{i}\sep i + 1
+}\]
+\newpage
+For sequencing we have three rules. The first rule reduces the first computation.
+The second rule substitutes the value of a return computation in the second computation.
+The last rule floats an operation call over the sequencing, this makes the handle computation easier, since we won't have to think about sequencing inside of a handle computation.\\
+\[\frac{
+	\comp_1\sep i \rightsquigarrow \comp'_1\sep i'
+}{
+	(\cdo{x}{\comp_1}{\comp_2})\sep i \rightsquigarrow (\cdo{x}{\comp'_1}{\comp_2})\sep i'
+}\]
+\[\frac{
+}{
+	(\cdo{x}{\creturn{\val}}{\comp})\sep i \rightsquigarrow \comp[\val/x]\sep i
+}\]
+\[\frac{
+}{
+	(\cdo{x}{\copi{j}{\op}{\val}{y}{\comp_1}}{\comp_2})\sep i \rightsquigarrow \copi{j}{\op}{\val}{y}{(\cdo{x}{\comp_1}{\comp_2})}\sep i
+}\]
+
+In the following rules \\$h = 
+	\vhandleri{j}{
+		\textit{return} \; x_r \rightarrow \comp_r,
+		\op_1(x_1 ; k_1) \rightarrow \comp_1,
+		...,
+		\op_n(x_n ; k_n) \rightarrow \comp_n
+	}$.\\
+We can reduce the computation that we want to handle.\\
+\[\frac{
+	\comp\sep i \rightsquigarrow \comp'\sep i'
+}{
+	\chandle{h}{\comp}\sep i \rightsquigarrow \chandle{h}{\comp'}\sep i'
+}\]
+If we are handling a return computation we simply substitute the value in the return case of the handler.\\
+\[\frac{
+}{
+\chandle{h}{(\creturn{\val})}\sep i \rightsquigarrow \comp_r[\val/x_r]\sep i
+}\]
+If we are handling an operation call where the instance matches the instance of the handler and the operation is in the handler then we can reduce to the corresponding operation clause with the parameter value and the continuation substituted.
+Note that we nest the handle computation inside of the continuation, this describes deep handlers.\\
+\[\frac{
+	\op_i \in \{\op_1, ..., \op_n \}
+}{
+	\chandle{h}{(\copi{j}{\op_i}{\val}{x}{\comp})}\sep i \rightsquigarrow \comp_i[\val/x_i, (\vabs{x}{\chandle{h}{\comp}})/k_i]\sep i
+}\]
+If the instance is different from the instance in the handler or the operation is not in the handler then we float the operation
+call over the handling computation.\\
+\[\frac{
+	\op \notin \{\op_1, ..., \op_n \} \lor k \neq j
+}{
+	\chandle{h}{(\copi{k}{\op}{\val}{x}{\comp})}\sep i \rightsquigarrow \copi{k}{\op}{\val}{x}{\chandle{h}{\comp}}\sep i
+}\]
+
 \subsection{Examples}
 We will show some examples together with the types that the discussed type system will assign to them.
+After each example is a fitch-style type derivation.
 For the examples we will assume that the following effect is in the context.
 \begin{minted}[tabsize=2]{haskell}
 effect Flip {
@@ -422,7 +519,26 @@ f _ =
 	inst#flip ()
 \end{minted}
 
-\newpage
+\makebox[\textwidth]{$
+\begin{nd}
+  \open
+  \hypo {1} {\;|\; \_ : \tunit}
+  \have {2} {\cnew{Flip} : \texists{j}{Flip}{\aty{i}{\varnothing}}}
+  \open
+  \hypo {3} {i : E \;|\; inst : i}
+  \open
+  \hypo {4} {\;|\; x : Bool}
+  \have {5} {\creturn{x} : \aty{Bool}{\varnothing}} \by{T-Return}{4}
+  \have {6} {\creturn{x} : \aty{Bool}{\{i\}}} \by{T-SubComp}{3, 5}
+  \close
+  \have {7} {\copi{inst}{flip}{\vunit}{x}{\creturn{x}} : \aty{Bool}{\{i\}}} \by{T-Op}{6}
+  \close
+  \have {8} {\cdo{inst}{\cnew{Flip}}{\copi{inst}{flip}{\vunit}{x}{\creturn{x}}} : \texists{i}{Flip}{\aty{Bool}{\{i\}}}} \by{T-Do}{2, 7}
+  \close
+  \have {9} {\vabs{\_}{\cdo{inst}{\cnew{Flip}}{\copi{inst}{flip}{\vunit}{x}{\creturn{x}}}} : \tarr{\tunit}{\texists{i}{Flip}{\aty{Bool}{\{i\}}}}} \by{T-Abs}{8}
+\end{nd}
+$}\\
+
 In the following function $g$ we create a new instance, call an operation on it and then immediately handle this effect.
 The type of this function is pure, since the effect is immediately handled.
 \begin{minted}[tabsize=2]{haskell}
@@ -436,11 +552,28 @@ g _ =
 
 The following function is also pure because although an instance is created, this instance is never used or returned.
 \begin{minted}[tabsize=2]{haskell}
-g : () -> ()!{}
-g _ =
+g' : () -> ()!{}
+g' _ =
 	inst <- new Flip;
 	return ()
 \end{minted}
+
+\makebox[\textwidth]{$
+\begin{nd}
+  \open
+  \hypo {1} {\;|\; \_ : \tunit}
+  \have {2} {\cnew{Flip} : \texists{j}{Flip}{\aty{i}{\varnothing}}}
+  \open
+  \hypo {3} {i : E \;|\; inst : i}
+  \have {4} {\vunit : \tunit}
+  \have {5} {\creturn{\vunit} : \aty{\tunit}{\varnothing}} \by{T-Return}{4}
+  \close
+  \have {6} {\cdo{inst}{\cnew{Flip}}{\creturn{\vunit}} : \texists{i}{Flip}{\aty{\tunit}{\varnothing}}} \by{T-Do}{2, 5}
+  \have {7} {\cdo{inst}{\cnew{Flip}}{\creturn{\vunit}} : \aty{\tunit}{\varnothing}} \by{T-ExistsRemove}{6}
+  \close
+  \have {8} {\vabs{\_}{\cdo{inst}{\cnew{Flip}}{\creturn{\vunit}}} : \tarr{\tunit}{\aty{\tunit}{\varnothing}}} \by{T-Abs}{7}
+\end{nd}
+$}\\
 
 The following function simply wraps the creation of a $Flip$ instance.
 \begin{minted}[tabsize=2]{haskell}
@@ -459,7 +592,6 @@ h'' _ =
 	return (i1, i2)
 \end{minted}
 
-\newpage
 In the following function $nested$ we create a new instance and handle it, but in the computation we want to handle another instance is created and used. Only one operation call will be handled by the handler, the one called on $i1$. The operation call made on $i2$ is unhandled and so we are left with one existential quantifier.
 \begin{minted}[tabsize=2]{haskell}
 nested : () -> exists (i:Flip). Bool!{i}
@@ -473,7 +605,7 @@ nested _ =
 		y <- i2#flip ();
 		return (x && y)
 	)
-\end{minted} 
+\end{minted}
 
 \begin{thebibliography}{9}
 \bibitem{effectsystem}
