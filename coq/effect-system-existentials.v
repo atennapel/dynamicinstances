@@ -107,6 +107,119 @@ Combined Scheme not_free_mut_ind from not_free_ty_mut_ind, not_free_cty_mut_ind.
 Hint Constructors not_free_ty.
 Hint Constructors not_free_cty.
 
+(* substitution *)
+Fixpoint shiftval' (d:nat) (c:nat) (t:val) : val :=
+  match t with
+  | unit => t
+  | var k => if k <? c then t else var (k + d)
+  | abs t' => abs (shiftcomp' d (S c) t')
+  | handler v cr hl => handler (shiftval' d c v) (shiftcomp' d (S c) cr) (shifthlist' d c hl)
+  end
+with shiftcomp' (d:nat) (c:nat) (t:comp) : comp :=
+  match t with
+  | ret t' => ret (shiftval' d c t')
+  | app t1 t2 => app (shiftval' d c t1) (shiftval' d c t2)
+  | do t1 t2 => do (shiftcomp' d c t1) (shiftcomp' d (S c) t2)
+  | opc vi o v t => opc (shiftval' d c vi) o (shiftval' d c v) (shiftcomp' d (S c) t)
+  | handle v t => handle (shiftval' d c v) (shiftcomp' d c t)
+  | new E => t
+  end
+with shifthlist' (d:nat) (c:nat) (t:hlist) : hlist :=
+  match t with
+  | hnil => t
+  | hcons o co r => hcons o (shiftcomp' d (S (S c)) co) (shifthlist' d c r)
+  end.
+
+Definition shiftval d t := shiftval' d 0 t.
+Definition shiftcomp d t := shiftcomp' d 0 t.
+Definition shifthlist d t := shifthlist' d 0 t.
+
+Hint Unfold shiftval.
+Hint Unfold shiftcomp.
+Hint Unfold shifthlist.
+
+Fixpoint substval' (j:nat) (s:val) (t:val) : val :=
+  match t with
+  | unit => t
+  | var k => if k =? j then s
+              else if k <? j then t else var (pred k)
+  | abs t' => abs (substcomp' (S j) (shiftval 1 s) t')
+  | handler v cr hl => handler (substval' j s v) (substcomp' (S j) (shiftval 1 s) cr) (substhlist' j s hl)
+  end
+with substcomp' (j:nat) (s:val) (t:comp) : comp :=
+  match t with
+  | ret t' => ret (substval' j s t')
+  | app t1 t2 => app (substval' j s t1) (substval' j s t2)
+  | do t1 t2 => do (substcomp' j s t1) (substcomp' (S j) (shiftval 1 s) t2)
+  | opc vi o v t => opc (substval' j s vi) o (substval' j s v) (substcomp' (S j) (shiftval 1 s) t)
+  | handle v t => handle (substval' j s v) (substcomp' j s t)
+  | new E => t
+  end
+with substhlist' (j:nat) (s:val) (t:hlist) : hlist :=
+  match t with
+  | hnil => t
+  | hcons o co r => hcons o (substcomp' (S (S j)) (shiftval 2 s) co) (substhlist' j s r)
+  end.
+
+Definition substval s t := substval' 0 s t.
+Definition substcomp s t := substcomp' 0 s t.
+Definition substhlist s t := substhlist' 0 s t.
+
+Hint Unfold substval.
+Hint Unfold substcomp.
+Hint Unfold substhlist.
+
+(* semantics *)
+Definition value c := exists v, c = ret v.
+Hint Unfold value.
+
+Inductive step : comp -> nat -> comp -> nat -> Prop :=
+  | S_AppAbs : forall t1 t2 i,
+    step (app (abs t1) t2) i (substcomp t2 t1) i
+  | S_New : forall E i,
+     step (new E) i (ret unit) (S i)
+  | S_DoReturn : forall v t i,
+    step (do (ret v) t) i (substcomp v t) i
+  | S_Do : forall t1 t1' i i' t2,
+    step t1 i t1' i' ->
+    step (do t1 t2) i (do t1' t2) i'
+  | S_DoOp : forall vi o v c1 c2 i,
+    step (do (opc vi o v c1) c2) i (opc vi o v (do c1 (shiftcomp' 1 1 c2))) i
+  | S_Handle : forall v cr hl c c' i i',
+    step c i c' i' ->
+    step (handle (handler v cr hl) c) i (handle (handler v cr hl) c') i'
+  | S_HandleReturn : forall vi cr hl v i,
+    step (handle (handler vi cr hl) (ret v)) i (substcomp v cr) i
+  | S_HandleOp1 : forall cr vi i o co hl v c,
+    hlist_has hl o co ->
+    step
+      (handle (handler vi cr hl) (opc vi o v c))
+      i
+      (substcomp v
+        (substcomp (abs (handle (shiftval 2 (handler vi cr hl)) (shiftcomp' 1 1 c))) co))
+      i
+  | S_HandleOp2 : forall cr hl i vi vi' o v c,
+    (forall co, ~(hlist_has hl o co)) \/ ~(vi = vi') ->
+    step
+      (handle (handler vi cr hl) (opc vi' o v c))
+      i
+      (opc vi' o v (handle (shiftval 1 (handler vi cr hl)) c))
+      i.
+
+Hint Constructors step.
+
+Definition relation (X: Type) := X->X->Prop.
+Definition deterministic {X: Type} (R: relation X) :=
+  forall x y1 y2 : X, R x y1 -> R x y2 -> y1 = y2.
+Inductive multi {X:Type} (R: relation X) : relation X :=
+  | multi_refl  : forall (x : X), multi R x x
+  | multi_step : forall (x y z : X),
+                    R x y ->
+                    multi R y z ->
+                    multi R x z.
+Notation multistep := (multi step).
+Notation "t1 '===>*' t2" := (multistep t1 t2) (at level 40).
+
 (* effect env *)
 Record env := Env {
   env_effs : effs;
