@@ -221,18 +221,20 @@ with has_type_comp : env -> delta -> context -> comp -> cty -> Prop :=
     has_type_comp e d c c1 t1 ->
     has_type_comp e (d ++ es1) (t1' :: c) c2 t2 ->
     has_type_comp e d c (do c1 c2) (texists' (es1 ++ es2) (tannot t2' (union r1 r2)))
-  | T_handle : forall e d c v b t1 t2,
-    has_type_val e d c v (thandler t1 t2) ->
+  | T_handle : forall e d c v b t1 es t1' t2,
+    unwrap_cty es t1 t1' ->
+    has_type_val e (d ++ es) c v (thandler t1' t2) ->
     has_type_comp e d c b t1 ->
-    has_type_comp e d c (handle v b) t2
-  | T_opc : forall e d c v1 o v2 b t r i E,
+    has_type_comp e d c (handle v b) (texists' es t2)
+  | T_opc : forall e d c v1 o v2 b t es tc r i E,
+    unwrap_cty es tc (tannot t r) ->
     has_type_val e d c v1 (tinst i) ->
     nth_error d i = Some E ->
     o ∈ env_ops e E ->
     has_type_val e d c v2 (env_paramty e o) ->
-    has_type_comp e d (env_returnty e o :: c) b (tannot t r) ->
+    has_type_comp e d (env_returnty e o :: c) b tc ->
     i ∈ r ->
-    has_type_comp e d c (opc v1 o v2 b) (tannot t r)
+    has_type_comp e d c (opc v1 o v2 b) (texists' es (tannot t r))
   | T_new : forall e d c E,
     has_type_comp e d c (new E) (texists E (tannot (tinst 0) ∅))
   | T_exists : forall e d c b t E,
@@ -286,7 +288,10 @@ Proof.
   replace (texists exE (tannot tunit (∅ ∪ {[0]}))) with
     (texists' ([exE] ++ []) (tannot tunit (∅ ∪ {[0]}))); auto.
   apply T_do with (t1 := texists exE (tannot (tinst 0) ∅)) (t2 := tannot tunit {[0]}) (t1' := tinst 0); auto.
-  apply T_opc with (i := 0) (E := exE); auto; try set_solver.
+  simpl.
+  replace (tannot tunit {[0]}) with (texists' [] (tannot tunit {[0]})); auto.
+  apply T_opc with (i := 0) (E := exE) (tc := texists' [] (tannot tunit {[0]})); auto; try set_solver.
+  apply Ex_nil.
   apply T_sub_cty with (t1 := tannot tunit ∅); auto.
   - simpl.
     apply WF_tannot; auto.
@@ -312,7 +317,10 @@ Proof.
     replace (texists exE (tannot tunit (∅ ∪ ∅))) with
       (texists' ([exE] ++ []) (tannot tunit (∅ ∪ ∅))); auto.
     apply T_do with (t1 := texists exE (tannot (tinst 0) ∅)) (t2 := tannot tunit ∅) (t1' := tinst 0); auto.
-    apply T_handle with (t1 := tannot tunit {[0]}); auto.
+    simpl.
+    replace (tannot tunit ∅) with (texists' [] (tannot tunit ∅)); auto.
+    apply T_handle with (t1 := tannot tunit {[0]}) (t1' := texists' [] (tannot tunit {[0]})); auto.
+    apply Ex_nil.
     + apply T_handler with (E := exE) (i := 0); auto; try set_solver.
       * simpl.
         apply WF_tannot; auto.
@@ -329,7 +337,8 @@ Proof.
           inv H. }
       * apply T_hcons; auto.
         apply T_app with (t1 := tunit); auto.
-    + apply T_opc with (i := 0) (E := exE); auto; try set_solver.
+    + replace (tannot tunit {[0]}) with (texists' [] (tannot tunit {[0]})); auto.
+      apply T_opc with (i := 0) (E := exE) (tc := tannot tunit {[0]}); auto; try set_solver.
       apply T_sub_cty with (t1 := tannot tunit ∅); auto.
       * simpl.
         apply WF_tannot; auto.
@@ -436,4 +445,4 @@ Lemma ty_wellformed :
   (forall E D G v t, has_type_hlist E D G v t -> wf_context D G -> wf_cty D t).
 Proof.
   apply has_type_mut_ind; intros; auto.
-  - 
+  - Admitted.
