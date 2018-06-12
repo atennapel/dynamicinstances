@@ -8,6 +8,8 @@
 \usepackage{minted}
 \usepackage{fitch}
 
+\usepackage[parfill]{parskip}
+
 % effects
 \newcommand\Eff[0]{E}
 \newcommand\eff[0]{\varepsilon}
@@ -104,6 +106,7 @@ Annotations $r$ are sets of instance variables.
 	\val \Coloneqq			&											\tag{values} \\
 									& x, y, z, k								\tag{variables} \\
 									& \vunit									\tag{unit value} \\
+									& \iota^\mathbb{N}						\tag{instances} \\
 									& \vabs{x}{\comp}					\tag{abstraction} \\
 									& \vhandlerci{\val}						\tag{handler} \\
 	\comp \Coloneqq		&											\tag{computations} \\
@@ -241,7 +244,7 @@ For computation types we check that all the variables in the annotation occur in
 \newpage
 \subsection{Typing rules}
 For the typing rules there are two judgments,
-$\Delta;\Gamma \vdash \val : \ty$ for assigning types to values and $\Delta;\Gamma \vdash \comp : \cty$ for assigning computation types to computations. $\Gamma$ stores bindings of variables to types and $\Delta$ stores bindings of instance variables to effects $\eff$.  The function $FIV$ returns the set of free instances of a type and the function $IV$ returns the set of all instance variable of a type, bound or not. \\
+$\Delta;\Gamma \vdash \val : \ty$ for assigning types to values and $\Delta;\Gamma \vdash \comp : \cty$ for assigning computation types to computations. $\Gamma$ stores bindings of variables to types and $\Delta$ stores bindings of instance variables to effects $\eff$.
 In the sub-typing and abstraction rules we check that the introduced types are well-formed, so that we don't introduce ill-formed types in the context.
 
 \begin{minipage}{0.25\textwidth}
@@ -304,7 +307,7 @@ For the handlers we first check that value $\val$ is bound to an instance variab
 We check that the operations in the handlers are exactly the operations belonging to $\eff$.
 After we check that all the cases in the handler agree on the return type and annotations.
 We have the condition $r_1 \backslash \{ i \} \subseteq r_2$ to make sure that any extra effects before the handler remain unhandled after the handler is evaluated.
-We check that the types on the left and right sides of the handler type are well-formed to make sure that no instance variables are introduced that are not in the context $\Delta$. Note that both the left and right side of the handler type cannot be an existential type.
+We check that the types on the left and right sides of the handler type are well-formed to make sure that no instance variables are introduced that are not in the context $\Delta$.
 \\\textbf{T-Handler}
 \[\frac{
 	\begin{array}{l}
@@ -380,6 +383,19 @@ Explain...\\
 \end{minipage}
 \\
 
+
+Instances are checked to be in $\Delta$.\\
+\textbf{T-Instance}
+\[\frac{
+	\begin{array}{l}
+	(i:\eff)\in\Delta \\
+	\end{array}
+}{
+	\Delta;\Gamma \vdash \iota^i : i
+}\]
+
+
+
 For the operation calls we check that the value $\val_1$ is bound to an instance variable $i$ of effect $\eff$.
 We check that the operation belongs to $\eff$ and that the value $\val_2$ is of the parameter type of the operation.
 We then typecheck the continuation $c$ and make sure that the instance variable $i$ is in the annotation on the type of $c$. \\
@@ -447,7 +463,7 @@ For abstractions we have the usual beta-reduction rule.\\
 For instance creation we replace the call to $new$ with the instance constant and we increase the instance id counter.\\
 \[\frac{
 }{
-	\cnew{E}\sep i \rightsquigarrow \creturn{i}\sep i + 1
+	\cnew{E}\sep i \rightsquigarrow \creturn{\iota^i}\sep i + 1
 }\]
 \newpage
 For sequencing we have three rules. The first rule reduces the first computation.
@@ -499,6 +515,27 @@ call over the handling computation.\\
 }{
 	\chandle{h}{(\copi{k}{\op}{\val}{x}{\comp})}\sep i \rightsquigarrow \copi{k}{\op}{\val}{x}{\chandle{h}{\comp}}\sep i
 }\]
+
+\subsection{Theorems}
+
+(Preservation) If $\Delta;\Gamma \vdash \comp : \cty$ and $\comp \rightsquigarrow \comp'$ then $\Delta;\Gamma \vdash \comp' : \cty$ \\
+
+(Progress effectful) If $\cdot;\cdot \vdash \comp : \cty$ then either:
+\begin{itemize}
+\item $\comp \rightsquigarrow \comp'$ for some $\comp'$
+\item $\comp = \creturn{\val}$ for some $\val$
+\item $\comp = \copi{\iota^i}{\op}{\val}{x}{\comp}$ for some $i, \op, \val$ and $\comp$
+\end{itemize}
+
+(Progress) If $\cdot;\cdot \vdash \comp : \texistss{i}{\aty{\ty}{\varnothing}}$ then either:
+\begin{itemize}
+\item $\comp \rightsquigarrow \comp'$ for some $\comp'$
+\item $\comp = \creturn{\val}$ for some $\val$
+\end{itemize}
+
+(Determinism) If $\comp \rightsquigarrow \comp'$ and $\comp \rightsquigarrow \comp''$ then $\comp' = \comp''$  \\
+
+(Type soundness) If $\cdot;\cdot \vdash \comp : \texistss{i}{\aty{\ty}{\varnothing}}$ and $\comp \rightsquigarrow^* \comp'$ then $\comp' = \creturn{\val}$ for some $\val$ (where $\rightsquigarrow^*$ is the reflexive-transitive closure of $\rightsquigarrow$)
 
 \subsection{Examples}
 We will show some examples together with the types that the discussed type system will assign to them.
