@@ -106,6 +106,28 @@ Combined Scheme not_free_mut_ind from not_free_ty_mut_ind, not_free_cty_mut_ind.
 Hint Constructors not_free_ty.
 Hint Constructors not_free_cty.
 
+(* substitution in types *)
+Fixpoint shiftty' (d:nat) (c:nat) (t:ty) : ty :=
+  match t with
+  | tinst k => if k <? c then t else tinst (k + d)
+  | tunit => t
+  | tarr a b => tarr (shiftty' d c a) (shiftcty' d c b)
+  | thandler a b => thandler (shiftcty' d c a) (shiftcty' d c b)
+  end
+with shiftcty' (d:nat) (c:nat) (t:cty) : cty :=
+  match t with
+  | tannot t' r => tannot (shiftty' d c t') (fmap (fun k => if k <? c then k else k + d) r)
+  | texists E t' => texists E (shiftcty' d (S c) t')
+  end.
+
+Search (gset _).
+
+Definition shiftty d t := shiftty' d 0 t.
+Definition shiftcty d t := shiftcty' d 0 t.
+
+Hint Unfold shiftty.
+Hint Unfold shiftcty.
+
 (* substitution *)
 Fixpoint shiftval' (d:nat) (c:nat) (t:val) : val :=
   match t with
@@ -250,7 +272,13 @@ with sub_cty : cty -> cty -> Prop :=
     sub_cty (tannot t e) (tannot t' e')
   | Sub_texists : forall e t t',
     sub_cty t t' ->
-    sub_cty (texists e t) (texists e t').
+    sub_cty (texists e t) (texists e t')
+  | Sub_texists_remove : forall e t t',
+    sub_cty t t' ->
+    not_free_cty 0 t' ->
+    sub_cty (texists e t) t'
+  | Sub_texists_swap : forall e f t,
+    sub_cty (texists e (texists f t)) (texists f (texists e t)).
 
 Scheme sub_ty_mut_ind := Induction for sub_ty Sort Prop
   with sub_cty_mut_ind := Induction for sub_cty Sort Prop.
@@ -357,10 +385,6 @@ with has_type_comp : env -> delta -> context -> comp -> cty -> Prop :=
     has_type_comp e d c (opc v1 o v2 b) t'
   | T_new : forall e d c E,
     has_type_comp e d c (new E) (texists E (tannot (tinst 0) ∅))
-  | T_exists : forall e d c b t E,
-    has_type_comp e d c b (texists E t) ->
-    not_free_cty 0 t ->
-    has_type_comp e d c b t
   | T_sub_cty : forall e d c b t1 t2,
     has_type_comp e d c b t1 ->
     wf_cty d t2 ->
@@ -470,7 +494,7 @@ Proof.
         apply WF_tinst with (e := exE); auto.
       * apply Sub_tannot; auto; try set_solver.
   - apply F_tannot; auto; try set_solver.
-Qed.
+Qed.*)
 
 (* \() -> inst <- new E; return () : () -> ()!{} *)
 Example ex3 :
@@ -479,14 +503,19 @@ Example ex3 :
     (tarr tunit (tannot tunit ∅)).
 Proof.
   apply T_abs; auto.
-  apply T_exists with (E := exE); auto.
-  - replace ∅ with (∅ ∪ ∅ : annots); try set_solver.
-    replace (texists exE (tannot tunit (∅ ∪ ∅))) with
-      (texists' ([exE] ++ []) (tannot tunit (∅ ∪ ∅))); auto.
-    apply T_do with (t1 := texists exE (tannot (tinst 0) ∅)) (t2 := tannot tunit ∅) (t1' := tinst 0); auto.
-  - apply F_tannot; auto; try set_solver.
+  apply T_sub_cty with (t1 := texists exE (tannot tunit ∅)); auto.
+  - apply T_do with (r1 := ∅) (r2 := ∅) (es1 := [exE]) (es2 := [])
+      (t1 := texists exE (tannot (tinst 0) ∅)) (t2 := tannot tunit ∅)
+      (t1' := tinst 0) (t2' := tunit); auto.
+    replace (∅ ∪ ∅) with (∅ : gset nat); try set_solver.
+    simpl; auto.
+  - apply WF_tannot; auto.
+    set_solver.
+  - apply Sub_texists_remove; auto.
+    apply F_tannot; auto.
+    set_solver.
 Qed.
-*)
+
 (* lemmas & theorems *)
 Lemma hlist_has_dec : forall hl o,
   (exists c, hlist_has hl o c) \/ (forall c, ~(hlist_has hl o c)).
@@ -544,6 +573,27 @@ Proof.
   apply ty_mut_ind; intros; auto.
 Qed.
 
+Lemma not_free_sub :
+  (forall i a, not_free_ty i a -> forall b, sub_ty a b -> not_free_ty i b) /\
+  (forall i a, not_free_cty i a -> forall b, sub_cty a b -> not_free_cty i b).
+Proof.
+  apply not_free_mut_ind; intros; auto; try inv H.
+  - inv H1.
+    constructor.
+    + { auto. }
+    + apply H0 in H6; auto.
+  - inv H1.
+    constructor.
+    + { auto. }
+    + apply H0 in H6; auto.
+  - inv H0.
+    constructor.
+    + apply H in H3; auto.
+    + { auto. }
+  - inv H0.
+    + { auto. }
+    + 
+
 Lemma sub_trans :
   (forall b a c, sub_ty a b -> sub_ty b c -> sub_ty a c) /\
   (forall b a c, sub_cty a b -> sub_cty b c -> sub_cty a c).
@@ -558,6 +608,7 @@ Proof.
     apply Sub_tannot.
     + apply H with (c := t') in H5; auto.
     + set_solver.
+    + apply Sub_texists_remove.
   - inv H0.
     inv H1.
 Qed.
