@@ -30,11 +30,10 @@ Combined Scheme ty_mut_ind from vty_mut_ind, cty_mut_ind.
 Hint Constructors ty.
 Hint Constructors cty.
 
-Definition texists' es t := foldr (fun e t' => texists e t') t es.
-
 Inductive val : Type :=
   | var : nat -> val
   | unit : val
+  | vinst :nat -> val
   | abs : comp -> val
   | handler : val -> comp -> hlist -> val
 with comp : Type :=
@@ -111,6 +110,7 @@ Hint Constructors not_free_cty.
 Fixpoint shiftval' (d:nat) (c:nat) (t:val) : val :=
   match t with
   | unit => t
+  | vinst _ =>t
   | var k => if k <? c then t else var (k + d)
   | abs t' => abs (shiftcomp' d (S c) t')
   | handler v cr hl => handler (shiftval' d c v) (shiftcomp' d (S c) cr) (shifthlist' d c hl)
@@ -141,6 +141,7 @@ Hint Unfold shifthlist.
 Fixpoint substval' (j:nat) (s:val) (t:val) : val :=
   match t with
   | unit => t
+  | vinst _ => t
   | var k => if k =? j then s
               else if k <? j then t else var (pred k)
   | abs t' => abs (substcomp' (S j) (shiftval 1 s) t')
@@ -177,7 +178,7 @@ Inductive step : comp -> nat -> comp -> nat -> Prop :=
   | S_AppAbs : forall t1 t2 i,
     step (app (abs t1) t2) i (substcomp t2 t1) i
   | S_New : forall E i,
-     step (new E) i (ret unit) (S i)
+     step (new E) i (ret (vinst i)) (S i)
   | S_DoReturn : forall v t i,
     step (do (ret v) t) i (substcomp v t) i
   | S_Do : forall t1 t1' i i' t2,
@@ -208,9 +209,9 @@ Inductive step : comp -> nat -> comp -> nat -> Prop :=
 
 Hint Constructors step.
 
-Definition relation (X: Type) := X->X->Prop.
-Definition deterministic {X: Type} (R: relation X) :=
-  forall x y1 y2 : X, R x y1 -> R x y2 -> y1 = y2.
+Definition relation2 (X Y: Type) := X->Y->X->Y->Prop.
+Definition deterministic2 {X Y: Type} (R: relation2 X Y) :=
+  forall (a1 a2 a3 : X)(b1 b2 b3:Y), R a1 b1 a2 b2 -> R a1 b1 a3 b3 -> a2 = a3 /\ b2 = b3.
 Inductive multi {X:Type} (R: relation X) : relation X :=
   | multi_refl  : forall (x : X), multi R x x
   | multi_step : forall (x y z : X),
@@ -302,6 +303,9 @@ Inductive has_type_val : env -> delta -> context -> val -> ty -> Prop :=
     has_type_val e d c (var i) t
   | T_unit : forall e d c,
     has_type_val e d c unit tunit
+  | T_vinst : forall e d c i E,
+    nth_error d i = Some E ->
+    has_type_val e d c (vinst i) (tinst i)
   | T_abs : forall e d c b t1 t2,
     wf_ty d t1 ->
     has_type_comp e d (t1 :: c) b t2 ->
@@ -328,18 +332,20 @@ with has_type_comp : env -> delta -> context -> comp -> cty -> Prop :=
     has_type_val e d c v1 (tarr t1 t2) ->
     has_type_val e d c v2 t1 ->
     has_type_comp e d c (app v1 v2) t2
-  | T_do : forall e d c c1 c2 es1 es2 t1 t2 t1' t2' r1 r2,
+  | T_do : forall e d c c1 c2 es1 es2 t1 t2 t3 t1' t2' r1 r2,
     unwrap_cty es1 t1 (tannot t1' r1) ->
     unwrap_cty es2 t2 (tannot t2' r2) ->
     has_type_comp e d c c1 t1 ->
-    has_type_comp e (d ++ es1) (t1' :: c) c2 t2 ->
-    has_type_comp e d c (do c1 c2) (texists' (es1 ++ es2) (tannot t2' (union r1 r2)))
-  | T_handle : forall e d c v b t1 es t1' t2,
+    has_type_comp e (es1 ++ d) (t1' :: c) c2 t2 ->
+    unwrap_cty (es1 ++ es2) t3 (tannot t2' (union r1 r2)) ->
+    has_type_comp e d c (do c1 c2) t3
+  | T_handle : forall e d c v b t1 es t1' t2 t3,
     unwrap_cty es t1 t1' ->
-    has_type_val e (d ++ es) c v (thandler t1' t2) ->
+    has_type_val e (es ++ d) c v (thandler t1' t2) ->
     has_type_comp e d c b t1 ->
-    has_type_comp e d c (handle v b) (texists' es t2)
-  | T_opc : forall e d c v1 o v2 b t es tc r i E,
+    unwrap_cty es t3 t2 ->
+    has_type_comp e d c (handle v b) t3
+  | T_opc : forall e d c v1 o v2 b t t' es tc r i E,
     unwrap_cty es tc (tannot t r) ->
     has_type_val e d c v1 (tinst i) ->
     nth_error d i = Some E ->
@@ -347,7 +353,8 @@ with has_type_comp : env -> delta -> context -> comp -> cty -> Prop :=
     has_type_val e d c v2 (env_paramty e o) ->
     has_type_comp e d (env_returnty e o :: c) b tc ->
     i ∈ r ->
-    has_type_comp e d c (opc v1 o v2 b) (texists' es (tannot t r))
+    unwrap_cty es t' (tannot t r) ->
+    has_type_comp e d c (opc v1 o v2 b) t'
   | T_new : forall e d c E,
     has_type_comp e d c (new E) (texists E (tannot (tinst 0) ∅))
   | T_exists : forall e d c b t E,
@@ -391,12 +398,15 @@ Definition exEnv: env := Env
   (fun o => tunit).
 
 (* \() -> inst <- new E; inst#op () : () -> exists (i:E). ()!{i} *)
+(*
 Example ex1 :
   has_type_val exEnv [] []
     (abs (do (new exE) (opc (var 0) exOp unit (ret (var 0)))))
     (tarr tunit (texists exE (tannot tunit {[0]}))).
 Proof.
   apply T_abs; auto.
+  apply T_do with (es1 := ∅) (es2 := {[0]}) (t1 := texists exE (tannot (tinst 0) ∅))
+    (t2 := tannot tunit {[0]}) (t1' := tinst 0) (t2' := tunit) (r1 := ∅) (r2 := {[0]}).
   replace {[0]} with (union ∅ {[0]} : annots); try set_solver.
   replace (texists exE (tannot tunit (∅ ∪ {[0]}))) with
     (texists' ([exE] ++ []) (tannot tunit (∅ ∪ {[0]}))); auto.
@@ -476,7 +486,7 @@ Proof.
     apply T_do with (t1 := texists exE (tannot (tinst 0) ∅)) (t2 := tannot tunit ∅) (t1' := tinst 0); auto.
   - apply F_tannot; auto; try set_solver.
 Qed.
-
+*)
 (* lemmas & theorems *)
 Lemma hlist_has_dec : forall hl o,
   (exists c, hlist_has hl o c) \/ (forall c, ~(hlist_has hl o c)).
@@ -552,10 +562,71 @@ Proof.
     inv H1.
 Qed.
 
+Theorem step_deterministic : deterministic2 step.
+Proof.
+  unfold deterministic2.
+  intros.
+  generalize dependent a3.
+  generalize dependent b3.
+  induction H; intros; try (inv H0).
+  - apply IHstep in H6.
+    destruct H6; subst; auto.
+  - apply IHstep in H8.
+    destruct H8; subst; auto.
+  - split; auto.
+    apply hlist_has_deterministic with (c := co) in H11; subst; auto.
+  - destruct H11; try contradiction.
+    specialize (H1 co).
+    contradiction.
+  - destruct H; try contradiction.
+    specialize (H co).
+    contradiction.
+Qed.
+
+Lemma ctx_wellformed : forall i D G T,
+  wf_context D G -> nth_error G i = Some T -> wf_ty D T.
+Proof.
+  intros.
+  rewrite List.Forall_forall in H.
+  apply nth_error_In in H0.
+  apply H in H0.
+  auto.
+Qed.
+
+Lemma wellformed_weakening :
+  (forall D t, wf_ty D t -> forall D', wf_ty (D ++ D') t) /\
+  (forall D t, wf_cty D t -> forall D', wf_cty (D ++ D') t).
+Proof.
+  apply wf_mut_ind; intros; auto.
+  - apply WF_tinst with e.
+    apply nth_error_weakening.
+    auto.
+  - constructor.
+    rewrite app_comm_cons.
+    auto.
+Qed.
+
+Lemma wf_context_prepend : forall D t C,
+  wf_ty D t -> wf_context D C -> wf_context D (t :: C).
+Proof.
+  intros.
+  constructor; auto.
+Qed.
+
 Lemma ty_wellformed :
   (forall E D G v t, has_type_val E D G v t -> wf_context D G -> wf_ty D t) /\
   (forall E D G v t, has_type_comp E D G v t -> wf_context D G -> wf_cty D t) /\
   (forall E D G v t, has_type_hlist E D G v t -> wf_context D G -> wf_cty D t).
 Proof.
   apply has_type_mut_ind; intros; auto.
-  - Admitted.
+  - apply ctx_wellformed with (i := i) (T := t) in H; auto.
+  - apply WF_tinst with (e := E); auto.
+  - constructor; auto.
+    set_solver.
+  - apply H in H1.
+    inv H1.
+  - { auto. }
+  - { auto. }
+  - inv u0.
+    + constructor.
+      * 
