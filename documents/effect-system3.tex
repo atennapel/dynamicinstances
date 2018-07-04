@@ -4,11 +4,14 @@
 \usepackage{mathtools}
 \usepackage{amsmath}
 \usepackage{amssymb}
+\usepackage{amsthm}
 \usepackage{capt-of}
 \usepackage{minted}
 \usepackage{fitch}
 
 \usepackage[parfill]{parskip}
+
+\newtheorem{theorem}{Theorem}
 
 % effects
 \newcommand\Eff[0]{E}
@@ -35,6 +38,7 @@
 % values
 \newcommand\val[0]{\nu}
 \newcommand\vunit[0]{()}
+\newcommand\vinst[1]{\mathsf{inst}(#1)}
 \newcommand\vabs[2]{\lambda #1 . #2}
 \newcommand\vhandler[1]{\textit{handler} \; \{#1\}}
 \newcommand\vhandleri[2]{\textit{handler} ( #1 ) \; \{#2\}}
@@ -88,11 +92,15 @@ For the effect annotations on the computation types (called the dirt in \cite{ef
 
 \newpage
 \subsection{Syntax}
+The syntax stays the same as in \cite{effectsystem}, but we add dynamic instance creation and instance values.
+Instance values represent a certain index at run-time, indexed by an $n \in \mathbb{N}$.
+They are used to define the semantics of the system but would not appear in an user-facing language.
+The only way to get an instance value is by using the $\cnew{\eff}$ computation.  
 We assume there is set of effect names $\Eff = \{ \eff_1, ..., \eff_n \}$.
 Each effect has a set of operation names $\Op_\eff = \{ \op_1, ..., \op_n \}$.
-We every operation name only corresponds to a single effect.
+Every operation name only corresponds to a single effect.
 Each operation has a parameter type $\pty{\op}$ and a return type $\rty{\op}$.
-Annotations $r$ are sets of instance variables.
+Annotations $r$ are sets of instance variables. 
 \\
 \begin{align*}
 	\ty \Coloneqq 				& 											\tag{value types} \\
@@ -106,7 +114,7 @@ Annotations $r$ are sets of instance variables.
 	\val \Coloneqq			&											\tag{values} \\
 									& x, y, z, k								\tag{variables} \\
 									& \vunit									\tag{unit value} \\
-									& \iota^\mathbb{N}						\tag{instances} \\
+									& \vinst{n}								\tag{instance values} \\
 									& \vabs{x}{\comp}					\tag{abstraction} \\
 									& \vhandlerci{\val}						\tag{handler} \\
 	\comp \Coloneqq		&											\tag{computations} \\
@@ -121,7 +129,7 @@ Annotations $r$ are sets of instance variables.
 \newpage
 \subsection{Subtyping rules}
 
-The subtyping rules are mostly the same as the rules described in \cite{effectsystem}, but we add two rules for the instance variables and the existential types.
+The subtyping rules are mostly the same as the rules described in \cite{effectsystem}.
 These are as you would expect.
 
 \begin{minipage}{0.5\textwidth}
@@ -163,6 +171,7 @@ These are as you would expect.
 }\]\vspace{10pt}
 \end{minipage}
 
+We add rules for instance variables and existentials, which we compare structurally. \\
 \begin{minipage}{0.5\textwidth}
 \[\frac{
 }{
@@ -177,6 +186,33 @@ These are as you would expect.
 }\]
 \end{minipage}
 
+For existentials we are allowed to remove one if the instance variable does not appear in the type (where $FIV(a)$ is the set of free instance variables of $a$). We are also allowed to swap two existentials.\\
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\subty{a}{b} \\
+	i \notin FIV(a)
+	\end{array}
+}{
+	\subty{\texists{i}{\eff}{a}}{b}
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+}{
+	\subty{\texists{i}{\eff}{\texists{j}{\eff'}{a}}}{\texists{j}{\eff'}{\texists{i}{\eff}{a}}}
+}\]
+\end{minipage}
+
+We can prove reflexivity and transitivity of the subtyping relation from these rules.
+\begin{theorem}[Subtyping reflexivity]
+for all value and computation types $a$, $\subty{a}{a}$
+\end{theorem}
+\begin{theorem}[Subtyping transitivity]
+for all value and computation types $a, b$ and $c$, if $\subty{a}{b}$ and $\subty{b}{c}$ then $\subty{a}{c}$
+\end{theorem}
+
+\newpage
 \subsection{Well-formedness judgement}
 We have a well-formedness judgement for both value and computation types $\Delta \vdash \ty$ and $\Delta \vdash \cty$.
 Where $\Delta$ stores bindings of instance variables to effects.
@@ -241,7 +277,6 @@ For computation types we check that all the variables in the annotation occur in
 }\]
 \end{minipage}
 
-\newpage
 \subsection{Typing rules}
 For the typing rules there are two judgments,
 $\Delta;\Gamma \vdash \val : \ty$ for assigning types to values and $\Delta;\Gamma \vdash \comp : \cty$ for assigning computation types to computations. $\Gamma$ stores bindings of variables to types and $\Delta$ stores bindings of instance variables to effects $\eff$.
@@ -295,7 +330,7 @@ In the sub-typing and abstraction rules we check that the introduced types are w
 }\]
 \end{minipage}
 
-\vspace{10pt}
+\newpage
 In the following rule \\$h = 
 	\vhandleri{\val}{
 		\textit{return} \; x_r \rightarrow \comp_r,
@@ -303,12 +338,7 @@ In the following rule \\$h =
 		...,
 		\op_n(x_n ; k_n) \rightarrow \comp_n
 	}$.\\
-For the handlers we first check that value $\val$ is bound to an instance variable $i$ of effect $\eff$.
-We check that the operations in the handlers are exactly the operations belonging to $\eff$.
-After we check that all the cases in the handler agree on the return type and annotations.
-We have the condition $r_1 \backslash \{ i \} \subseteq r_2$ to make sure that any extra effects before the handler remain unhandled after the handler is evaluated.
-We check that the types on the left and right sides of the handler type are well-formed to make sure that no instance variables are introduced that are not in the context $\Delta$.
-\\\textbf{T-Handler}
+\textbf{T-Handler}
 \[\frac{
 	\begin{array}{l}
 	\Delta;\Gamma \vdash \val : i \\
@@ -323,8 +353,13 @@ We check that the types on the left and right sides of the handler type are well
 	\Delta;\Gamma \vdash h :
 	\thandler{\aty{\ty_1}{r_1}}{\aty{\ty_2}{r_2}}
 }\]
+For the handlers we first check that value $\val$ is bound to an instance variable $i$ of effect $\eff$.
+We check that the operations in the handlers are exactly the operations belonging to $\eff$.
+After we check that all the cases in the handler agree on the return type and annotations.
+We have the condition $r_1 \backslash \{ i \} \subseteq r_2$ to make sure that any extra effects before the handler remain unhandled after the handler is evaluated.
+We check that the types on the left and right sides of the handler type are well-formed to make sure that no instance variables are introduced that are not in the context $\Delta$.
 
-\newpage
+
 %%%
 Explain...\\
 \begin{minipage}{0.5\textwidth}
@@ -383,7 +418,7 @@ Explain...\\
 \end{minipage}
 \\
 
-
+\newpage
 Instances are checked to be in $\Delta$.\\
 \textbf{T-Instance}
 \[\frac{
@@ -391,7 +426,7 @@ Instances are checked to be in $\Delta$.\\
 	(i:\eff)\in\Delta \\
 	\end{array}
 }{
-	\Delta;\Gamma \vdash \iota^i : i
+	\Delta;\Gamma \vdash \vinst{i} : i
 }\]
 
 
@@ -428,20 +463,9 @@ For the creation of instances we return an existential type to account for the n
 }\]
 \vspace{10pt}
 \end{minipage}
-\newpage
-We can remove existential quantifiers at any point so long as the instance variable is not contained in the free instance variable of the type. \\
-\textbf{T-ExistsRemove}
-\[\frac{
-	\begin{array}{l}
-	\Delta;\Gamma \vdash c : \texists{i}{\eff}{\cty} \\
-	i \notin FIV(\cty)
-	\end{array}
-}{
-	\Delta;\Gamma \vdash c : \cty
-}\]
 
-For sequencing we want both $c_1$ and $c_2$ to have existential types, where $\overrightarrow{i}$ and $\overrightarrow{j}$ are sequenced of bindings. If either $c_1$ or $c_2$ do not have existential types we can introduce them with the previous rule.
-To typecheck $c_2$ with all the bindings $\overrightarrow{i}$ introduced in the context $\Delta$. For the return type we concatenate all the bindings $\overrightarrow{i}$ and $\overrightarrow{j}$ and we take the union of the annotations $r_1$ of $c_1$ and the annotations $r_2$ of $c_2$. \\
+For sequencing we view both $c_1$ and $c_2$ as being annotated types with a possibly empty sequences of existential bindings in front, where the bindings are denoted $\overrightarrow{i}$ and $\overrightarrow{j}$.
+To typecheck $c_2$ all the bindings $\overrightarrow{i}$ are introduced in the context $\Delta$. For the return type we concatenate all the bindings $\overrightarrow{i}$ and $\overrightarrow{j}$ and we take the union of the annotations $r_1$ of $c_1$ and the annotations $r_2$ of $c_2$. \\
 \textbf{T-Do}
 \[\frac{
 	\begin{array}{l}
@@ -453,8 +477,7 @@ To typecheck $c_2$ with all the bindings $\overrightarrow{i}$ introduced in the 
 }\]
 
 \subsection{Semantics}
-We give the small-step operational semantics for the system.
-We have the relation $\comp; \mathbb{N} \rightsquigarrow \comp;\mathbb{N}$ where $\comp$ is the current computation and $\mathbb{N}$ the id of the next instance that will be created. \\
+We give the small-step operational semantics for the system. These are the same as the one in \cite{effectsystem} but with the instance creation computation added. In order to handle instance creation we update the relation to $\comp; n \rightsquigarrow \comp;n$ where $\comp$ is the current computation and $n \in \mathbb{N}$ the id of the next instance that will be created. \\
 For abstractions we have the usual beta-reduction rule.\\
 \[\frac{
 }{
@@ -463,9 +486,8 @@ For abstractions we have the usual beta-reduction rule.\\
 For instance creation we replace the call to $new$ with the instance constant and we increase the instance id counter.\\
 \[\frac{
 }{
-	\cnew{E}\sep i \rightsquigarrow \creturn{\iota^i}\sep i + 1
+	\cnew{E}\sep i \rightsquigarrow \creturn{\vinst{i}}\sep i + 1
 }\]
-\newpage
 For sequencing we have three rules. The first rule reduces the first computation.
 The second rule substitutes the value of a return computation in the second computation.
 The last rule floats an operation call over the sequencing, this makes the handle computation easier, since we won't have to think about sequencing inside of a handle computation.\\
@@ -480,11 +502,11 @@ The last rule floats an operation call over the sequencing, this makes the handl
 }\]
 \[\frac{
 }{
-	(\cdo{x}{\copi{j}{\op}{\val}{y}{\comp_1}}{\comp_2})\sep i \rightsquigarrow \copi{j}{\op}{\val}{y}{(\cdo{x}{\comp_1}{\comp_2})}\sep i
+	(\cdo{x}{\copi{\vinst{j}}{\op}{\val}{y}{\comp_1}}{\comp_2})\sep i \rightsquigarrow \copi{\vinst{j}}{\op}{\val}{y}{(\cdo{x}{\comp_1}{\comp_2})}\sep i
 }\]
 
 In the following rules \\$h = 
-	\vhandleri{j}{
+	\vhandleri{\vinst{j}}{
 		\textit{return} \; x_r \rightarrow \comp_r,
 		\op_1(x_1 ; k_1) \rightarrow \comp_1,
 		...,
@@ -506,36 +528,53 @@ Note that we nest the handle computation inside of the continuation, this descri
 \[\frac{
 	\op_i \in \{\op_1, ..., \op_n \}
 }{
-	\chandle{h}{(\copi{j}{\op_i}{\val}{x}{\comp})}\sep i \rightsquigarrow \comp_i[\val/x_i, (\vabs{x}{\chandle{h}{\comp}})/k_i]\sep i
+	\chandle{h}{(\copi{\vinst{j}}{\op_i}{\val}{x}{\comp})}\sep i \rightsquigarrow \comp_i[\val/x_i, (\vabs{x}{\chandle{h}{\comp}})/k_i]\sep i
 }\]
 If the instance is different from the instance in the handler or the operation is not in the handler then we float the operation
 call over the handling computation.\\
 \[\frac{
 	\op \notin \{\op_1, ..., \op_n \} \lor k \neq j
 }{
-	\chandle{h}{(\copi{k}{\op}{\val}{x}{\comp})}\sep i \rightsquigarrow \copi{k}{\op}{\val}{x}{\chandle{h}{\comp}}\sep i
+	\chandle{h}{(\copi{\vinst{k}}{\op}{\val}{x}{\comp})}\sep i \rightsquigarrow \copi{\vinst{k}}{\op}{\val}{x}{\chandle{h}{\comp}}\sep i
 }\]
 
+\newpage
 \subsection{Theorems}
 
-(Preservation) If $\Delta;\Gamma \vdash \comp : \cty$ and $\comp \rightsquigarrow \comp'$ then $\Delta;\Gamma \vdash \comp' : \cty$ \\
-
-(Progress effectful) If $\cdot;\cdot \vdash \comp : \cty$ then either:
+The most important theorem is the type soundness theorem, which states that any computation that typechecks will not get stuck.
+This is proven using two auxiliary theorems preservation and progress.\\
+The preservation theorem states that for any program that typechecks, if we take a step using the semantics then the resulting program will still typecheck with the same type.
+\begin{theorem}[Preservation]
+If $\Delta;\Gamma \vdash \comp : \cty$ and $\comp \rightsquigarrow \comp'$ then $\Delta;\Gamma \vdash \comp' : \cty$
+\end{theorem}
+The progress theorem states that any computation that typechecks is either able to take a step, is a value.\\
+In order to proof this we have the auxiliary theorem for effectful computation where the evaluation can get stuck on operation calls.
+\begin{theorem}[Progress effectful]
+If $\cdot;\cdot \vdash \comp : \cty$ then either:
 \begin{itemize}
 \item $\comp \rightsquigarrow \comp'$ for some $\comp'$
 \item $\comp = \creturn{\val}$ for some $\val$
-\item $\comp = \copi{\iota^i}{\op}{\val}{x}{\comp}$ for some $i, \op, \val$ and $\comp$
+\item $\comp = \copi{\vinst{i}}{\op}{\val}{x}{\comp}$ for some $i, \op, \val$ and $\comp$
 \end{itemize}
-
-(Progress) If $\cdot;\cdot \vdash \comp : \texistss{i}{\aty{\ty}{\varnothing}}$ then either:
+\end{theorem}
+Note that the progress theorem requires that the computation has no effects ($!\varnothing$), else the computation could get stuck on an operation call.
+\begin{theorem}[Progress]
+If $\cdot;\cdot \vdash \comp : \texistss{i}{\aty{\ty}{\varnothing}}$ then either:
 \begin{itemize}
 \item $\comp \rightsquigarrow \comp'$ for some $\comp'$
 \item $\comp = \creturn{\val}$ for some $\val$
 \end{itemize}
+\end{theorem}
 
-(Determinism) If $\comp \rightsquigarrow \comp'$ and $\comp \rightsquigarrow \comp''$ then $\comp' = \comp''$  \\
+Using preservation and progress we can proof type soundness (also called type safety). Here also we require that the computation has no effects.
+\begin{theorem}[Type soundness]
+If $\cdot;\cdot \vdash \comp : \texistss{i}{\aty{\ty}{\varnothing}}$ and $\comp, i \rightsquigarrow^* \comp', i'$ (where $\comp', i' \not\rightsquigarrow \comp'', i''$) then $\comp' = \creturn{\val}$ for some $\val$
 
-(Type soundness) If $\cdot;\cdot \vdash \comp : \texistss{i}{\aty{\ty}{\varnothing}}$ and $\comp \rightsquigarrow^* \comp'$ then $\comp' = \creturn{\val}$ for some $\val$ (where $\rightsquigarrow^*$ is the reflexive-transitive closure of $\rightsquigarrow$)
+The determinism theorem states that any computation has a single evaluation path.
+\begin{theorem}[Determinism]
+If $\comp \rightsquigarrow \comp'$ and $\comp \rightsquigarrow \comp''$ then $\comp' = \comp''$  \\
+\end{theorem}
+\end{theorem}
 
 \subsection{Examples}
 We will show some examples together with the types that the discussed type system will assign to them.
