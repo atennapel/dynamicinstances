@@ -1,0 +1,478 @@
+\documentclass[12pt]{article}
+
+\usepackage{listings}
+\usepackage{mathtools}
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+% effects
+\newcommand\eff[0]{\varepsilon}
+\newcommand\steffs[0]{E}
+\newcommand\effs[0]{\eff^*}
+\newcommand\eop[0]{\textit{op}}
+\newcommand\eops[1]{O^{#1}}
+\newcommand\insts[1]{I^{#1}}
+\newcommand\inst[0]{\iota}
+\newcommand\instss[0]{\inst^*}
+
+% types
+\newcommand\type[0]{\tau}
+\newcommand\tunit[0]{()}
+\newcommand\tbool[0]{\textit{Bool}}
+\newcommand\tarr[2]{#1 \rightarrow #2}
+\newcommand\tarre[3]{#1 \rightarrow #2 \; #3}
+\newcommand\thandler[4]{#1 \; #2 \Rightarrow #3 \; #4}
+\newcommand\tinst[1]{\textit{Inst} \; #1}
+
+% values
+\newcommand\val[0]{\nu}
+\newcommand\vunit[0]{()}
+\newcommand\vtrue[0]{\textit{true}}
+\newcommand\vfalse[0]{\textit{false}}
+\newcommand\vabs[3]{\lambda(#1 : #2) . #3}
+\newcommand\vhandler[1]{\textit{handler} \; \{#1\}}
+\newcommand\vhandleri[2]{\textit{handler} (#1) \{#2\}}
+\newcommand\vhandlerc[0]{\vhandler{
+	\textit{return} \; ( x : \type ) \rightarrow \comp,
+	\eop_1(x ; k) \rightarrow \comp,
+	...,
+	\eop_n(x ; k) \rightarrow \comp
+}}
+\newcommand\vhandlerci[1]{\vhandleri{#1}{
+	\textit{return} \; (x : \type) \rightarrow \comp,
+	\eop_1(x ; k) \rightarrow \comp,
+	...,
+	\eop_n(x ; k) \rightarrow \comp
+}}
+
+% computations
+\newcommand\comp[0]{c}
+\newcommand\cif[3]{\textit{if} \; #1 \; \textit{then} \; #2 \; \textit{else} \; #3}
+\newcommand\creturn[1]{\textit{return} \; #1}
+\newcommand\capp[2]{#1 \; #2}
+\newcommand\cop[5]{#1(#2 ; \lambda (#3 : #4) . #5)}
+\newcommand\copi[6]{#1 \# #2(#3 ; \lambda (#4:#5) . #6)}
+\newcommand\cnew[1]{\textit{new} \; #1}
+\newcommand\cdo[3]{#1 \leftarrow #2 ; #3}
+\newcommand\chandle[2]{\textit{with} \; #1 \; \textit{handle} \; #2}
+
+\lstset{
+	frame = single,
+	basicstyle=\ttfamily\footnotesize,
+	breaklines=true
+}
+
+\title{Thesis report}
+\author{Albert ten Napel}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Algebraic effects}
+
+\subsection{Syntax}
+
+I took the syntax and semantics from \cite{pretnar}. $\eff$ is a single effect, $\effs$ is a set of effects, $\eop$ is an operation of some effect, $\eops{\eff}$ is the set of operations belonging to $\eff$. Each operation has a parameter type and a result type.
+We presume there is a collection of effects $\steffs := \{ \eff_1, ..., \eff_n \}$ (which in a real programming language includes effects like exception, nondeterminism, state and so on).\\
+We have a simply typed lambda calculus with unit and boolean values. Values and computations are split (``values are something, computations do something'').
+
+\begin{align*}
+	\type \Coloneqq 	& 							\tag{types} \\
+				& \tunit						\tag{unit type} \\
+				& \tbool						\tag{type of booleans} \\
+				& \tarre{\type}{\effs}{\type}			\tag{type of functions} \\
+				& \thandler{\eff}{\type}{\effs}{\type}		\tag{type of handlers} \\
+	\val \Coloneqq	&							\tag{values} \\
+				& x, y, z, k						\tag{variables} \\
+				& \vunit						\tag{unit value} \\
+				& \vtrue, \vfalse					\tag{booleans} \\
+				& \vabs{x}{\type}{\comp}			\tag{abstraction} \\
+				& \vhandlerc						\tag{handler} \\
+				\displaybreak \\
+	\comp \Coloneqq	&							\tag{computations} \\
+				& \cif{\val}{\comp}{\comp}			\tag{if computation} \\
+				& \creturn{\val}					\tag{return value as computation} \\
+				& \capp{\val}{\val}					\tag{application} \\
+				& \cop{\eop}{\val}{x}{\type}{\comp}		\tag{operation call} \\
+				& \cdo{x}{\comp}{\comp}				\tag{effect sequencing} \\
+				& \chandle{\val}{\comp}				\tag{handle computation} \\
+\end{align*}
+
+Note that the operation call also packages a value and a continuation inside of it, having the continuation makes the semantics easier.
+We can get back the simpler operation calls such as seen in Eff and Koka by defining $\eop := \vabs{x}{\cop{\eop}{x}{y}{\creturn{y}}}$ (Pretnar calls these Generic Effects in \cite{pretnar}).
+
+\subsection{Typing rules}
+
+\subsubsection{Judgements}
+$\eop : \tarr{\type_1}{\type_2} \in \eff$ ($\eop$ is an operation of effect $\eff$ with parameter type $\type_1$ and result type $\type_2$)\\
+$\Gamma \vdash \val : \type$ (value $\val$ has type $\type$) \\
+$\Gamma \vdash \comp : \type \; ; E$ (computation $\comp$ returns a value of type $\type$ and uses the effects in $E$) \\
+
+\subsubsection{Value typing rules}
+The typing rules for values are fairly straightforward. \\
+\begin{minipage}{0.25\textwidth}
+	\[\frac{
+	}{
+		\Gamma, x : \type \vdash x : \type
+	}\]
+\end{minipage}
+\begin{minipage}{0.25\textwidth}
+	\[\frac{
+	}{
+		\Gamma \vdash \vunit : \tunit
+	}\]
+\end{minipage}
+\begin{minipage}{0.25\textwidth}
+\[\frac{
+}{
+	\Gamma \vdash \vtrue : \tbool
+}\]
+\end{minipage}
+\begin{minipage}{0.25\textwidth}
+ \[\frac{
+}{
+	\Gamma \vdash \vfalse : \tbool
+}\]
+\end{minipage}
+\[\frac{
+	\begin{array}{l}
+	\Gamma, x : \type_1 \vdash \comp : \type_2 \; ; \effs
+	\end{array}
+}{
+	\Gamma \vdash \vabs{x}{\type_1}{\comp} : \tarre{\type_1}{\effs}{\type_2}
+}\]
+
+\newpage
+For the handler we go over the operations in the handler, check that they are operations of the same effect and get the type of the computation in the cases. We take the union of all the effects that occur in the return and operation cases.
+\[\frac{
+	\begin{array}{l}
+	\Gamma , x_r : \type_1 \vdash \comp_r : \type_2 \; ; \effs_r \\
+	\eop_i : \tarr{\alpha_i}{\beta_i} \in \eff \\
+	\Gamma , x_i : \alpha_i , k_i : \tarre{\beta_i}{\effs_r}{\type_2} \vdash \comp_i : \type_2 \; ; \effs_i
+	\end{array}
+}{
+	\begin{array}{l}
+	\Gamma \vdash \vhandler{
+		\textit{return} \; (x_r:\type_1) \rightarrow \comp_r,
+		\eop_1 ( x_1 ; k_1 ) \rightarrow \comp_1,
+		...,
+		\eop_n ( x_n ; k_n ) \rightarrow \comp_n
+	} \\ \indent : \thandler{\eff}{\type_1}{(\effs_r \cup \bigcup_{i=1}^n \effs_i)}{\type_2}
+	\end{array}
+}\]
+
+\subsubsection{Computation typing rules}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \val : \tbool \\
+	\Gamma \vdash \comp_1 : \type \; ; \effs_1 \\
+	\Gamma \vdash \comp_2 : \type \; ; \effs_2
+	\end{array}
+}{
+	\Gamma \vdash \cif{\val}{\comp_1}{\comp_2} : \type \; ; \effs_1 \cup \effs_2
+}\]
+\end{minipage}
+\vspace{10pt}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \val : \type
+	\end{array}
+}{
+	\Gamma \vdash \creturn{\val} : \type \; ; \varnothing
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \val_1 : \tarre{\type_1}{\effs}{\type_2} \\
+	\Gamma \vdash \val_2 : \type_1
+	\end{array}
+}{
+	\Gamma \vdash \capp{\val_1}{\val_2} : \type_2 \; ; \effs
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\eop : \tarr{\type_1}{\type_2} \in \eff \\
+	\Gamma \vdash \val : \type_1 \\
+	\Gamma , x : \type_2 \vdash \comp : \type_3 \; ; \effs
+	\end{array}
+}{
+	\Gamma \vdash \cop{\eop}{\val}{x}{\type_2}{\comp} : \type_3 \; ; \{ \eff \} \cup \effs
+}\]
+\end{minipage}
+
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \comp_1 : \type_1 \; ; \effs_1 \\
+	\Gamma , x : \type_1 \vdash \comp_2 : \type_2 \; ; \effs_2 \\
+	\end{array}
+}{
+	\Gamma \vdash (\cdo{x}{\comp_1}{\comp_2}) : \type_2 \; ; \effs_1 \cup \effs_2
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \val : \thandler{\eff}{\type_1}{\effs_1}{\type_2} \\
+	\Gamma \vdash \comp : \type_1 \; ; \{ \eff \} \cup \effs_2
+	\end{array}
+}{
+	\Gamma \vdash \chandle{\val}{\comp} : \type_2 \; ; \effs_1 \cup \effs_2
+}\]
+\end{minipage}
+In the handle computation notice that we require the computation to have the effect that the handler handles. After we take the union of the effects used in the handler and the remaining effects of the computation. If the handler does not reuse the same effect then the effect is completely handled.
+\newpage
+\subsection{Small-step operational semantics}
+
+Following are the small-step operational semantics of the calculus taken from \cite{pretnar}.
+With the computations we can always either get to $\creturn{\val}$ or $\cop{\eop}{\val}{x}{\type}{\comp}$ by floating out the operation call as shown in the 6th rule.
+This makes the semantics of the handle computation easier since we only have to consider the cases of return and operation calls.
+
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+}{
+	\cif{\vtrue}{\comp_1}{\comp_2} \rightsquigarrow \comp_1
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+}{
+	\cif{\vfalse}{\comp_1}{\comp_2} \rightsquigarrow \comp_2
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+}{
+	\capp{(\vabs{x}{\type}{\comp})}{\val} \rightsquigarrow \comp[\val / x]
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\comp_1 \rightsquigarrow \comp_1'
+}{
+	\cdo{x}{\comp_1}{\comp_2} \rightsquigarrow \cdo{x}{\comp_1'}{\comp_2}
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+}{
+	\cdo{x}{\creturn{\val}}{\comp} \rightsquigarrow \comp[\val / x]
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+}{
+	\cdo{x}{\cop{\eop}{\val}{y}{\type}{\comp_1}}{\comp_2} \rightsquigarrow \cop{\eop}{\val}{y}{\type}{\cdo{x}{\comp_1}{\comp_2}}
+}\]
+\end{minipage}
+
+\vspace{20pt}
+$h := \vhandler{
+		\textit{return} \; (x_r : \type) \rightarrow \comp_r,
+		\eop_1 (  x_1 ; k_1 ) \rightarrow \comp_1,
+		...,
+		\eop_n ( x_n ; k_n ) \rightarrow \comp_n
+	}$, in the following rules:\\
+	
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\comp \rightsquigarrow \comp'
+}{
+	\chandle{h}{\comp} \rightsquigarrow \chandle{h}{\comp'}
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+}{
+	\chandle{h}{(\creturn{\val})} \rightsquigarrow \comp[\val / x]
+}\]
+\end{minipage}
+\vspace{20pt}
+\[\frac{
+	\eop_i \in \{ \eop_1, ..., \eop_n \}
+}{
+	\chandle{h}{\cop{\eop_i}{\val}{x}{\type}{\comp}} \rightsquigarrow \comp_i[\val / x_i, (\vabs{x}{\type}{\chandle{h}{\comp}}) / k_i]
+}\]
+
+\[\frac{
+	\eop \notin \{ \eop_1, ..., \eop_n \}
+}{
+	\chandle{h}{\cop{\eop}{\val}{x}{\type}{\comp}} \rightsquigarrow \cop{\eop}{\val}{x}{\type}{\chandle{h}{\comp}}
+}\]
+
+
+
+\newpage
+\section{Algebraic effects with static instances}
+
+\subsection{Syntax}
+I looked at \cite{effectsystem} to get the rules right, but I simplified the system.
+We no longer have to mention the effects in the types but just the instances, since every instance belongs to a specific effect and they are all statically known.
+Handlers in my system only handle operations on a specific instance. For each $\eff \in \steffs$ there is a set of instances $\insts{\eff} := \{ \inst_1, ..., \inst_n \}$.
+$\instss$ is some collection of instances.
+
+Building on top of the previous definitions:
+\begin{align*}
+	\type \Coloneqq 	& ...							\tag{types} \\
+				& \tinst{\inst}					\tag{type of instances} \\
+				& \tarre{\type}{\instss}{\type}			\tag{type of functions} \\
+				& \thandler{\inst}{\type}{\instss}{\type}	\tag{type of handlers} \\
+	\val \Coloneqq	& ...							\tag{values} \\
+				& \inst							\tag{instance} \\
+				& \vhandlerci{\val}					\tag{handler} \\
+	\comp \Coloneqq	& ...							\tag{computations} \\
+				& \copi{\val}{\eop}{\val}{x}{\type}{\comp}	\tag{operation call} \\
+\end{align*}
+
+Now operations are called on a specific instance. Which means we also need instances as values and a type for instances. Handlers now also handle operations on a specific instance only.
+
+\subsection{Typing rules}
+Following are the typing rules for instances and the updated rules for handlers and computations (note that only the rule for operation call really changes).
+The judgement for computations is now: 
+$\Gamma \vdash \comp : \type \; ; \instss$, instead of a set of effects we now have a set of instances. \\
+\[\frac{
+	\inst \in \insts{\eff}
+}{
+	\Gamma \vdash \inst : \tinst{\inst}
+}\]
+\vspace{10pt}
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \val : \tinst{\inst} \\
+	\Gamma , x_r : \type_1 \vdash \comp_r : \type_2 \; ; \instss_r \\
+	\eop_i : \tarr{\alpha_i}{\beta_i} \in \eff \\
+	\Gamma , x_i : \alpha_i , k_i : \tarre{\beta_i}{\instss_r}{\type_2} \vdash \comp_i : \type_2 \; ; \instss_i
+	\end{array}
+}{
+	\begin{array}{l}
+	\Gamma \vdash \vhandleri{\val}{
+		\textit{return} \; (x_r:\type_1) \rightarrow \comp_r,
+		\eop_1 ( x_1 ; k_1 ) \rightarrow \comp_1,
+		...,
+		\eop_n ( x_n ; k_n ) \rightarrow \comp_n
+	} \\ \indent : \thandler{\inst}{\type_1}{(\instss_r \cup \bigcup_{i=1}^n \instss_i)}{\type_2}
+	\end{array}
+}\]
+
+
+% computations
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \val : \tbool \\
+	\Gamma \vdash \comp_1 : \type \; ; \instss_1 \\
+	\Gamma \vdash \comp_2 : \type \; ; \instss_2
+	\end{array}
+}{
+	\Gamma \vdash \cif{\val}{\comp_1}{\comp_2} : \type \; ; \instss_1 \cup \instss_2
+}\]
+\end{minipage}
+\vspace{10pt}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \val : \type
+	\end{array}
+}{
+	\Gamma \vdash \creturn{\val} : \type \; ; \varnothing
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \val_1 : \tarre{\type_1}{\instss}{\type_2} \\
+	\Gamma \vdash \val_2 : \type_1
+	\end{array}
+}{
+	\Gamma \vdash \capp{\val_1}{\val_2} : \type_2 \; ; \instss
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\inst \in \insts{\eff} \\
+	\eop : \tarr{\type_1}{\type_2} \in \eff \\
+	\Gamma \vdash \val : \type_1 \\
+	\Gamma , x : \type_2 \vdash \comp : \type_3 \; ; \instss
+	\end{array}
+}{
+	\Gamma \vdash \copi{\inst}{\eop}{\val}{x}{\type_2}{\comp} : \type_3 \; ; \{ \inst \} \cup \instss
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \comp_1 : \type_1 \; ; \instss_1 \\
+	\Gamma , x : \type_1 \vdash \comp_2 : \type_2 \; ; \instss_2 \\
+	\end{array}
+}{
+	\Gamma \vdash (\cdo{x}{\comp_1}{\comp_2}) : \type_2 \; ; \instss_1 \cup \instss_2
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \val : \thandler{\inst}{\type_1}{\instss_1}{\type_2} \\
+	\Gamma \vdash \comp : \type_1 \; ; \{ \inst \} \cup \instss_2
+	\end{array}
+}{
+	\Gamma \vdash \chandle{\val}{\comp} : \type_2 \; ; \instss_1 \cup \instss_2
+}\]
+\end{minipage}
+
+\subsection{Small-step operational semantics}
+
+Following are the rules that change.
+
+\[\frac{
+}{
+	\cdo{x}{\copi{\inst}{\eop}{\val}{y}{\type}{\comp_1}}{\comp_2} \rightsquigarrow \copi{\inst}{\eop}{\val}{y}{\type}{\cdo{x}{\comp_1}{\comp_2}}
+}\]
+
+\vspace{20pt}
+$h := \vhandleri{\inst}{
+		\textit{return} \; (x_r:\type) \rightarrow \comp_r,
+		\eop_1 (  x_1 ; k_1 ) \rightarrow \comp_1,
+		...,
+		\eop_n ( x_n ; k_n ) \rightarrow \comp_n
+	}$, in the following rules:\\
+	
+\vspace{20pt}
+\[\frac{
+	\eop_i \in \{ \eop_1, ..., \eop_n \}
+}{
+	\chandle{h}{\copi{\inst}{\eop_i}{\val}{x}{\type}{\comp}} \rightsquigarrow \comp_i[\val / x_i, (\vabs{x}{\type}{\chandle{h}{\comp}}) / k_i]
+}\]
+
+\[\frac{
+	 \inst \neq \inst' \vee \eop \notin \{ \eop_1, ..., \eop_n \}
+}{
+	\chandle{h}{\copi{\inst'}{\eop}{\val}{x}{\type}{\comp}} \rightsquigarrow \copi{\inst'}{\eop}{\val}{x}{\type}{\chandle{h}{\comp}}
+}\]
+
+\iffalse
+\newpage
+\section{Algebraic effects with dynamic instances}
+
+In the syntax we have to add a computation to dynamically create instances of a certain effect.
+\begin{align*}
+	\comp \Coloneqq	& ...							\tag{computations} \\
+				& \cnew{\eff}					\tag{instance creation} \\
+\end{align*}
+We also have to change the types of the instances, functions and handlers. We cannot simply annotate these with the instance, since they are not statically known.
+But annotating with just the effect is too general, since there can be multiple instances of the same effect and we'd like to be more precise with our types.
+\fi
+\begin{thebibliography}{9}
+\bibitem{pretnar}
+Pretnar, Matija. "An introduction to algebraic effects and handlers. invited tutorial paper." Electronic Notes in Theoretical Computer Science 319 (2015): 19-35.
+\bibitem{effectsystem}
+Bauer, Andrej, and Matija Pretnar. "An effect system for algebraic effects and handlers." International Conference on Algebra and Coalgebra in Computer Science. Springer, Berlin, Heidelberg, 2013.
+\end{thebibliography}
+
+\end{document}

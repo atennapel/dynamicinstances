@@ -1,0 +1,55 @@
+/T:* \x:T . x
+
+map : forall a b . (a -> b) -> Row a -> Row b
+
+map [Type] [Type] (\(t : Type) . Maybe t) { x : Int, y : Str | r}
+map [Type] : forall b . (Type -> b) -> Row Type -> Row b
+map [Type] [Type] : (Type -> Type) -> Row Type -> Row Type
+\(t : Type) . Maybe t : Type -> Type
+map [Type] [Type] (\(t : Type) . Maybe t) : Row Type -> Row Type
+map [Type] [Type] (\(t : Type) . Maybe t) { x : Int, y : Str | r}
+	=> { x : Maybe Int, y : Maybe Str | map [Type] [Type] (\(t : Type) . Maybe t) r}
+
+
+
+
+
+
+
+
+
+s ::=										sorts
+	Kind									sort constructor
+	s -> s								sort arrow
+
+k ::=										kinds
+	k_1, k_2, k_3					kind variables
+	Type									kind of types
+	Row										kind of rows
+	k -> k								kind arrow
+	k k										kind application
+	\(k_1 : s) . k				kind abstraction
+	forall (k_1 : s) . k	universal kind
+
+t ::=										types
+	t_1, t_2, t_3 				type variables
+	t -> t								type of functions
+	t t										type application
+	\(t_1 : k) . t				type abstraction
+	/(k_1 : s) . t				kind abstraction
+	forall (t_1 : k) . t	universal type
+	t [k]									kind application
+	{}										empty row
+	{ l : t | t}					row extension
+
+e ::=										terms
+	e_1, e_2, e_3					variables
+	e e										application
+	\(e_1 : t) . e				abstraction
+	/(t_1 : k) . e				type abstraction
+	e [t]									type application
+
+
+
+
+

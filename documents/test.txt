@@ -1,0 +1,16 @@
+k ::=
+  Type
+  Row
+
+t ::=
+  x
+  ()
+  t -> t t
+  <>
+  <e | t>
+  forall
+
+v ::=
+x
+()
+

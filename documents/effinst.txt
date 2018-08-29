@@ -1,0 +1,60 @@
+F = { Flip }
+O = { flip^Flip }
+
+t ::=
+()
+Bool
+Inst F
+t -> {f,...} t
+
+e ::=
+x
+\(x:t).c
+
+()
+true
+false
+
+new f
+
+x
+e e
+
+e#o
+do x <- e in e
+handle { return x -> e, x#o x1 x2 -> e, ... }
+
+G |- e : t ; f
+
+G,x:t |- x : t
+
+G,x:t |- e : r ; f
+-------------
+G |- \(x:t).e : t -> f r
+
+G |- new f : Inst f
+
+G |- true : Bool
+G |- false : Bool
+G |- () : ()
+
+G |- e1 : a -> b ; {}
+G |- e2 : a ; {}
+-------------
+G |- e1 e2 : b
+
+G |- e : Inst f ; {}
+o of f : a -> b
+-----------------
+G |- e#o : a -> f b
+
+G |- e1 : t ; f1
+G,x:t |- e2 : r ; f2
+----------------------
+G |- do x <- e1 in e2 : r ; f1 U f2
+
+G |- e : t ; f
+G,x:t |- er : r ; fr
+G,xi: |- ei : ;
+-------------------------------
+G |- handle e with { return x -> er, ii#oi xi ki -> ei, ... } : r ; (f - )

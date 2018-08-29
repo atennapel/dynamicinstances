@@ -1,0 +1,486 @@
+\documentclass[12pt]{article}
+
+\usepackage{listings}
+\usepackage{mathtools}
+
+% expressions
+\newcommand\eapp[2]{#1 \; #2}
+\newcommand\eimplapp[2]{#1 \; \{ #2 \} }
+\newcommand\eabs[2]{\lambda #1 \; . \; #2}
+\newcommand\eabsanno[3]{\lambda(#1 : #2) \; . \; #3}
+\newcommand\eimplabs[2]{\lambda \{ #1 \} \; . \; #2}
+\newcommand\eanno[2]{#1 : #2}
+\newcommand\elet[3]{$let$ \; #1 = #2 \; $in$ \; #3}
+\newcommand\eletr[3]{$letr$ \; #1 = #2 \; $in$ \; #3}
+
+\newcommand\synth[0]{\Rightarrow \!\!\! \Rightarrow}
+
+\lstset{
+	frame = single,
+	basicstyle=\ttfamily\footnotesize,
+	breaklines=true
+}
+
+\title{Thesis report 1b}
+\author{Albert ten Napel}
+\date{}
+
+\begin{document}
+
+\section{Syntax}
+
+\begin{tabular}{l l l}
+	$\kappa \Coloneqq$ & & kinds \\
+		& Type & kind of values \\
+		& Row & kind of rows \\
+		& Label & kind of labels \\
+		& $\kappa \rightarrow \kappa$ & kind arrow \\
+\end{tabular}
+
+\vspace{15pt}\noindent
+$l$ ranges of an infinite set of labels \\
+
+\vspace{15pt}\noindent
+\begin{tabular}{l l l}
+	$\pi \Coloneqq$ & & constraints \\
+		& $\tau / l$ & row lacks label \\
+		& value($\tau$) & type is not an effect type \\
+		& $\tau \sim \tau$ & row equality \\
+\end{tabular}
+
+\vspace{15pt}\noindent
+\begin{tabular}{l l l}
+	$\sigma \Coloneqq$ & & constrained type \\
+		& $\pi \Rightarrow \sigma$ & constraint \\
+		& $\tau$ & type \\
+\end{tabular}
+
+\vspace{15pt}\noindent
+\begin{tabular}{l l l}
+	$\tau, A, B, C \Coloneqq$ & & types \\
+		& $'l$ & label \\
+		& $c$ & type constructor \\
+		& $\alpha$ & type variable\\
+		& $\tau \; \tau$ & type application \\
+		& $\tau \rightarrow \tau$ & arrow \\
+		& $<>$ & empty row \\ 
+		& $< \; $l$ \; : \tau \; | \; \tau >$ & row extension \\
+		& $\mu \alpha \; . \; \tau$ & recursive type \\
+		& $\forall \alpha \; . \; \sigma$ & forall with constraint \\
+\end{tabular}
+
+\vspace{15pt}\noindent
+\begin{tabular}{l l l}
+	$e \Coloneqq$ & & terms \\
+		& $'l$ & label \\
+		& $x$ & variable \\
+		& $\eapp{e}{e}$ & application \\
+		& $\eabs{x}{e}$ & abstraction \\
+		& $\eanno{x}{\tau}$ & annotation \\
+
+		& handle $\{$ return $x \; v \rightarrow e, l_0 \; x \; k \; v \rightarrow e, ..., l_n \; x \; k \; v \rightarrow e \}$ & effect handling \\
+\end{tabular}
+
+\subsection{Type aliases}
+() $:$ Rec $<>$ \\
+
+\subsection{Type constructors}
+Lab $:$ Label $\rightarrow$ Type \\
+Rec $:$ Row $\rightarrow$ Type \\
+Var $:$ Row $\rightarrow$ Type \\
+Eff $:$ Row $\rightarrow$ Type $\rightarrow$ Type \\
+
+\subsection{Constants}
+() $:$ Rec $<>$ \hspace{15pt} unit \\
+$(.) : \forall l t r \; . \; r/l  \; \Rightarrow \; $Lab$ \; l \rightarrow $Rec$ < l : t \; | \; r > \rightarrow t $ \hspace{15pt} record selection \\
+$(.{+}) : \forall l t r \; . \; r/l  \; \Rightarrow \; $Lab$ \; l \rightarrow $Rec$ \; r \rightarrow $Rec$ < l : t \; | \; r > $ \hspace{15pt} record extension \\
+$(.-) : \forall l t r \; . \; r/l  \; \Rightarrow \; $Lab$ \; l \rightarrow $Rec$ <l : t \; | \; r > \rightarrow $Rec$ \; r $ \hspace{15pt} record restriction \\
+$(@) : \forall l t r \; . \; r/l  \; \Rightarrow \; $Lab$ \; l \rightarrow t \rightarrow $Var$ <l : t \; | \; r >$ \hspace{15pt} variant injection \\
+$(@{+}) : \forall l t r \; . \; r/l  \; \Rightarrow \; $Lab$ \; l \rightarrow $Var$ \; r \rightarrow $Var$ <l : t \; | \; r >$ \hspace{15pt} variant embedding \\
+$(?) : \forall l a b r \; . \; r/l  \; \Rightarrow \; $Lab$ \; l \rightarrow ( a \rightarrow b ) \rightarrow ($Var$ \; r \rightarrow b) \rightarrow $Var$ <l : a \; | \; r> \rightarrow b$ \hspace{15pt} variant elimination \\
+end $: \forall t \; . \; $Var$ <> \rightarrow t$ \hspace{15pt} end variant elimination \\
+$(!) : \forall l a b r \; . \; r/l  \; \Rightarrow \; $Lab$ \; l \rightarrow a \rightarrow $Eff$ <l : a \rightarrow b \; | \; r > b$ \hspace{15pt} perform effect \\
+bind $: \forall a b r \; . \; $Eff$ \; r \; a \rightarrow (a \rightarrow $Eff$ \; r \; b) \rightarrow $Eff$ \; r \; b $ \hspace{15pt} effect sequencing \\
+$(!{+}) : \forall l a b t r \; . \; r/l  \; \Rightarrow \; $Lab$ \; l \rightarrow $Eff$ \; r \; t \rightarrow $Eff$ <l : a \rightarrow b \; | \; r > t$ \hspace{15pt} effect embedding \\
+pure $: \forall rt \; . \; $Eff$ \; r \; t  \rightarrow t$ \hspace{15pt} value from effect type \\
+return $: \forall rt \; . \; t \rightarrow $Eff$ \; r \; t$ \hspace{15pt} value into effect type \\
+fix $: \forall t \; . \; (t \rightarrow t) \rightarrow t$ \hspace{15pt} fixed point \\
+
+\newpage
+\section{Typing rules}
+Constraints are missing at the moment.\\
+
+\begin{tabular}{l l l}
+	$\Psi \Coloneqq$ & & contexts \\
+		& $\cdot$ & empty \\
+		& $\Psi , \alpha$ & type variable \\
+		& $\Psi , x : \tau$ & annotation \\
+\end{tabular}
+
+\subsection{Subtyping}
+$\leq$Var \[\frac{
+	\begin{array}{c}
+	\alpha \in \Psi
+	\end{array}
+}{
+	\Psi \vdash \alpha \leq \alpha
+}\]\\
+$\leq$Label \[\frac{
+	\begin{array}{c}
+	\end{array}
+}{
+	\Psi \vdash \; 'l \leq \; 'l
+}\]\\
+$\leq$Con \[\frac{
+	\begin{array}{c}
+	\end{array}
+}{
+	\Psi \vdash \; c \leq \; c
+}\]\\
+$\leq<>$ \[\frac{
+	\begin{array}{c}
+	\end{array}
+}{
+	\Psi \vdash \; <> \leq \; <>
+}\]\\
+$\leq\rightarrow$ \[\frac{
+	\begin{array}{c}
+	\Psi \vdash B_1 \leq A_1 \\
+	\Psi \vdash A_2 \leq B_2 \\
+	\end{array}
+}{
+	\Psi \vdash A_1 \rightarrow A_2 \leq B_1 \rightarrow B_2
+}\]\\
+$\leq$App \[\frac{
+	\begin{array}{c}
+	\Psi \vdash A_1 \leq B_1 \\
+	\Psi \vdash A_2 \leq B_2 \\
+	\end{array}
+}{
+	\Psi \vdash A_1 A_2 \leq B_1 B_2
+}\]\\
+$\leq\forall$L \[\frac{
+	\begin{array}{c}
+	\Psi \vdash \tau \\
+	\forall \notin \tau \\
+	\Psi \vdash [\tau / \alpha]A \leq B \\
+	\end{array}
+}{
+	\Psi \vdash \forall \alpha . A \leq B
+}\]\\
+$\leq\forall$R \[\frac{
+	\begin{array}{c}
+	\Psi , \beta \vdash A \leq B \\
+	\end{array}
+}{
+	\Psi \vdash A \leq \forall \beta . B
+}\]\\
+$\leq\mu$LR \[\frac{
+	\begin{array}{c}
+	\Psi , \gamma \vdash [\gamma / \alpha]A \leq [\gamma / \beta]B \\
+	\end{array}
+}{
+	\Psi \vdash \mu \alpha . A \leq \mu \beta . B
+}\]\\
+$\leq\mu$L \[\frac{
+	\begin{array}{c}
+	\Psi  \vdash [(\mu \alpha . A) / \alpha]A \leq B \\
+	\end{array}
+}{
+	\Psi \vdash \mu \alpha . A \leq B
+}\]\\
+$\leq\mu$R \[\frac{
+	\begin{array}{c}
+	\Psi  \vdash A \leq  [(\mu \alpha . B) / \alpha]B \\
+	\end{array}
+}{
+	\Psi \vdash A \leq \mu \alpha . B
+}\]\\
+$\leq$Rowextend= \[\frac{
+	\begin{array}{c}
+	\Psi \vdash A \leq B \\
+	\Psi \vdash R \leq P \\
+	\end{array}
+}{
+	\Psi \vdash < \; l \; : A \; | \; R > \; \leq \; < \; l \; : B \; | \; P >
+}\]\\
+$\leq$Rowextend \[\frac{
+	\begin{array}{c}
+	Unimplemented \\
+	\end{array}
+}{
+	\Psi \vdash < \; l \; : A \; | \; R > \; \leq \; < \; m \; : B \; | \; P >
+}\]\\
+
+\subsection{Declarative typing rules}
+
+Var \[\frac{
+	\begin{array}{c}
+	x : \tau \in \Psi \\
+	\end{array}
+}{
+	\Psi \vdash x \Rightarrow \tau
+}\]\\
+Sub \[\frac{
+	\begin{array}{c}
+	\Psi \vdash e \Rightarrow A \\
+	\Psi \vdash A \leq B \\
+	\end{array}
+}{
+	\Psi \vdash e \Leftarrow B
+}\]\\
+Anno \[\frac{
+	\begin{array}{c}
+	\Psi \vdash A \\
+	\Psi \vdash e \Leftarrow A \\
+	\end{array}
+}{
+	\Psi \vdash e : A \Rightarrow A
+}\]\\
+$\forall$I \[\frac{
+	\begin{array}{c}
+	\Psi , \alpha \vdash e \Leftarrow A \\
+	\end{array}
+}{
+	\Psi \vdash e \Leftarrow \forall \alpha . A
+}\]\\
+$\forall$App \[\frac{
+	\begin{array}{c}
+	\Psi \vdash \tau \\
+	\forall \notin \tau \\
+	\Psi \vdash [ \tau / \alpha ] A \bullet e \synth C \\
+	\end{array}
+}{
+	\Psi \vdash \forall \alpha . A \bullet e \synth C
+}\]\\
+$\rightarrow$I \[\frac{
+	\begin{array}{c}
+	\Psi , x : A \vdash e \Leftarrow B \\
+	\end{array}
+}{
+	\Psi \vdash \eabs{x}{e} \Leftarrow A \rightarrow B
+}\]\\
+$\rightarrow$I$\Rightarrow$ \[\frac{
+	\begin{array}{c}
+	\forall \notin \sigma \\
+	\forall \notin \tau \\
+	\Psi \vdash \sigma \rightarrow \tau \\
+	\Psi , x : \sigma \vdash e \Leftarrow \tau \\
+	\end{array}
+}{
+	\Psi \vdash \eabs{x}{e} \Rightarrow \sigma \rightarrow \tau
+}\]\\
+$\rightarrow$E \[\frac{
+	\begin{array}{c}
+	\Psi \vdash e_1 \Rightarrow A \\
+	\Psi \vdash A \bullet e_2 \synth C \\
+	\end{array}
+}{
+	\Psi \vdash \eapp{e_1}{e_2} \Rightarrow C
+}\]\\
+$\rightarrow$App \[\frac{
+	\begin{array}{c}
+	\Psi \vdash e \Leftarrow A \\
+	\end{array}
+}{
+	\Psi \vdash A \rightarrow C \bullet e \synth C
+}\]\\
+Label \[\frac{
+	\begin{array}{c}
+	\end{array}
+}{
+	\Psi \vdash \; 'l \Rightarrow Lab \; 'l
+}\]\\
+Handle \[\frac{
+	\begin{array}{c}
+	\Psi , x : A, v : V \vdash e_r \Leftarrow {Eff} \; p \; B \\
+	{[} \\
+		l_i : A_i \rightarrow B_i  \in r \\
+		l_i \notin p \\
+		\Psi , x : A_i , k : (B_i \rightarrow V \rightarrow {Eff} \; p \; B) , v : V \vdash e_i : {Eff} \; p \; B \\
+	{]}_{0 \leq i \leq n} \\
+	\end{array}
+}{
+	\begin{array}{c}
+	\Psi \vdash handle \{ return \; x \; v \rightarrow e_r, l_0 \; x \; k \; v \rightarrow e_0, ..., l_{n} \; x \; k \; v \rightarrow e_{n} \} \Rightarrow \\
+		\forall V A \; B \; r \; p \; . \; V \rightarrow {Eff} \; r \; A \rightarrow {Eff} \; p \; B
+	\end{array}
+}\]\\
+
+\newpage
+\section{Examples}
+
+\begin{lstlisting}[caption=Records and variants]
+.'x { x = 10 } == 10
+.+'x 10 {} == { x = 10 }
+.-'x { x = 10 } == {}
+.:'x (\x -> x + 1) { x = 10 } == { x = 11 }
+
+@'Just 10 == @'Just 10
+@:'Just (\x -> x + 1) (@'Just 10) == @'Just 11
+?'Just (\x -> x + 1) (\_ -> 0) (@'Just 10) == 11
+?'Just (\x -> x + 1) (\_ -> 0) (@'Nothing {}) == 0
+
+?'Just (\x -> x + 1) (\_ -> 0)
+  : forall (r : Row) . Var < Just : Int | r > -> Int
+?'Just (\x -> x + 1) end : Var < Just : Int > -> Int
+\end{lstlisting}
+
+\begin{lstlisting}[caption=Basic effect handlers]
+// define flip action
+flip : Eff < Flip : () -> Bool | r > Bool
+flip = !Flip {}
+
+// program that uses the flip effect
+program : Eff < Flip : () -> Bool > Bool
+program =
+  x <- flip;
+  y <- flip;
+  return (x || y)
+
+// handler that always returns True
+alwaysTrue : Eff < Flip : () -> Bool | r > t -> Eff r t
+alwaysTrue = handle { Flip {} k _ -> k True _ } ()
+
+// result of the program
+result : Bool
+result = pure (alwaysTrue program) == True
+\end{lstlisting}
+
+\newpage
+\begin{lstlisting}[caption=State effect]
+// state effect handler (v = initial state)
+state :
+  v ->
+  Eff < Get : () -> v, Set : v -> () | r > t ->
+  Eff r t
+state = handle {
+  Get _ k v -> k v v)
+  Set v k _ -> k () v)
+}
+
+get = !Get {}
+set v = !Set v
+
+program =
+  x <- get;
+  set 10;
+  y <- get;
+  return (x + y)
+
+result = pure (state 100 program) == 110
+\end{lstlisting}
+
+\begin{lstlisting}[caption=IO effects]
+runIO :
+  Eff <
+    putLine : Str -> (),
+    getLine : () -> Str
+    | r
+  > t -> Eff r t
+
+infiniteGreeter =
+  name <- getLine;
+  putLine ("Hello " ++ name ++ "!");
+  infiniteGreeter
+
+main = runIO infiniteGreeter
+\end{lstlisting}
+
+\newpage
+\begin{lstlisting}[caption=Recursion effect]
+// fix as an effectful function
+fix : (t -> t) -> Eff < fix : (t -> t) -> t | r > t
+runFix : Eff < fix : (t -> t) -> t | r > x -> Eff r x 
+
+facEff : Eff < fix : (Int -> Int) -> Int | r > (Int -> Int)
+facEff = fix (\fac n ->
+  if (n <= 1)
+    1
+  else
+    n * (fac (n - 1)))
+
+fac : Int -> Eff < fix : (Int -> Int) -> Int | r > Int
+fac n =
+  f <- fac;
+  return (f n)
+
+main = runFix (fac 10)
+\end{lstlisting}
+
+\newpage
+\section{Questions}
+- How does impredicativity interact with row-polymorphic types or algebraic effects? \\
+- How do higher-ranked types interact with row-polymorphic types or algebraic effects. (ST monad in Haskell?) \\
+- Handlers that only handle one effect? (hypothesis: not as expressive as handlers with multiple effects) \\
+- Best way to introduce recursive types in to the system? (equi-recursive or iso-recursive) \\
+- Is a seperation between value types and computation types necessary? (call-by-push-value) \\
+
+\section{Papers}
+
+\subsection{Type system}
+\textbf{Generalizing Hindley-Milner type inference algorithms} \\
+\textit{Heeren, B. J., Jurriaan Hage, and S. Doaitse Swierstra. "Generalizing Hindley-Milner type inference algorithms." (2002).} \\
+Description of the Hindley-Milner type system and inference algorithm. Also describes a constraint-solving algorithm.
+\\
+\textbf{HMF: Simple type inference for first-class polymorphism} \\
+\textit{Leijen, Daan. "HMF: Simple type inference for first-class polymorphism." ACM Sigplan Notices. Vol. 43. No. 9. ACM, 2008.} \\
+Describes an extension of Hindley-Milner that enables System F types including rank-N types and impredicative polymorphism.
+\\
+\textbf{Complete and easy bidirectional typechecking for higher-rank polymorphism.} \\
+\textit{Dunfield, Joshua, and Neelakantan R. Krishnaswami. "Complete and easy bidirectional typechecking for higher-rank polymorphism." ACM SIGPLAN Notices. Vol. 48. No. 9. ACM, 2013.} 
+A type system with System F types, including higher-ranked types and predicative instantiation. Contains bidirectional typing rules. Can subsume Hindley-Milner.
+\\
+\textbf{Ur: statically-typed metaprogramming with type-level record computation.} \\
+\textit{Chlipala, Adam. "Ur: statically-typed metaprogramming with type-level record computation." ACM Sigplan Notices. Vol. 45. No. 6. ACM, 2010.} \\
+Describes the programming Language Ur, which has advanced type-level computation on records.
+
+\subsection{Row polymorphism}
+\textbf{A polymorphic type system for extensible records and variants} \\
+\textit{Gaster, Benedict R., and Mark P. Jones. "A polymorphic type system for extensible records and variants." (1996).} \\
+Describes a simple type system with (row polymorphic) extensible records and variants that only require lacks constraints.
+\\
+\textbf{Extensible records with scoped labels.} \\
+\textit{Leijen, Daan. "Extensible records with scoped labels." Trends in Functional Programming 5 (2005): 297-312.} \\
+Describes a very simple extension to Hindley-Milner that support extensible records and "scoped labels", which means labels can occur multiple times in a row.
+This requires no constraints at all.
+\\
+\textbf{First-class labels for extensible rows.} \\
+\textit{Leijen, D. J. P. "First-class labels for extensible rows." (2004).} \\
+Describes a type system where labels are first-class and one can define functions that take labels as arguments.
+This simplifies the language but complicates the type system.
+
+\subsection{Effect handlers}
+\textbf{An effect system for algebraic effects and handlers.} \\
+\textit{Bauer, Andrej, and Matija Pretnar. "An effect system for algebraic effects and handlers." International Conference on Algebra and Coalgebra in Computer Science. Springer, Berlin, Heidelberg, 2013.} \\
+Describes an effect system called "core Eff" which is an extension of a ML-style language with algebraic effects and handlers. The system is formalized in Twelf.
+\\
+\textbf{Programming with algebraic effects and handlers.} \\
+\textit{Bauer, Andrej, and Matija Pretnar. "Programming with algebraic effects and handlers." Journal of Logical and Algebraic Methods in Programming 84.1 (2015): 108-123.} \\
+Describes the programming language Eff, which is a ML-like language with algebraic effects and effect handlers.
+\\
+\textbf{An introduction to algebraic effects and handlers.} \\
+\textit{Pretnar, Matija. "An introduction to algebraic effects and handlers. invited tutorial paper." Electronic Notes in Theoretical Computer Science 319 (2015): 19-35.} \\
+This paper is a nice introduction to algebraic effects and handlers. It shows examples and gives semantics and typing rules.
+\\
+\textbf{Liberating effects with rows and handlers.} \\
+\textit{Hillerstr\"{o}m, Daniel, and Sam Lindley. "Liberating effects with rows and handlers." Proceedings of the 1st International Workshop on Type-Driven Development. ACM, 2016.} \\
+Describes the Links programming language, which combines algebraic effects and handlers with row polymorphism. Includes a formalization.
+\\
+\textbf{Algebraic effects and effect handlers for idioms and arrows.} \\
+\textit{Lindley, Sam. "Algebraic effects and effect handlers for idioms and arrows." Proceedings of the 10th ACM SIGPLAN workshop on Generic programming. ACM, 2014.} \\
+Describes a generalization of algebraic effects that allows for other kinds of effectful computations.
+\\
+\textbf{Koka: Programming with row polymorphic effect types.} \\
+\textit{Leijen, Daan. "Koka: Programming with row polymorphic effect types." arXiv preprint arXiv:1406.2061 (2014).} \\
+Describes a programming language called Koka that has row polymorphic effect types.
+\\
+\textbf{Type directed compilation of row-typed algebraic effects.} \\
+\textit{Leijen, Daan. "Type directed compilation of row-typed algebraic effects." POPL. 2017.} \\
+Provides a nice up-to-date presentation of Koka, including algebraic effects and handlers.
+\\
+\textbf{Do Be Do Be Do: The Frank Programming Language} \\
+\textit{Lindley, Sam \& McBride, Conor, "http://homepages.inf.ed.ac.uk/slindley/papers/frankly-draft-march2014.pdf"} \\
+Describes a programming language called Frank where every function is an effect handler. Any function will implicitly work over effectful programs.
+Makes a distinction between value and computation types.
+\end{document}

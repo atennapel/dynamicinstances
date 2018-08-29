@@ -1,0 +1,666 @@
+\documentclass[12pt]{article}
+
+\usepackage{listings}
+\usepackage{mathtools}
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+\newcommand\llabel[0]{l}
+
+% types
+\newcommand\kind[0]{\kappa} % kind
+\newcommand\type[0]{\tau} % type
+\newcommand\tconst[0]{c_\type} % constant
+\newcommand\tconstr[0]{C} % constraints
+\newcommand\tproof[0]{p} % proofs
+\newcommand\tabs[3]{\lambda(#1 : #2) . #3} % type abstraction
+\newcommand\tapp[2]{#1 \; #2} % type application
+\newcommand\tappt[3]{\tapp{\tapp{#1}{#2}}{#3}} % type application 2
+\newcommand\tkapp[2]{#1 [ #2 ]} % kind application
+\newcommand\tarr[2]{#1 \rightarrow #2} % type arrow
+\newcommand\tforall[3]{\forall(#1 : #2) . #3} % universal type
+\newcommand\tforalls[2]{\forall#1 . #2} % universal type nested
+\newcommand\tempty[0]{\langle\rangle} % empty row
+\newcommand\textend[3]{\langle#1:#2|#3\rangle} % row extension
+\newcommand\textends[2]{\langle#1:#2\rangle} % row extension without rest
+\newcommand\textendss[1]{\langle#1\rangle} % row extension free
+
+\newcommand\tconstraint[0]{\textit{Constraint}} % type of constraints
+\newcommand\tsort[0]{\textit{Sort}} % type of sorts
+\newcommand\tkind[0]{\textit{Kind}} % type of kinds
+\newcommand\ttype[0]{\textit{Type}} % type of types
+\newcommand\trow[0]{\textit{Row}} % type of rows
+\newcommand\tbool[0]{\textit{Bool}} % type of booleans
+\newcommand\tvariant[0]{\textit{Var}} % type of variants
+\newcommand\trecord[0]{\textit{Rec}} % type of records
+\newcommand\teff[0]{\textit{Eff}} % type of booleans
+
+\newcommand\clacks[2]{#1\backslash#2} % type of booleans
+
+\newcommand\pempty[1]{\textit{LacksEmpty} \; #1} % empty row lacks all
+\newcommand\pextend[2]{\textit{LacksExtend} \; #1 \; #2} % row extension lacks label if different
+
+\newcommand\timplies[2]{#1 \Rightarrow #2} % implies sugar
+
+% terms
+\newcommand\term[0]{e} % term
+\newcommand\econst[0]{c_\term} % constant
+\newcommand\eapp[2]{#1 \; #2} % application
+\newcommand\eabs[3]{\lambda(#1 : #2) . #3} % abstraction
+\newcommand\eabss[2]{\lambda#1 . #2} % abstractions
+\newcommand\etabs[3]{\Lambda(#1 : #2) . #3} % term type abstraction
+\newcommand\etabss[2]{\Lambda#1 . #2} % term type abstractions
+\newcommand\etapp[2]{#1 [ #2 ]} % term type application
+\newcommand\eempty[0]{\{\}} % empty record
+\newcommand\eselect[1]{\textit{select} \; #1} % select
+\newcommand\eextend[1]{\textit{extend} \; #1} % extend
+\newcommand\erestrict[1]{\textit{restrict} \; #1} % restrict
+\newcommand\einject[1]{\textit{inject} \; #1} % inject
+\newcommand\eembed[1]{\textit{embed} \; #1} % embed
+\newcommand\eelim[1]{\textit{elim} \; #1} % elim
+\newcommand\eend[0]{\textit{end}} % elim end
+\newcommand\eperform[1]{\textit{perform} \; #1} % perform
+\newcommand\eeffembed[1]{\textit{effembed} \; #1} % effembed
+\newcommand\ereturn[0]{\textit{return}} % return
+\newcommand\epure[0]{\textit{pure}} % pure
+\newcommand\ebind[0]{\textit{bind}} % bind
+\newcommand\ehandle[1]{\textit{handle}\{#1\}} % handle
+
+\newcommand\efix[0]{\textit{fix}} % fix
+\newcommand\etrue[0]{\textit{true}} % true
+\newcommand\efalse[0]{\textit{false}} % false
+
+\lstset{
+	frame = single,
+	basicstyle=\ttfamily\footnotesize,
+	breaklines=true
+}
+
+\title{Thesis report 3}
+\author{Albert ten Napel}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Syntax}
+The type system is based on System $F_\omega$ with types and kinds unified and row-polymorphic types with lacks constraints. We will talk about kinds if we mean types classifying types.
+\textit{I have omitted first-class labels at the moment.} \\
+
+$\llabel$ taken from an infinite set of labels
+\begin{align*}
+	% types
+	\type, \kind \Coloneqq &							\tag{types} \\
+				& \alpha, \beta, \rho				\tag{type variables} \\
+				& \tconst						\tag{type constants} \\
+				& \tconstr						\tag{constraints} \\
+				& \tproof						\tag{proofs} \\
+				& \tabs{\alpha}{\kind}{\type}			\tag{type abstraction} \\
+				& \tapp{\type}{\type}				\tag{type application} \\
+				& \tkapp{\type}{\kind}				\tag{kind application} \\
+				& \tarr{\type}{\type}				\tag{type arrows} \\
+				& \tforall{\alpha}{\kind}{\type}			\tag{universally quantified type} \\
+				& \tempty						\tag{empty row} \\
+				& \textend{\llabel}{\type}{\type}		\tag{row extension} \\
+				& \displaybreak \\
+	% type constants
+	\tconst \Coloneqq 	&							\tag{type constants} \\
+				& \tsort						\tag{type of types of types of types} \\
+				& \tconstraint					\tag{type of constraints} \\
+				& \tkind						\tag{type of types of types} \\
+				& \ttype						\tag{type of types} \\
+				& \trow						\tag{type of rows} \\
+				& \tbool						\tag{type of booleans} \\
+				& \trecord						\tag{type constructor of records} \\
+				& \tvariant						\tag{type constructor of variants} \\
+				& \teff						\tag{type constructor of effects} \\
+				& \\				
+	% constraints
+	\tconstr \Coloneqq 	&							\tag{constraints} \\
+				& \clacks{\type}{\llabel}				\tag{row lacks label} \\
+				& \\
+	% proofs
+	\tproof \Coloneqq 	&							\tag{proofs} \\
+				& \pempty{\llabel}					\tag{empty row lacks label proof} \\
+				& \pextend{\llabel}{\llabel}			\tag{row extension lacks label proof} \\
+				& \displaybreak \\
+	% terms
+	\term \Coloneqq	&							\tag{terms} \\
+				& x, y, z						\tag{variables} \\
+				& \econst						\tag{constants} \\
+				& \eapp{\term}{\term}				\tag{application} \\
+				& \eabs{x}{\type}{\term}				\tag{abstraction} \\
+				& \etabs{\alpha}{\kind}{\term}			\tag{term type abstraction} \\
+				& \etapp{\term}{\type}				\tag{term type application} \\
+				& \eempty						\tag{empty record} \\
+				& \eselect{\llabel}					\tag{record selection} \\
+				& \eextend{\llabel}					\tag{record extension} \\
+				& \erestrict{\llabel}					\tag{record restriction} \\
+				& \einject{\llabel}					\tag{variant injection} \\
+				& \eembed{\llabel}					\tag{variant embedding} \\
+				& \eelim{\llabel}					\tag{variant elimination} \\
+				& \eend						\tag{variant elimination end} \\
+				& \eperform{\llabel}				\tag{perform effect} \\
+				& \eeffembed{\llabel}				\tag{embed effect} \\
+				& \ereturn						\tag{return} \\
+				& \epure						\tag{pure} \\
+				& \ebind						\tag{bind} \\
+				& \ehandle{\ereturn\;s\;v \rightarrow \term, \llabel_1\;s\;v\;k \rightarrow \term, ..., \llabel_n\;s\;v\;k \rightarrow \term} \tag{handle effect} \\
+				& \\
+	% constants
+	\econst \Coloneqq	&							\tag{constants} \\
+				& \efix						\tag{fix (general recursion)} \\
+				& \etrue						\tag{true} \\
+				& \efalse						\tag{false} \\
+				& \\
+	% contexts
+	\Gamma \Coloneqq 	&							\tag{contexts} \\
+				& \varnothing					\tag{empty} \\
+				& \Gamma , \alpha : \kind				\tag{type variable has kind} \\
+				& \Gamma , x : \tau					\tag{variable has type} \\
+\end{align*}
+
+\subsection{Syntactic sugar}
+
+\subsubsection{Types}
+\begin{align*}
+\tarr{\type_1}{\tarr{\type_2}{\type_3}} 				&:= \tarr{\type_1}{(\tarr{\type_2}{\type_3})} \\
+\tforalls{(\alpha : \tau_1)(\beta : \tau_2)}{\tau_3} 			&:= \tforall{\alpha}{\tau_1}{\tforall{\beta}{\tau_2}{\tau_3}} \\
+\timplies{\type_1}{\type_2} 						&:= \tforall{\_}{\type_1}{\type_2} \\
+\textends{\llabel}{\type}							&:= \textend{\llabel}{\type}{\tempty} \\
+\textendss{\llabel_1 : \type_1, \llabel_2 : \type_2 | \type_3}	&:= \textend{\llabel_1}{\type_1}{\textend{\llabel_2}{\type_2}{\type_3}} \\
+\end{align*}
+
+\subsubsection{Terms}
+\begin{align*}
+\term_1 \; \term_2 \; \term_3			 			&:= (\term_1 \; \term_2) \; \term_3 \\
+\eabss{(x : \tau_1)(y : \tau_2)}{\term}		 			&:= \eabs{x}{\tau_1}{\eabs{y}{\tau_2}{\term}} \\
+\etabss{(\alpha : \tau_1)(\beta : \tau_2)}{\term}		 	&:= \etabs{\alpha}{\tau_1}{\etabs{\beta}{\tau_2}{\term}} \\
+\end{align*}
+
+\newpage
+\section{Typing rules}
+
+\subsection{Judgments}
+$\Gamma \vdash \tau : \kind$ (type $\tau$ is wellformed and has kind $\kind$) \\
+$\Gamma \vdash \term : \tau$ (term $\term$ has type $\tau$) \\
+
+\subsection{Row equivalence}
+We show the rules for equivalence of well-formed rows. \\
+Eq-Refl \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\rho \cong \rho
+}\]\\
+Eq-Trans \[\frac{
+	\begin{array}{l}
+	\rho_1 \cong \rho_2 \\
+	\rho_2 \cong \rho_3
+	\end{array}
+}{
+	\rho_1 \cong \rho_3
+}\]\\
+Eq-Head \[\frac{
+	\begin{array}{l}
+	\rho_1 \cong \rho_2
+	\end{array}
+}{
+	\textend{\llabel}{\tau}{\rho_1} \cong \textend{\llabel}{\tau}{\rho_2}
+}\]\\
+Eq-Swap \[\frac{
+	\begin{array}{l}
+	\llabel_1 \neq \llabel_2
+	\end{array}
+}{
+	\textend{\llabel_1}{\tau_1}{\textend{\llabel_2}{\tau_2}{\rho}} \cong \textend{\llabel_2}{\tau_2}{\textend{\llabel_1}{\tau_1}{\rho}}
+}\]\\
+
+\subsection{Kinding rules}
+First we define an order between kinds. \\
+$Sort < Constraint < Kind$, $Kind < Type$ and $Kind < Row$. \\
+Now we define the function $\textit{lgeKinds}(\kind_1, \kind_2)$ to find the lowest greater element of two kinds using the relation above, the function is undefined if no such element exist. \\
+
+Now we present the kinding rules for type constants. Notice that sort is a type of sort, which means the system is inconsistent. Since we will be adding general recursion later we are not worried about this. \\\\
+K-Constraints \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \tconstr : \tconstraint
+}\]\\
+K-Sort \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \tsort : \tsort
+}\]\\
+K-Constraint \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \tconstraint : \tsort
+}\]\\
+K-Kind \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \tkind : \tsort
+}\]\\
+K-Type \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \ttype : \tkind
+}\]\\
+K-Row \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \trow : \tkind
+}\]\\
+K-Bool \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \tbool : \ttype
+}\]\\
+K-Record \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \trecord : \tarr{\trow}{\ttype}
+}\]\\
+K-Variant \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \tvariant : \tarr{\trow}{\ttype}
+}\]\\
+K-Eff \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \teff : \tarr{\trow}{\tarr{\ttype}{\ttype}}
+}\]\\
+\newpage
+Next the kinding rules for the proofs. There are only two proofs, a proof that the empty row does not contain any label and that row extension lacks a label if the labels are different. \\\\
+K-LacksEmpty \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \pempty{\llabel} : \clacks{\tempty}{\llabel}
+}\]\\
+K-LacksExtend \[\frac{
+	\begin{array}{l}
+	\llabel_1 \neq \llabel_2
+	\end{array}
+}{
+	\Gamma \vdash \pextend{\llabel_1}{\llabel_2} : \tforalls{(\alpha : \ttype)(\rho : \trow)}{\tarr{\clacks{\rho}{\llabel_1}}{\clacks{\textend{\llabel_2}{\alpha}{\rho}}{\llabel_1}}}
+}\]\\
+
+Lastly the kinding rules for the other types. \\\\\
+K-TVar \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma , \alpha : \kind \vdash \alpha : \kind
+}\]\\
+K-TAbs \[\frac{
+	\begin{array}{l}
+	\Gamma , \alpha : \kind_1 \vdash \type  : \kind_2
+	\end{array}
+}{
+	\Gamma \vdash \tabs{\alpha}{\kind_1}{\type} : \tarr{\kind_1}{\kind_2}
+}\]\\
+K-TApp \[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \type_1  : \tarr{\kind_1}{\kind_2} \\
+	\Gamma \vdash \type_2 : \kind_1
+	\end{array}
+}{
+	\Gamma \vdash \tapp{\type_1}{\type_2} : \kind_2
+}\]\\
+K-KApp \[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \type_1  : \tforall{\alpha}{\kind}{\type_3} \\
+	\Gamma \vdash \type_2 : \kind
+	\end{array}
+}{
+	\Gamma \vdash \tkapp{\type_1}{\type_2} : [\type_2/\alpha]\type_3
+}\]\\
+K-Arr \[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \type_1  : \kind_1 \\
+	\Gamma \vdash \type_2 : \kind_2
+	\end{array}
+}{
+	\Gamma \vdash \tarr{\type_1}{\type_2} : \textit{lgeKinds}(\kind_1, \kind_2)
+}\]\\
+K-Forall \[\frac{
+	\begin{array}{l}
+	\Gamma , \alpha : \kind_1 \vdash \type  : \kind_2
+	\end{array}
+}{
+	\Gamma \vdash \tforall{\alpha}{\kind_1}{\type} : \kind_2
+}\]\\
+K-RowEmpty \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \tempty : \trow
+}\]\\
+K-RowExtend \[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \type_1 : \ttype \\
+	\Gamma \vdash \type_2 : \trow
+	\end{array}
+}{
+	\Gamma \vdash \textend{\llabel}{\type_1}{\type_2} : \trow
+}\]\\
+
+\subsection{Typing rules}
+Now we present the typing rules for terms. \\
+T-True \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \etrue : \tbool
+}\]\\
+T-False \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \efalse : \tbool
+}\]\\
+T-Var \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma , x : \type \vdash x : \type
+}\]\\
+T-App \[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \term_1 : \tarr{\type_1}{\type_2} \\
+	\Gamma \vdash \term_2 : \type_1
+	\end{array}
+}{
+	\Gamma \vdash \tapp{\term_1}{\term_2} : \type_2
+}\]\\
+T-Abs \[\frac{
+	\begin{array}{l}
+	\Gamma , x : \type_1 \vdash \term : \type_2
+	\end{array}
+}{
+	\Gamma \vdash \eabs{x}{\type_1}{\term} : \tarr{\type_1}{\type_2}
+}\]\\
+T-TAbs \[\frac{
+	\begin{array}{l}
+	\Gamma , \alpha : \kappa \vdash \term : \type
+	\end{array}
+}{
+	\Gamma \vdash \etabs{\alpha}{\kind}{\term} : \tforall{\alpha}{\kind}{\type}
+}\]\\
+T-TApp \[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \term : \tforall{\alpha}{\kind}{\type_2} \\
+	\Gamma \vdash \type_1 : \kind
+	\end{array}
+}{
+	\Gamma \vdash \etapp{\term}{\type_1} : [\type_1/\alpha]\type_2
+}\]\\
+Next operations on records and variants, note that the rows have lacks constraints so that duplicate labels are not possible.\\
+T-EmptyRecord \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \eempty : \tapp{\trecord}{\tempty}
+}\]\\
+T-Select \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \eselect{\llabel} : \tforalls{(\alpha:\ttype)(\rho:\trow)}{\timplies{\clacks{\rho}{\llabel}}{\tarr{\tapp{\trecord}{\textend{\llabel}{\alpha}{\rho}}}{\alpha}}}
+}\]\\
+T-Extend \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \eextend{\llabel} : \tforalls{(\alpha:\ttype)(\rho:\trow)}{\timplies{\clacks{\rho}{\llabel}}{\tarr{\alpha}{\tarr{\tapp{\trecord}{\rho}}{\tapp{\trecord}{\textend{\llabel}{\alpha}{\rho}}}}}}
+}\]\\
+T-Restrict \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \erestrict{\llabel} : \tforalls{(\alpha:\ttype)(\rho:\trow)}{\timplies{\clacks{\rho}{\llabel}}{\tarr{\tapp{\trecord}{\textend{\llabel}{\alpha}{\rho}}}{\tapp{\trecord}{\rho}}}}
+}\]\\
+T-Inject \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \einject{\llabel} : \tforalls{(\alpha:\ttype)(\rho:\trow)}{\timplies{\clacks{\rho}{\llabel}}{\tarr{\alpha}{\tapp{\tvariant}{\textend{\llabel}{\alpha}{\rho}}}}}
+}\]\\
+T-Embed \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \eembed{\llabel} : \tforalls{(\alpha:\ttype)(\rho:\trow)}{\timplies{\clacks{\rho}{\llabel}}{\tarr{\tapp{\tvariant}{\rho}}{\tapp{\tvariant}{\textend{\llabel}{\alpha}{\rho}}}}}
+}\]\\
+T-Elim \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \eelim{\llabel} : \tforalls{(\alpha:\ttype)(\beta:\ttype)(\rho:\trow)}{\timplies{\clacks{\rho}{\llabel}}{\tarr{(\tarr{\alpha}{\beta})}{(\tarr{\tarr{\tapp{\tvariant}{\rho}}{\beta})}{\tarr{\tapp{\tvariant}{\textend{\llabel}{\alpha}{\rho}}}{\beta}}}}}
+}\]\\
+Notice here that any type can be returned, since it's impossible to create an empty variant.\\
+T-End \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \eend : \tforalls{(\alpha:\ttype)}{\tarr{\tapp{\tvariant}{\tempty}}{\alpha}}
+}\]\\
+Lastly the typing rules for the effects.\\
+T-Perform \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \eperform{\llabel} : \tforalls{(\alpha:\ttype)(\beta:\ttype)(\rho:\trow)}{\timplies{\clacks{\rho}{\llabel}}{\tarr{\alpha}{
+\tappt{\teff}{\textend{\llabel}{\tarr{\alpha}{\beta}}{\rho}}{\beta}
+}}}
+}\]\\
+T-EffEmbed \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \eeffembed{\llabel} :
+	\tforalls{(\alpha:\ttype)(\beta:\ttype)(t:\ttype)(\rho:\trow)}{\timplies{\clacks{\rho}{\llabel}}{\tarr{\tappt{\teff}{\rho}{t}}{\tappt{\teff}{\textend{\llabel}{\tarr{\alpha}{\beta}}{\rho}}{t}}}}
+}\]\\
+T-Return \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \ereturn : \tforalls{(\alpha:\ttype)(\rho:\trow)}{\tarr{\alpha}{\tappt{\teff}{\rho}{\alpha}}}
+}\]\\
+T-Pure \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \epure : \tforalls{(\alpha:\ttype)}{\tarr{\tappt{\teff}{\tempty}{\alpha}}{\alpha}}
+}\]\\
+T-Bind \[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Gamma \vdash \ebind : \tforalls{(\alpha:\ttype)(\beta:\ttype)(\rho:\ttype)}{\tarr{(\tarr{\alpha}{\tappt{\teff}{\rho}{\beta}})}{\tarr{\tappt{\teff}{\rho}{\alpha}}{\tappt{\teff}{\rho}{\beta}}}}
+}\]\\
+\newpage
+Every handler is parameterized, meaning every handler can manipulate a single piece of state represented by variable $s$ of type $\sigma$.\\
+T-Handle \[\frac{
+	\begin{array}{l}
+	\Gamma , s : \sigma, v : \alpha \vdash \term_r : \beta \\
+	\lbrack \\
+	\indent \Gamma , s : \sigma, v : \alpha_i, k : (\tarr{\sigma}{\tarr{\beta_i}{\tappt{\teff}{\rho}{\beta}}}) \vdash \term_i : \tappt{\teff}{\rho}{\beta} \\
+	\rbrack_{0 < i \leq n}
+	\end{array}
+}{
+	\begin{array}{l}
+	\Gamma \vdash \ehandle{\ereturn\;s\;v \rightarrow \term_r, \llabel_1\;s\;v\;k \rightarrow \term_1, ..., \llabel_n\;s\;v\;k \rightarrow \term_n} :\\
+	\indent\indent \tarr{\sigma}{\tarr{\tappt{\teff}{\textendss{\llabel_1 : \tarr{\alpha_1}{\beta_1}, ..., \llabel_n : \tarr{\alpha_n}{\beta_n} | \rho}}{\alpha}}{\tappt{\teff}{\rho}{\beta}}}
+	\end{array}
+}\]\\
+
+\section{Examples}
+\subsection{Formal examples}
+The type, definition and usage of the id function. \\
+$id : \tforall{t}{\ttype}{\tarr{t}{t}}$ \\
+$id = \etabs{t}{\ttype}{\eabs{x}{t}{t}}$ \\
+$\etapp{id}{\tbool} : \tarr{\tbool}{\tbool}$ \\
+\\
+Creating the record $\{ x = true \}$.Notice the explicit proof that is passed, proving that the empty row does not contain the label $x$.\\
+$trueRecord : \tapp{\trecord}{\textendss{x : \tbool}}$\\
+$trueRecord = \eapp{\eapp{\etapp{\etapp{\etapp{\eextend{x}}{\tbool}}{\tempty}}{\pempty{x}}}{\etrue}}{\eempty}$\\
+\\
+Adding another field $y$ to $trueRecord$: $\{ y = false, x = true \}$. We need a bigger proof that shows that $trueRecord$ does not contain $y$.\\
+$biggerRecord : \tapp{\trecord}{\textendss{y : \tbool, x : \tbool}}$ \\
+$biggerRecord =\\\indent\eapp{\eapp{\etapp{\etapp{\etapp{\eextend{y}}{\tbool}}{\textendss{x : \tbool}}}{
+\tapp{\tkapp{\tkapp{\pextend{y}{x}}{\tbool}}{\tempty}}{(\pempty{y})}
+}}{\efalse}}{trueRecord}$
+
+\newpage
+\subsection{Hypothetical examples}
+Following some examples in a hypothetical programming language based on the calculus presented. I will assume polymorphic arguments can be inferred.
+\begin{lstlisting}[caption=Booleans as Variants]
+type alias Bool = Var { True : (), False : () }
+
+true : Bool
+true = inject True ()
+
+false : Bool
+false = inject False ()
+
+elimBool : forall(t : Type) . t -> t -> Bool -> t
+elimBool vt vf =
+  elim True (\_ -> vt) (
+  elim False (\_ -> vf)
+  end)
+
+not : Bool -> Bool
+not = elimBool False True
+\end{lstlisting}
+\begin{lstlisting}[caption=State effect]
+// state handler returns a tuple of the final state and
+// the resulting value of the computation
+state : forall(s : Type) . s ->
+  Eff <get : () -> s, set : s -> ()> v -> (s, v)
+state = handle {
+  return s v -> v,
+  get s () k -> k s s, // the second arg to the callback k is
+                       // the internal state value of the
+                       // handler
+  set s v k -> k v () // internal state is replaced by v
+}
+\end{lstlisting}
+\newpage
+\section{Possible extensions}
+- Type-level row operations, such as union, difference, row elimination (induction).\\
+- Let rows be indexed by the kinds of types in the rows. Rows with higher kinds might be useful, if there are type-level row operations. \\
+- Indexed algebraic effects (State effect where $set$ can change the type of the value stored).\\
+For example:
+\begin{lstlisting}[caption=State effect that can change state type]
+// @ is used to indicate the pre- and post-types of the state
+state : forall(s : Type) . s ->
+  Eff <
+    get : s@() -> s@s,
+    set : forall(t : Type) . s@t -> t@()
+  >
+\end{lstlisting}
+\begin{lstlisting}[caption=Typesafe state machine]
+// the possible states
+type On = ()
+type Off = ()
+
+// you can only perform the turnOn effect if the state is Off and after the state will be On
+type switchEffect = Eff <
+  turnOn : Off@() -> On@()
+  turnOff : On@() -> Off@()
+> ()
+\end{lstlisting}
+
+\section{Questions}
+- Will first-class labels have any useful interactions with algebraic effects? \\
+- Handlers that only handle one effect? (hypothesis: not as expressive as handlers with multiple effects) A: No, the operations may interact and so the handlers cannot be decomposed \\
+- Best way to introduce recursive types in to the system? (equi-recursive or iso-recursive) \\
+- Is a seperation between value types and computation types necessary? (call-by-push-value) A: Computation types give cleaner mathematical semantics, might be easier to work with \\
+
+\section{Papers}
+
+\subsection{Type system}
+\textbf{Generalizing Hindley-Milner type inference algorithms} \\
+\textit{Heeren, B. J., Jurriaan Hage, and S. Doaitse Swierstra. "Generalizing Hindley-Milner type inference algorithms." (2002).} \\
+Description of the Hindley-Milner type system and inference algorithm. Also describes a constraint-solving algorithm.
+\\
+\textbf{HMF: Simple type inference for first-class polymorphism} \\
+\textit{Leijen, Daan. "HMF: Simple type inference for first-class polymorphism." ACM Sigplan Notices. Vol. 43. No. 9. ACM, 2008.} \\
+Describes an extension of Hindley-Milner that enables System F types including rank-N types and impredicative polymorphism.
+\\
+\textbf{Complete and easy bidirectional typechecking for higher-rank polymorphism.} \\
+\textit{Dunfield, Joshua, and Neelakantan R. Krishnaswami. "Complete and easy bidirectional typechecking for higher-rank polymorphism." ACM SIGPLAN Notices. Vol. 48. No. 9. ACM, 2013.} 
+A type system with System F types, including higher-ranked types and predicative instantiation. Contains bidirectional typing rules. Can subsume Hindley-Milner.
+\\
+\textbf{Ur: statically-typed metaprogramming with type-level record computation.} \\
+\textit{Chlipala, Adam. "Ur: statically-typed metaprogramming with type-level record computation." ACM Sigplan Notices. Vol. 45. No. 6. ACM, 2010.} \\
+Describes the programming Language Ur, which has advanced type-level computation on records.
+\\
+\textbf{System FC with explicit kind equality} \\
+\textit{Weirich, Stephanie, Justin Hsu, and Richard A. Eisenberg. "System FC with explicit kind equality." ACM SIGPLAN Notices. Vol. 48. No. 9. ACM, 2013.} \\
+Describes the core calculus of Haskell, System FC. Shows the advantages of unifying types and kinds. System FCs use if coercions might also be interesting for row-polymorphic types.
+
+\subsection{Row polymorphism}
+\textbf{A polymorphic type system for extensible records and variants} \\
+\textit{Gaster, Benedict R., and Mark P. Jones. "A polymorphic type system for extensible records and variants." (1996).} \\
+Describes a simple type system with (row polymorphic) extensible records and variants that only require lacks constraints.
+\\
+\textbf{Extensible records with scoped labels.} \\
+\textit{Leijen, Daan. "Extensible records with scoped labels." Trends in Functional Programming 5 (2005): 297-312.} \\
+Describes a very simple extension to Hindley-Milner that support extensible records and "scoped labels", which means labels can occur multiple times in a row.
+This requires no constraints at all.
+\\
+\textbf{First-class labels for extensible rows.} \\
+\textit{Leijen, D. J. P. "First-class labels for extensible rows." (2004).} \\
+Describes a type system where labels are first-class and one can define functions that take labels as arguments.
+This simplifies the language but complicates the type system.
+
+\subsection{Effect handlers}
+\textbf{An effect system for algebraic effects and handlers.} \\
+\textit{Bauer, Andrej, and Matija Pretnar. "An effect system for algebraic effects and handlers." International Conference on Algebra and Coalgebra in Computer Science. Springer, Berlin, Heidelberg, 2013.} \\
+Describes an effect system called "core Eff" which is an extension of a ML-style language with algebraic effects and handlers. The system is formalized in Twelf.
+\\
+\textbf{Programming with algebraic effects and handlers.} \\
+\textit{Bauer, Andrej, and Matija Pretnar. "Programming with algebraic effects and handlers." Journal of Logical and Algebraic Methods in Programming 84.1 (2015): 108-123.} \\
+Describes the programming language Eff, which is a ML-like language with algebraic effects and effect handlers.
+\\
+\textbf{An introduction to algebraic effects and handlers.} \\
+\textit{Pretnar, Matija. "An introduction to algebraic effects and handlers. invited tutorial paper." Electronic Notes in Theoretical Computer Science 319 (2015): 19-35.} \\
+This paper is a nice introduction to algebraic effects and handlers. It shows examples and gives semantics and typing rules.
+\\
+\textbf{Liberating effects with rows and handlers.} \\
+\textit{Hillerstr\"{o}m, Daniel, and Sam Lindley. "Liberating effects with rows and handlers." Proceedings of the 1st International Workshop on Type-Driven Development. ACM, 2016.} \\
+Describes the Links programming language, which combines algebraic effects and handlers with row polymorphism. Includes a formalization.
+\\
+\textbf{Algebraic effects and effect handlers for idioms and arrows.} \\
+\textit{Lindley, Sam. "Algebraic effects and effect handlers for idioms and arrows." Proceedings of the 10th ACM SIGPLAN workshop on Generic programming. ACM, 2014.} \\
+Describes a generalization of algebraic effects that allows for other kinds of effectful computations.
+\\
+\textbf{Koka: Programming with row polymorphic effect types.} \\
+\textit{Leijen, Daan. "Koka: Programming with row polymorphic effect types." arXiv preprint arXiv:1406.2061 (2014).} \\
+Describes a programming language called Koka that has row polymorphic effect types.
+\\
+\textbf{Type directed compilation of row-typed algebraic effects.} \\
+\textit{Leijen, Daan. "Type directed compilation of row-typed algebraic effects." POPL. 2017.} \\
+Provides a nice up-to-date presentation of Koka, including algebraic effects and handlers.
+\\
+\textbf{Do Be Do Be Do: The Frank Programming Language} \\
+\textit{Lindley, Sam \& McBride, Conor, "http://homepages.inf.ed.ac.uk/slindley/papers/frankly-draft-march2014.pdf"} \\
+Describes a programming language called Frank where every function is an effect handler. Any function will implicitly work over effectful programs.
+Makes a distinction between value and computation types.
+
+\end{document}

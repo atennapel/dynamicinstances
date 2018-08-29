@@ -1,0 +1,126 @@
+\documentclass[12pt]{article}
+
+\usepackage{listings}
+\usepackage{mathtools}
+
+\newcommand\llabel[0]{l} % label
+
+% sorts
+\newcommand\sort[0]{s} % sort
+\newcommand\skind[0]{\mathnormal{Kind}} % sort of kinds
+\newcommand\sarr[2]{#1 \rightarrow #2} % sort arrow
+
+% kinds
+\newcommand\kind[0]{k} % kind
+\newcommand\kvar[1]{\kappa_{#1}} % kind var
+\newcommand\ktype[0]{\mathnormal{Type}} % kind of types
+\newcommand\krow[0]{\mathnormal{Row}} % kind of rows
+\newcommand\klabel[0]{\mathnormal{Label}} % kind of rows
+\newcommand\karr[2]{#1 \rightarrow #2} % kind arrow
+\newcommand\kapp[2]{#1 \; #2} % kind application
+\newcommand\kabs[3]{\lambda(#1 : #2) . #3} % kind abstraction
+\newcommand\kforall[3]{\forall(#1 : #2) . #3} % universal kind
+
+% types
+\newcommand\type[0]{t} % type
+\newcommand\tlabel[1]{'#1} % type label
+\newcommand\tvar[1]{\tau_{#1}} % type var
+\newcommand\tlab[0]{\mathnormal{Lab}} % label constructor
+\newcommand\trecord[0]{\mathnormal{Rec}} % record constructor
+\newcommand\tvariant[0]{\mathnormal{Var}} % variant constructor
+\newcommand\tarr[2]{#1 \rightarrow #2} % type arrow
+\newcommand\tapp[2]{#1 \; #2} % type application
+\newcommand\tabs[3]{\lambda(#1 : #2) . #3} % type abstraction
+\newcommand\tforall[3]{\forall(#1 : #2) . #3} % universal type
+\newcommand\tkabs[3]{\Lambda(#1 : #2) . #3} % type kind abstraction
+\newcommand\tkapp[2]{#1 [ #2 ]} % type kind application
+\newcommand\trowempty[0]{\{\}} % empty row
+\newcommand\trowextend[3]{\{ #1 : #2 \; | \; #3 \}} % row extension
+\newcommand\trowelim[0]{\mathnormal{rowelim}} % row eliminator
+
+% terms
+\newcommand\term[0]{e} % term
+\newcommand\evar[1]{\nu_{#1}} % variable
+\newcommand\elabel[1]{'#1} % label
+\newcommand\eapp[2]{#1 \; #2} % application
+\newcommand\eabs[3]{\lambda(#1 : #2) . #3} % abstraction
+\newcommand\etabs[3]{\Lambda(#1 : #2) . #3} % term type abstraction
+\newcommand\etapp[2]{#1 [ #2 ]} % term type application
+\newcommand\eempty[0]{\{\}} % empty record
+
+\lstset{
+	frame = single,
+	basicstyle=\ttfamily\footnotesize,
+	breaklines=true
+}
+
+\title{System $F^{\rho}_{\omega}$}
+\author{Albert ten Napel}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Syntax}
+$\llabel$ taken from an infinite set of labels
+\begin{align}
+	% sorts
+	\sort \Coloneqq 	& 							\tag{sorts} \\
+				& \skind						\tag{sort of kinds} \\
+				& \sarr{\sort}{\sort}				\tag{sort arrow} \\
+	% kinds
+	\kind \Coloneqq	&							\tag{kinds} \\
+				& \kvar{}, \kvar{1}, \kvar{2}, \kvar{3}		\tag{kind variable} \\
+				& \ktype						\tag{kind of types} \\
+				& \krow						\tag{kind of rows} \\
+				& \klabel						\tag{kind of labels} \\
+				& \karr{\kind}{\kind}				\tag{kind arrow} \\
+				& \kapp{\kind}{\kind}				\tag{kind application} \\
+				& \kabs{\kvar{}}{\sort}{\kind}			\tag{kind abstraction} \\
+				& \kforall{\kvar{}}{\sort}{\kind}			\tag{universally quantified kind} \\
+	% types
+	\type \Coloneqq	&							\tag{types} \\
+				& \tlabel{\llabel}					\tag{type labels} \\
+				& \tvar{}, \tvar{1}, \tvar{2}, \tvar{3}		\tag{type variables} \\
+				& \tlab						\tag{label constructor} \\
+				& \trecord						\tag{record constructor} \\
+				& \tvariant						\tag{variant constructor} \\
+				& \tarr{\type}{\type}				\tag{type arrows} \\
+				& \tapp{\type}{\type}				\tag{type application} \\
+				& \tabs{\tvar{}}{\kind}{\type}			\tag{type abstraction} \\
+				& \tforall{\tvar{}}{\kind}{\type}			\tag{universally quantified type} \\
+				& \tkabs{\kvar{}}{\sort}{\type}			\tag{type kind abstraction} \\
+				& \tkapp{\type}{\kind}				\tag{type kind application} \\
+				& \trowempty					\tag{empty row} \\
+				& \trowextend{\llabel}{\type}{\type} 		\tag{row extension} \\
+				& \trowelim				 		\tag{row elimination} \\
+	% terms
+	\term \Coloneqq	&							\tag{terms} \\
+				& \evar{}, \evar{1}, \evar{2}, \evar{3}	\tag{variables} \\
+				& \elabel{\llabel}					\tag{labels} \\
+				& \eapp{\term}{\term}				\tag{application} \\
+				& \eabs{\evar{}}{\type}{\term}			\tag{abstraction} \\
+				& \etabs{\tvar{}}{\kind}{\term}			\tag{term type abstraction} \\
+				& \etapp{\term}{\type}				\tag{term type application} \\
+				& \eempty						\tag{empty record} \\
+\end{align}
+
+\noindent
+id : $\tforall{\tvar{}}{\ktype}{\tarr{\tvar{}}{\tvar{}}}$ \\
+id = $\etabs{\tvar{}}{\ktype}{\eabs{\evar{}}{\tvar{}}{\evar{}}}$ \\
+\\
+const : $\tforall{\tvar{1}}{\ktype}{\tforall{\tvar{2}}{\ktype}{\tarr{\tvar{1}}{\tarr{\tvar{2}}{\tvar{1}}}}}$ \\
+const = $\etabs{\tvar{1}}{\ktype}{\etabs{\tvar{2}}{\ktype}{\eabs{\evar{1}}{\tvar{1}}{\eabs{\evar{2}}{\tvar{2}}{\evar{1}}}}}$ \\
+\\
+% rowelim : forall (k1 : Kind) (k2 : Kind) . k2 -> (label -> k1 -> k2 -> k2) -> Row k1 -> k2
+kind rowelim : $\kforall{\kvar{1}}{\skind}{\kforall{\kvar{2}}{\skind}{\karr{\kvar{2}}{\karr{(    \karr{\klabel}{\karr{\kvar{1}}{\karr{\kvar{2}}{\kvar{2}}}}      )}{\karr{\kapp{\krow}{\kvar{1}}}{\kvar{2}}}}}}$ \\
+% rowmap : forall (k1 : Kind) (k2 : Kind) . (k1 -> k2) -> Row k1 -> Row k2
+kind rowmap : $\kforall{\kvar{1}}{\skind}{ \kforall{\kvar{2}}{\skind}{\karr{(\karr{\kvar{1}}{\kvar{2}})}{\karr{\kapp{\krow}{\kvar{1}}}{\kapp{\krow}{\kvar{2}}}}} }$ \\
+type rowmap = 
+$\tkabs{\kvar{1}}{\skind}
+{\tkabs{\kvar{2}}{\skind}
+{\tabs{\tvar{1}}{\karr{\kvar{1}}{\kvar{2}}}\\{\tapp{\tapp{\tkapp{\tkapp{\trowelim}{\kvar{1}}}{\kapp{\krow}{\kvar{2}}}}{\trowempty}}{  (\tabs{\tvar{2}}{\klabel}{\tabs{\tvar{3}}{\kvar{1}}{\tabs{\tvar{4}}{    \kapp{\krow}{\kvar{2}}    }{    \trowextend{\tvar{2}}{\tapp{\tvar{1}}{\tvar{3}}}{\tvar{4}}     }}})  }}}}     $ \\
+\\
+
+
+\end{document}

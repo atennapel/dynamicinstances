@@ -1,0 +1,65 @@
+t ::=
+  u v w
+  ct
+  C
+  p
+  t -> D
+  forall(u:t).t
+  <>
+  <l : t | t>
+
+ct ::=
+  Constraint
+  Sort
+  Kind
+  Type
+  Row
+  Bool
+  Rec
+  Var
+  Eff
+
+C ::=
+  t\l
+
+p ::=
+  LacksEmpty l
+  LacksExtend l k
+
+e ::=
+  x y z
+  ce
+  \(x:t).e
+  e e
+  /(u:t).e
+  e [t]
+  {}
+  select l
+  extend l
+  restrict l
+  inject l
+  embed l
+  elim l
+  handle { return s v -> e , l_1 s v k -> e , ..., l_n s v k -> e  }
+  perform l
+  effembed l
+  return
+  pure
+  bind
+
+ce ::=
+  fix
+  true
+  false
+
+eC ::=
+  return e
+
+
+return 5 : Int!<>
+
+
+
+t => t := forall(_ : t).t
+
+id = /(t:Type).\(x:t).x : forall(t:Type).t -> t

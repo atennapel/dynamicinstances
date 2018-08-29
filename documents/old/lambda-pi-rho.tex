@@ -1,0 +1,81 @@
+\documentclass[12pt]{article}
+
+\usepackage{listings}
+\usepackage{mathtools}
+\usepackage{amsfonts}
+\usepackage{mathrsfs}
+
+% terms
+\newcommand\tapp[2]{#1 \; #2} % application
+\newcommand\tabs[3]{\lambda(#1 : #2) . #3} % abstraction
+\newcommand\tpi[3]{\Pi(#1 : #2) . #3} % pi
+\newcommand\ttype[0]{\mathnormal{Type}} % Type
+\newcommand\trow[0]{\mathnormal{Row}} % Row
+\newcommand\tlabel[0]{\mathnormal{Label}} % Label
+\newcommand\trecord[0]{\mathnormal{Rec}} % rec
+\newcommand\tvariant[0]{\mathnormal{Var}} % var
+\newcommand\tuni[1]{\mathcal{U}_{#1}} % Uni
+\newcommand\tempty[0]{\langle\rangle} % empty row
+\newcommand\textend[3]{\langle #1 : #2 \; | \; #3\rangle} % row extend
+\newcommand\tconstrained[2]{#1 \Rightarrow #2} % constrained type
+\newcommand\trecempty[0]{\{\}} % empty record
+\newcommand\trecextend[0]{\mathnormal{extend}} % record extend
+\newcommand\trecrestrict[0]{\mathnormal{restrict}} % record restriction
+\newcommand\trecselect[0]{\mathnormal{select}} % record selection
+\newcommand\tvarinject[0]{\mathnormal{inject}} % variant injection
+\newcommand\tvarembed[0]{\mathnormal{embed}} % variant embedding
+\newcommand\tvarelim[0]{\mathnormal{elim}} % variant elimination
+
+% constraints
+\newcommand\clacks[2]{#1 / #2} % lacks constraint
+\newcommand\croweq[2]{#1 \sim #2} % row equality
+
+\lstset{
+	frame = single,
+	basicstyle=\ttfamily\footnotesize,
+	breaklines=true
+}
+
+\title{$\lambda_{\rho\omega}$}
+\author{Albert ten Napel}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Syntax}
+$l$ is chosen from an infinite set of labels.
+\begin{align}
+	t, T \Coloneqq	&							\tag{terms} \\
+				& x, y, z						\tag{variables} \\
+				& 'l 							\tag{labels} \\
+				& c 							\tag{constants} \\
+				& \tapp{t}{t}					\tag{application} \\
+				& \tabs{x}{T}{t}					\tag{abstraction} \\
+				& \tpi{x}{T}{t}					\tag{dependent function type} \\
+				& \tuni{\mathbb{N}}				\tag{universe} \\
+				& \nonumber \\
+				& \tempty						\tag{empty row} \\
+				& \textend{t}{T}{t}				\tag{row extension} \\
+				& \tconstrained{C}{T}				\tag{constrained type} \\
+				& \trecempty						\tag{empty record} \\
+				& \nonumber \\				
+	c \Coloneqq		&							\tag{constants} \\
+				& \ttype						\tag{universe of small types} \\
+				& \trow						\tag{universe of rows} \\
+				& \tlabel						\tag{universe of labels} \\
+				& \trecord						\tag{record constructor} \\
+				& \tvariant						\tag{variant constructor} \\
+				& \nonumber\\
+				& \trecextend					\tag{record extension} \\
+				& \trecrestrict					\tag{record restriction} \\
+				& \trecselect						\tag{record selection} \\
+				& \tvarinject						\tag{variant injection} \\
+				& \tvarembed					\tag{variant embedding} \\
+				& \tvarelim						\tag{variant elimination} \\
+				& \nonumber \\
+	C \Coloneqq		&							\tag{constraints} \\
+				& \clacks{T}{t}					\tag{row lacks label} \\
+				& \croweq{T}{T}					\tag{row equality} \\
+\end{align}
+\end{document}

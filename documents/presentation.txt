@@ -1,0 +1,161 @@
+effect Flip {
+  flip : () -> Bool
+}
+
+program1 : () -> <Flip> Int
+program1 () =
+  if flip () then
+    1
+  else
+    0
+
+flipHandler : <Flip> r => r
+flipHandler = handler {
+  flip () k -> k True
+}
+
+program1result : Int
+program1result =
+  with flipHandler handle
+    program1 ()
+
+effect State t {
+  get : () -> t
+  put : t -> ()
+}
+
+effect Exception e {
+  throw : forall t. e -> t
+}
+
+program2 : () -> <Flip, Exception ()> Int
+program2 () =
+  if flip () then
+    42
+  else
+    throw ()
+
+result : () -> <Flip> Int
+result () = with handler {
+  throw () k -> 0
+} handle program2 ()
+
+program3 =
+  if flip () then
+    2
+  else if flip () then
+    1
+  else
+    0
+
+effect Flip {
+  flip : () -> Bool
+}
+
+flip1 : Flip
+flip1 = new Flip
+
+flip2 : Flip
+flip2 = new Flip
+
+program4 : () -> <flip1, flip2> Int
+program4 () =
+  if flip1#flip () then
+    2
+  else if flip2#flip () then
+    1
+  else
+    0
+
+flipTrue : Flip -> (<f> t => t)
+flipTrue i = handler i {
+  Flip () k -> k True
+}
+
+result : () -> <flip2> Int
+result () = with (flipTrue flip1) handle program4 ()
+
+
+------------------------
+
+effect State {
+  get : () -> Int
+  put : Int -> ()
+}
+
+program1 : Int -> <State> Int
+program1 n =
+  x <- get ();
+  put (n + x);
+  y <- get ();
+  y * y
+
+stateHandler : <State> t => (Int -> t)
+stateHandler = handler {
+  get () k -> (\v -> k v v)
+  put v k -> (\_ -> k () v) 
+}
+
+result1 : Int -> Int
+result1 n =
+  (with stateHandler
+   handle (program1 n)) 1 -- result1 n == (n + 1)^2
+
+---------------------------
+
+effect Exception {
+  throw : Str -> Void
+}
+
+program2 : Int -> <State, Exception> Int
+program2 n =
+  if n > 10 then
+    throw "Too big!"
+  else
+    x <- get ();
+    put (n + x);
+    y <- get ();
+    y * y
+
+result2 : Int -> <State> Int
+result2 () =
+  (with handler {
+    throw msg k -> 0
+  } handle (program 100)) 1 -- result2 == 0
+
+--------------------------
+
+effect State1 {
+  get1 : () -> Int
+  put1 : Int -> ()
+}
+
+effect State2 {
+  get2 : () -> Int
+  put2 : Int -> ()
+}
+
+program3 : Int -> <State1, State2> Int
+program3 n =
+  x <- get1 ();
+  y <- get2 ();
+  put1 (x + y);
+  put2 (x * y);
+  x - y
+
+-----------------------------
+
+program4 : Int -> ? 
+program4 n =
+  st = new State;
+  st#put n;
+  st
+
+program5 : List Int -> ?
+program5 l =
+  case l of
+    Nil -> Nil
+    Cons h t ->
+      st = new State;
+      st#put h;
+      Cons st (program5 t)
