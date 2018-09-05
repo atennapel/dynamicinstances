@@ -4,6 +4,9 @@ Require Import Coq.omega.Omega.
 Require Import Util.
 From stdpp Require Import fin_collections gmap.
 
+Print Permutation.
+Print submseteq.
+
 (* effects *)
 Definition eff := nat.
 Notation effs := (gset eff).
@@ -116,11 +119,9 @@ Fixpoint shiftty' (d:nat) (c:nat) (t:ty) : ty :=
   end
 with shiftcty' (d:nat) (c:nat) (t:cty) : cty :=
   match t with
-  | tannot t' r => tannot (shiftty' d c t') (fmap (fun k => if k <? c then k else k + d) r)
+  | tannot t' r => tannot (shiftty' d c t') (of_list $ map (fun k => if k <? c then k else k + d) $ elements r)
   | texists E t' => texists E (shiftcty' d (S c) t')
   end.
-
-Search (gset _).
 
 Definition shiftty d t := shiftty' d 0 t.
 Definition shiftcty d t := shiftcty' d 0 t.

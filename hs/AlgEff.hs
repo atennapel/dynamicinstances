@@ -1,6 +1,8 @@
 import Data.List (find)
 import Data.Maybe (isJust, maybe)
 import Debug.Trace (trace)
+import Data.Set (Set)
+import qualified Data.Set as Set
 
 -- ast
 data Name
@@ -14,6 +16,7 @@ instance Show Name where
 
 data Ty
   = TCon Name
+  | TVar Name
   | TEx Name
   | TFun Ty CompTy
   deriving (Eq)
@@ -23,19 +26,38 @@ instance Show Ty where
   show (TEx n) = "^" ++ (show n)
   show (TFun a b) = "(" ++ (show a) ++ " -> " ++ (show b) ++ ")"
 
+substTy :: Name -> Ty -> Ty -> Ty
+substTy x s (TVar y) | x == y = s
+substTy x s (TFun a b) = TFun (substTy x s a) (substCompTy x s b)
+substTy x s t = t
+
 containsEx :: Name -> Ty -> Bool
 containsEx x (TCon _) = False
 containsEx x (TEx y) = x == y
+containsEx x (TVar y) = x == y
 containsEx x (TFun a b) = containsEx x a || containsExComp x b
   
-data CompTy = CompTy Ty
+data CompTy
+  = TExists Name CompTy
+  | TAnnot Ty (Set Name)
   deriving (Eq)
 
 instance Show CompTy where
-  show (CompTy t) = show t
+  show (TExists x t) = "(exists " ++ (show x) ++ ". " ++ (show t) ++ ")"
+  show (TAnnot t r) = "(" ++ (show t) ++ "!" ++ (show r) ++ ")"
+
+substCompTy :: Name -> Ty -> CompTy -> CompTy
+substCompTy x s ty@(TExists y t) = if x == y then ty else TExists y $ substCompTy x s t
+substCompTy x s (TAnnot t r) = TAnnot (substTy x s t) r
 
 containsExComp :: Name -> CompTy -> Bool
-containsExComp x (CompTy t) = containsEx x t
+containsExComp x (TExists y t) = containsExComp x t
+containsExComp x (TAnnot t r) = containsEx x t
+
+flattenCompTy :: CompTy -> ([Name], Ty, Set Name)
+flattenCompTy (TExists x t) =
+  let (rns, rt, rr) = flattenCompTy t in (x : rns, rt, rr)
+flattenCompTy (TAnnot t r) = ([], t, r)
 
 data Val
   = Var Name
@@ -100,6 +122,7 @@ debug x = trace (show x) (return ())
 -- context
 data Elem
   = CTCon Name
+  | CTVar Name
   | CTEx Name
   | CSolved Name Ty
   | CVar Name Ty
@@ -108,6 +131,7 @@ data Elem
 
 instance Show Elem where
   show (CTCon x) = show x
+  show (CTVar x) = show x
   show (CTEx x) = "^" ++ (show x)
   show (CSolved x t) = "^" ++ (show x) ++ " = " ++ (show t)
   show (CVar x t) = (show x) ++ " : " ++ (show t)
@@ -130,6 +154,11 @@ vars (Context []) = []
 vars (Context (CVar x _ : t)) = x : vars (Context t)
 vars (Context (_ : t)) = vars (Context t)
 
+tvars :: Context -> [Name]
+tvars (Context []) = []
+tvars (Context (CTVar x : t)) = x : tvars (Context t)
+tvars (Context (_ : t)) = tvars (Context t)
+
 ctcon :: Name -> (Elem -> Bool)
 ctcon x (CTCon y) | x == y = True
 ctcon x _ = False
@@ -137,6 +166,10 @@ ctcon x _ = False
 ctex :: Name -> (Elem -> Bool)
 ctex x (CTEx y) | x == y = True
 ctex x _ = False
+
+ctvar :: Name -> (Elem -> Bool)
+ctvar x (CTVar y) | x == y = True
+ctvar x _ = False
 
 csolved :: Name -> (Elem -> Bool)
 csolved x (CSolved y _) | x == y = True
@@ -175,7 +208,8 @@ apply ctx (TFun a b) = TFun (apply ctx a) (applyComp ctx b)
 apply ctx t = t
 
 applyComp :: Context -> CompTy -> CompTy
-applyComp ctx (CompTy t) = CompTy $ apply ctx t
+applyComp ctx (TExists x t) = TExists x $ applyComp ctx t
+applyComp ctx (TAnnot t r) = TAnnot (apply ctx t) r
 
 comesBefore :: Context -> Name -> Name -> Bool
 comesBefore (Context []) a b = False
@@ -222,6 +256,9 @@ freshVar ctx x = fresh (vars ctx) x
 freshTEx :: Context -> Name -> Name
 freshTEx ctx x = fresh (texs ctx) x
 
+freshTVar :: Context -> Name -> Name
+freshTVar ctx x = fresh (tvars ctx) x
+
 isComplete :: Context -> Bool
 isComplete (Context []) = True
 isComplete (Context (CTEx _ : t)) = False
@@ -235,11 +272,18 @@ tyWF ctx (TFun a b) = do
   tyWF ctx a
   compTyWF ctx b
 
+dirtWF :: Context -> Set Name -> Res ()
+dirtWF ctx x = mapM (\x -> contains ctx (tvar x)) $ toList x
+
 compTyWF :: Context -> CompTy -> Res ()
-compTyWF ctx (CompTy t) = tyWF ctx t
+compTyWF ctx (TExists x t) = compTyWF (add ctx [CTVar x]) t
+compTyWF ctx (TAnnot t r) = do
+  tyWF ctx t
+  dirtWF ctx r
 
 elemWF :: Context -> Elem -> Res ()
 elemWF ctx e@(CTCon x) = check ("duplicate tcon " ++ (show x)) $ not $ contains ctx (ctcon x)
+elemWF ctx e@(CTVar x) = check ("duplicate tvar " ++ (show x)) $ not $ contains ctx (ctvar x)
 elemWF ctx e@(CTEx x) = check ("duplicate tex " ++ (show x)) $ not $ contains ctx (ctex x `lor` csolved x)
 elemWF ctx e@(CMarker x) = check ("duplicate marker " ++ (show x)) $ not $ contains ctx (cmarker x `lor` ctex x `lor` csolved x)
 elemWF ctx e@(CSolved x t) = do
@@ -268,8 +312,8 @@ solve ctx x t = do
     _ ->
       return $ replace ctx (ctex x) [CSolved x t]
 
-unify :: Context -> Ty -> Ty -> Res Context
-unify ctx a b = do
+subty :: Context -> Ty -> Ty -> Res Context
+subty ctx a b = do
   debug $ "unify " ++ (show a) ++ " and " ++ (show b)
   contextWF ctx
   tyWF ctx a
@@ -281,11 +325,17 @@ unify ctx a b = do
       unify' ctx t (TEx x) = solve ctx x t
       unify' ctx (TFun a b) (TFun x y) = do
         ctx' <- unify' ctx a x
-        subtype ctx' (applyComp ctx' b) (applyComp ctx' y)
+        subtyComp ctx' (applyComp ctx' b) (applyComp ctx' y)
       unify' ctx a b = err $ "failed to unify " ++ (show a) ++ " and " ++ (show b)
 
-subtype :: Context -> CompTy -> CompTy -> Res Context
-subtype c (CompTy a) (CompTy b) = unify c a b
+subtyComp :: Context -> CompTy -> CompTy -> Res Context
+subtyComp ctx (TExists x a) b = subtyComp (add ctx [CTVar x]) a b
+subtyComp ctx a (TExists x b) = subtyComp (add ctx [CTEx x]) a (substCompTy x (TEx x) b)
+subtyComp ctx t1'@(TAnnot t1 r1) t2'@(TAnnot t2 r2) = do
+  ctx' <- subty t1 t2
+  check ("annotations not a subset " ++ (show t1') ++ " and " ++ (show t2')) $ Set.isSubsetOf r1 r2
+  return ctx'
+subtyComp ctx a b = err $ "cannot subtyComp " ++ (show a) ++ " and " ++ (show b)
 
 -- type inference
 synthVal :: Context -> Val -> Res (Context, Ty)
@@ -320,7 +370,7 @@ checkVal ctx v t = do
       checkComp (add ctx [CVar x' a]) (substComp x (Var x') c) b
     (v, t) -> do
       (ctx', t') <- synthVal ctx v
-      unify ctx' t' t
+      subty ctx' t' t
 
 synthComp :: Context -> Comp -> Res (Context, CompTy)
 synthComp ctx c = do
@@ -334,7 +384,7 @@ synthComp ctx c = do
       synthApp ctx' t b
     Do x a b -> do
       let x' = freshVar ctx x
-      (ctx', CompTy t) <- inferComp ctx a
+      (ctx', t) <- inferComp ctx a
       inferComp (add ctx' [CVar x' t]) (substComp x (Var x') b)
 
 checkComp :: Context -> Comp -> CompTy -> Res Context
@@ -344,7 +394,7 @@ checkComp ctx c t = do
   case c of
     _ -> do
       (ctx', t') <- synthComp ctx c
-      subtype ctx' (applyComp ctx' t') (applyComp ctx' t)
+      subtyComp ctx' (applyComp ctx' t') (applyComp ctx' t)
 
 synthApp :: Context -> Ty -> Val -> Res (Context, CompTy)
 synthApp ctx t v = do
