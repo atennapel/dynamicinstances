@@ -1,6 +1,6 @@
 My master thesis on dynamic instances for algebraic effects and handlers will form here...
 
-Read here (WIP): https://github.com/atennapel/dynamicinstances/blob/master/thesis/thesis.pdf
+Read here (WIP): https://github.com/atennapel/dynamicinstances/blob/master/thesis/thesis.pdf <br/>
 Coq formalization (WIP): https://github.com/atennapel/dynamicinstances/blob/master/coq/existentials-1op.v
 
 coq - contains formalizations of different type systems <br/>
