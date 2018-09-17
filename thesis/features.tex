@@ -1,0 +1,160 @@
+\newpage
+\hfill
+\begin{adjustbox}{angle=90}
+\begin{tabular}{ l | l | l | l | l | l }
+			& Eff\cite{eff1}\cite{eff2}		& Links \cite{links} 	& Koka\cite{koka}	& Frank\cite{frank} 		& Idris (effects library)\cite{idris}	\\ \hline
+Shallow handlers 	& No		& Yes 		& Yes 			& Yes 			& No 				\\ \hline
+Deep handlers 	& Yes		& Yes 		& Yes 			& With recursion 	& Yes 				\\ \hline
+Effect subtyping	& Yes		& No		& No			& No			& No	 			\\ \hline
+Row polymorphism	& No		& Yes		& Only for effects 	& No			& No 				\\ \hline
+Effect instances	& Yes		& ?		& Duplicated labels 	& No			& Using labels		\\ \hline
+Dynamic effects	& Yes		& No		& Using heaps      	& No			& No 				\\ \hline
+Indexed effects	& No		& No		& No			& No			& Yes 				\\
+\end{tabular}
+\end{adjustbox}
+\hfill
+\null
+
+\newpage
+\section{Shallow and deep handlers}
+Handlers can be either shallow or deep. Let us take as an example a handler that handles a $\mathnormal{state}$ effect with $\mathnormal{get}$ and $\mathnormal{set}$ operations.
+If the handler is shallow then only the first operation in the program will be handled and the result might still contain $\mathnormal{get}$ and $\mathnormal{set}$ operations.
+If the handler is deep then all the  $\mathnormal{get}$ and $\mathnormal{set}$ operations will be handled and the result will not contain any of those operations.
+Shallow handlers can express deep handlers using recursion and deep handlers can encode shallow handlers with an increase in complexity.
+Deep handlers are easier to reason about \textit{I think expressing deep handlers using shallow handlers with recursion might require polymorphic recursion}. \\
+Frank has shallow handlers by default, while all the other languages have deep handlers. Links and Koka have support for shallow handlers with a $\mathnormal{shallowhandler}$ construct.
+\\\\
+In Frank recursion is needed to define the handler for the state effect, since the handlers in Frank are shallow.
+\begin{lstlisting}
+state : S -> <State S>X -> X
+state _ x = x
+state s <get -> k> = state s (k s)
+state _ <put s -> k> = state s (k unit)
+\end{lstlisting}
+
+Koka has deep handlers and so the handler will call itself recursively, handling all state operations.
+\begin{lstlisting}
+val state = handler(s) {
+  return x -> (x, s)
+  get() -> resume(s, s)
+  put(s') -> resume(s', ())
+}
+\end{lstlisting}
+
+
+\section{Effect subtyping and row polymorphism}
+A handler that only handles the $\mathnormal{State}$ effect must be able to be applied to a program that has additional effects to $\mathnormal{State}$. Two ways to solve this problem are effect subtyping and row polymorphism. With effect subtyping we say that the set of effects $\mathnormal{set}_1$ is a subtype of $\mathnormal{set}_2$ if
+$\mathnormal{set}_2$ is a subset of $\mathnormal{set}_1$. \\
+ \[\frac{
+	\begin{array}{l}
+	s_2 \subseteq s_1
+	\end{array}
+}{
+	s_1 \leq s_2
+}\]\\
+With row polymorphism instead of having a set of effects there is a row of effects which is allowed to have a polymorphic variable that can unify with effects that are not in the row.
+We would like narrow a type as much as we can such that pure functions will not have any effects. With row polymorphic types this means having a closed or empty row. These rows cannot be unified with rows that have more effects so one needs to take care to add the polymorphic variable again when unifying, like Koka does.\\
+Eff uses effect subtyping while Links and Koka employ row polymorphism \textit{Not sure yet about Frank and Idris}.
+
+\section{Effect instances}
+One might want to use multiple instances of the same effect in a program, for example multiple $\mathnormal{state}$ effects. Eff achieves this by the $\mathnormal{new}$ operator, which creates a new instance of a specific effect. Operations are always called on an instance and handlers also reference the instance of the operations they are handling. In the type annotation of a program the specific instances are named allowing multiple instances of the same effect. \\
+Idris solves this by allowing effects and operations to be labeled. These labels are then also seen in the type annotations.
+\\\\
+In Idris labels can be used to have multiple instances of the same effect, for example in the following tree tagging function.
+\begin{lstlisting}
+-- without labels
+treeTagAux : BTree a -> { [STATE (Int, Int)] } Eff (BTree (Int, a))
+-- with labels
+treeTagAux : BTree a -> {['Tag ::: STATE Int, 'Leaves ::: STATE Int]} Eff (BTree (Int, a))
+\end{lstlisting}
+\newpage
+Operations can then be tagged with a label.
+\begin{lstlisting}
+treeTagAux Leaf = do
+	'Leaves :- update (+1)
+	pure Leaf
+treeTagAux (Node l x r) = do
+	l' <- treeTagAux l
+	i <- 'Tag :- get
+	'Tag :- put (i + 1)
+	r' <- treeTagAux r
+	pure (Node l' (i, x) r')
+\end{lstlisting}
+
+In Eff one has to instantiate an effect with the $\mathnormal{new}$, operations are called on this instance and they can also be arguments to an handler.
+\begin{lstlisting}
+type 'a state = effect
+  operation get: unit -> 'a
+  operation set: 'a -> unit
+end
+
+let r = new state
+
+let monad_state r = handler
+  | val y -> (fun _ -> y)
+  | r#get () k -> (fun s -> k s s)
+  | r#set s' k -> (fun _ -> k () s')
+
+let f = with monad_state r handle
+    let x = r#get () in
+    r#set (2 * x);
+    r#get ()
+in (f 30)
+\end{lstlisting}
+
+\section{Dynamic effects}
+One effect often used in imperative programming languages is dynamic allocation of ML-style references. Eff solves this problem using a special type of effect instance that holds a \textit{resource}.
+This amounts to a piece of state that can be dynamically altered as soon as a operation is called. Note that this is impure. Haskell is able to emulate ML-style references using the ST-monad where the reference are made sure not to escape the thread where they are used by a rank-2 type. Koka annotates references and read/write operations with the heap they are allowed to use.
+\\\\
+In Eff resources can be used to emulate ML-style references.
+\begin{lstlisting}
+let ref x =
+  new ref @ x with
+    operation lookup () @ s -> (s, s)
+    operation update s' @ _ -> ((), s')
+  end
+
+let (!) r = r#lookup ()
+let (:=) r v = r#update v
+\end{lstlisting}
+In Koka references are annotated with a heap parameter.
+\begin{lstlisting}
+fun f() { var x := ref(10); x }
+f : forall<h> () -> ref<h, int>
+\end{lstlisting}
+Note that values cannot have an effect, so we cannot create a global reference. So Koka cannot emulate ML-style references entirely.
+\begin{lstlisting}
+> val x = ref(1)
+      ^
+((4), 5): error: effects do not match
+  context        : val x = ref(1)
+  term           :     x
+  inferred effect: <alloc<_h>|_e>
+  expected effect: total
+  because        : Values cannot have an effect
+\end{lstlisting}
+
+\section{Indexed effects}
+Similar to indexed monad one might like to have indexed effects. For example it can be perfectly safe to change the type in the $\mathnormal{state}$ effect with the $\mathnormal{set}$ operation, every $\mathnormal{get}$ operation after the $\mathnormal{operation}$ will then return a value of this new type. This gives a more general $\mathnormal{state}$ effect.
+Furthermore we would like a version of typestate, where operations can only be called with a certain state and operations can also change the state. For example closing a file handle can only be done if the file handle is in the $\mathnormal{open}$ state, after which this state is changed to the $\mathnormal{closed}$ state. This allows for encoding state machines on the type-level, which can be checked statically reducing runtime errors.
+\\\\
+Only the effects library Idris supports this feature.
+\begin{lstlisting}
+data State : Effect where
+  Get : { a } State a
+  Put : b -> { a ==> b } State ()
+
+STATE : Type -> EFFECT
+STATE t = MkEff t State
+
+instance Handler State m where
+  handle st Get k = k st st
+  handle st (Put n) k = k () n
+
+get : { [STATE x] } Eff x
+get = call Get
+
+put : y -> { [STATE x] ==> [STATE y] } Eff ()
+put val = call (Put val)
+\end{lstlisting}
+Note that the $\mathnormal{Put}$ operation changes the type from $a$ to $b$. The $\mathnormal{put}$ helper function also shows this in the type signature (going from $\mathnormal{STATE}\; x$ to $\mathnormal{STATE}\;y$).
