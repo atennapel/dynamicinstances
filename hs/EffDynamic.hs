@@ -23,9 +23,11 @@ instance Show Kind where
 
 -- Types
 class ContainsTVar t where
-  containsFreeTVar :: Name -> t -> Bool
   freeTVars :: t -> Set Name
   substTVar :: Name -> Ty -> t -> t
+
+containsFreeTVar :: ContainsTVar t => Name -> t -> Bool
+containsFreeTVar x t = Set.member x $ freeTVars t
 
 data Ty
   = TVar Name
@@ -45,12 +47,6 @@ instance IsString Ty where
   fromString = TVar
 
 instance ContainsTVar Ty where
-  containsFreeTVar x (TVar y) = x == y
-  containsFreeTVar x (TFun a b) = containsFreeTVar x a || containsFreeTVar x b
-  containsFreeTVar x (THandler a b) = containsFreeTVar x a || containsFreeTVar x b
-  containsFreeTVar x (TForall y k t) =
-    if x == y then False else containsFreeTVar x t
-
   freeTVars (TVar x) = Set.singleton x
   freeTVars (TFun a b) = Set.union (freeTVars a) (freeTVars b)
   freeTVars (THandler a b) = Set.union (freeTVars a) (freeTVars b)
@@ -90,9 +86,6 @@ instance IsString TyComp where
   fromString x = TyComp (TVar x) Set.empty
 
 instance ContainsTVar TyComp where
-  containsFreeTVar x (TyComp t r) = containsFreeTVar x t || Set.member x r
-  containsFreeTVar x (TExists y _ b) = if x == y then False else containsFreeTVar x b
-
   freeTVars (TyComp t r) = Set.union (freeTVars t) r
   freeTVars (TExists y _ b) = Set.delete y (freeTVars b)
 
@@ -108,6 +101,23 @@ data Val
   | Handler Val (Name, Comp) (Map Name (Name, Name, Comp))
   | Anno Val Ty
   deriving (Eq)
+
+instance ContainsTVar Val where
+  freeTVars (Var _) = Set.empty
+  freeTVars (Abs _ b) = freeTVars b
+  freeTVars (AbsT x k b) = Set.delete x $ freeTVars b
+  freeTVars (AppT v t) = Set.union (freeTVars v) (freeTVars t)
+  freeTVars (Handler v (_, c) m) = Set.union (freeTVars v) $ Set.union (freeTVars c)
+    (foldl Set.union Set.empty $ map (\(_, _, c) -> freeTVars c) $ Map.elems m)
+  freeTVars (Anno v t) = Set.union (freeTVars v) (freeTVars t)
+
+  substTVar x s v@(Var _) = v
+  substTVar x s (Abs y b) = Abs y $ substTVar x s b
+  substTVar x s v@(AbsT y k b) = if x == y then v else AbsT y k $ substTVar x s b
+  substTVar x s (AppT v t) = AppT (substTVar x s v) (substTVar x s t)
+  substTVar x s (Handler v (y, c) m) = Handler (substTVar x s v) (y, substTVar x s c) $
+    Map.map (\(a, b, c) -> (a, b, substTVar x s c)) m
+  substTVar x s (Anno v t) = Anno (substTVar x s v) (substTVar x s t)
 
 instance Show Val where
   show (Var x) = x
@@ -128,7 +138,7 @@ data Comp
   | Do Name Comp Comp
   | Handle Val Comp
   | Op Val Name Val
-  | New Name
+  | New Name Name
   deriving (Eq)
 
 instance Show Comp where
@@ -137,10 +147,25 @@ instance Show Comp where
   show (Do x a b) = "(" ++ x ++ " <- " ++ (show a) ++ "; " ++ (show b) ++ ")"
   show (Handle v c) = "(with " ++ (show v) ++ " handle " ++ (show c) ++ ")"
   show (Op i o v) = (show i) ++ "#" ++ o ++ "(" ++ (show v) ++ ")"
-  show (New e) = "(new " ++ e ++ ")"
+  show (New e x) = "(new " ++ e ++ " as " ++ x ++ ")"
 
 instance IsString Comp where
   fromString x = Return $ Var x
+
+instance ContainsTVar Comp where
+  freeTVars (Return v) = freeTVars v
+  freeTVars (App a b) = Set.union (freeTVars a) (freeTVars b)
+  freeTVars (Do x a b) = Set.union (freeTVars a) (freeTVars b)
+  freeTVars (Handle a b) = Set.union (freeTVars a) (freeTVars b)
+  freeTVars (Op a o b) = Set.union (freeTVars a) (freeTVars b)
+  freeTVars (New e _) = Set.empty
+
+  substTVar x s (Return v) = Return $ substTVar x s v
+  substTVar x s (App a b) = App (substTVar x s a) (substTVar x s b)
+  substTVar x s (Do y a b) = Do y (substTVar x s a) (substTVar x s b)
+  substTVar x s (Handle a b) = Handle (substTVar x s a) (substTVar x s b)
+  substTVar x s (Op a o b) = Op (substTVar x s a) o (substTVar x s b)
+  substTVar x s v@(New _ _) = v
 
 -- TC
 type TC t = Either String t
@@ -302,14 +327,13 @@ synthComp ctx (Op inst op v) = do
   (pt, rt) <- tcMaybe ("operation does not belong to " ++ eff ++ ": " ++ op) $ Map.lookup op tops
   checkVal ctx v pt
   return $ TyComp rt (Set.singleton xi)
-synthComp ctx (New e) = do
+synthComp ctx (New e x) = do
   findEff ctx e
-  let x = freshTVar ctx "i"
   return $ TExists x e $ TyComp (TVar x) Set.empty
 -- synthComp ctx t = Left $ "unable to synth comp " ++ (show t)
 
 checkComp :: Context -> Comp -> TyComp -> TC ()
-checkComp ctx (Return v) (TyComp ty _) = checkVal ctx v ty
+checkComp ctx (Return v) (TyComp t _) = checkVal ctx v t
 checkComp ctx x t = do
   t' <- synthComp ctx x
   if subTyComp t' t then
@@ -360,25 +384,48 @@ stateF = /\t ti -> \v i a ->
   f v
 -}
 stateF :: Val
-stateF = undefined
+stateF = AbsT "t" KTy $ AbsT "ti" (KEff "State") $
+  Anno
+    (Abs "v" $ Return $ Abs "i" $ Return $ Abs "a" $
+      Do "h" (App (AppT (AppT stateH "t") "ti") "i") $
+      Do "f" (Handle "h" (App "a" "Unit"))
+      (App "f" "v"))
+    (TFun "Bool" $ ret $ TFun "ti" $ ret $ TFun (TFun "Unit" (TyComp "t" (Set.singleton "ti"))) "t")
 
 {-
-stateRef : forall (t:*)(ti:State). Bool -> (ti -> t!{ti}) -> exists(ti:State).t!{ti}
-stateRef = /\t ti -> \v a ->
+stateRef : forall (t:*). Bool -> (forall (ti:State). ti -> t!{ti}) -> t
+stateRef = /\t -> \v a ->
   i <- new State;
   stateF [t] [ti] v (a i)
 -}
 stateRef :: Val
-stateRef = undefined
-
-term2 :: Comp
-term2 = Return $
+stateRef = AbsT "t" KTy $
   Anno
-    (Abs "x" $ Do "i" (New "Fail") $ Do "j" (New "Fail") $ (Op "i" "fail" "Unit"))
-    (TFun "Unit" $ TExists "i" "Fail" $ TyComp "Unit" $ Set.singleton "i")
+    (Abs "v" $ Return $ Abs "a" $
+      Do "i" (New "State" "ti") $
+      Do "fr" (App (AppT (AppT stateF "t") "ti") "v") $
+      Do "fr'" (App "fr" "i") $
+      Do "ar" (App (AppT "a" "ti") "i") $
+      App "fr'" "ar")
+    (TFun "Bool" $ ret $ TFun (TForall "ti" (KEff "State") $ TFun "ti" (TyComp "t" (Set.singleton "ti"))) "t")
+
+{-
+escapeRef : () -> Bool
+escapeRef = \() -> stateRef [Bool] False (/\(ti:State). \i -> i#get ())
+-}
+escapeRef :: Val
+escapeRef = Anno
+  (Abs "_" $
+    Do "f" (App (AppT stateRef "Bool") "False") $
+    App "f" $
+      AbsT "ti" (KEff "State") (
+        Anno
+          (Abs "i" $ Op "i" "get" "Unit")
+          (TFun "ti" (TyComp "Bool" (Set.singleton "ti")))))
+  (TFun "Unit" "Bool")
 
 term :: Comp
-term = Return $ stateH
+term = Return $ stateRef
 
 main :: IO ()
 main = do

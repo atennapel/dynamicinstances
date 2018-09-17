@@ -4,4 +4,8 @@
 documents/*.log
 documents/*.synctex.gz
 documents/_minted-*
-thesis/thesis.synctex.gz
+thesis/*.toc
+thesis/*.log
+thesis/*.synctex.gz
+thesis/_minted-*
+

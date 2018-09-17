@@ -1,4 +1,4 @@
-\documentclass[12pt]{article}
+\documentclass[12pt]{book}
 
 \usepackage{listings}
 \usepackage{mathtools}
@@ -6,6 +6,13 @@
 \usepackage{amssymb}
 \usepackage{tabularx}
 \usepackage{adjustbox}
+\usepackage{amsthm}
+\usepackage{capt-of}
+\usepackage{minted}
+\usepackage{fitch}
+\usepackage[parfill]{parskip}
+
+\newtheorem{theorem}{Theorem}
 
 \lstset{
 	frame = single,
@@ -20,24 +27,32 @@
 \begin{document}
 \maketitle
 
-\section{Introduction}
+\tableofcontents
+\newpage
+
+\chapter{Introduction}
 \input{introduction.tex}
 
-\section{Background}
+\chapter{Background}
 \input{background.tex}
 
 
-\section{Type system}
+\chapter{Type and effect system}
+\input{calculus.tex}
 
 
-\section{Formalization}
+\chapter{Formalization}
 
 
-\section{Related work}
+\chapter{Related work}
 
 
-\section{Conclusion and future work}
+\chapter{Conclusion and future work}
 
-\section*{Bibliography}
+\newpage
+\begin{thebibliography}{9}
+\bibitem{effectsystem}
+Bauer, Andrej, and Matija Pretnar. ``An effect system for algebraic effects and handlers.'' International Conference on Algebra and Coalgebra in Computer Science. Springer, Berlin, Heidelberg, 2013.
+\end{thebibliography}
 
 \end{document}

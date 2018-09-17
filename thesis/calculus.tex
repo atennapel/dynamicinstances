@@ -1,0 +1,735 @@
+% effects
+\newcommand\Eff[0]{E}
+\newcommand\eff[0]{\varepsilon}
+\newcommand\Op[0]{O}
+\newcommand\op[0]{op}
+\newcommand\inst[0]{\iota}
+
+\newcommand\pty[1]{\ty^1_{#1}}
+\newcommand\rty[1]{\ty^2_{#1}}
+
+% types
+\newcommand\ty[0]{\tau}
+\newcommand\tunit[0]{()}
+\newcommand\tarr[2]{#1 \rightarrow #2}
+\newcommand\thandler[2]{#1 \Rightarrow #2}
+\newcommand\tforall[3]{\forall(#1:#2) . #3}
+
+% computation type
+\newcommand\cty[0]{\underline{\ty}}
+\newcommand\aty[2]{#1 \; ! \; #2}
+\newcommand\texists[3]{\exists(#1:#2) . #3}
+\newcommand\texistss[2]{\exists \overrightarrow{#1} . #2}
+
+% values
+\newcommand\val[0]{\nu}
+\newcommand\vunit[0]{()}
+\newcommand\vinst[1]{\mathsf{inst}(#1)}
+\newcommand\vabst[3]{\Lambda(#1:#2) . #3}
+\newcommand\vabs[2]{\lambda #1 . #2}
+\newcommand\vappt[2]{#1 \; [ #2 ]}
+\newcommand\vhandler[1]{\textit{handler} \; \{#1\}}
+\newcommand\vhandleri[2]{\textit{handler} ( #1 ) \; \{#2\}}
+\newcommand\vhandlerc[0]{\vhandler{
+	\textit{return} \; x \rightarrow \comp,
+	\op_1(x ; k) \rightarrow \comp,
+	...,
+	\op_n(x ; k) \rightarrow \comp
+}}
+\newcommand\vhandlerci[1]{\vhandleri{#1}{
+	\textit{return} \; x \rightarrow \comp,
+	\op_1(x ; k) \rightarrow \comp,
+	...,
+	\op_n(x ; k) \rightarrow \comp
+}}
+
+% computations
+\newcommand\comp[0]{c}
+\newcommand\creturn[1]{\textit{return} \; #1}
+\newcommand\capp[2]{#1 \; #2}
+\newcommand\cdo[3]{#1 \leftarrow #2 ; #3}
+\newcommand\cop[4]{#1(#2 ; #3 . #4)}
+\newcommand\copi[5]{#1 \# #2(#3 ; #4 . #5)}
+\newcommand\chandle[2]{\textit{with} \; #1 \; \textit{handle} \; #2}
+\newcommand\cnew[1]{\textit{new} \; #1}
+\newcommand\cunpack[4]{(#1, #2) \leftarrow #3 ; #4}
+
+% misc
+\newcommand\subty[2]{#1 <: #2}
+\newcommand\sep[0]{\;;\;}
+
+\section{Description}
+We extend a simplified version of the type system described by Bauer and Pretnar in \cite{effectsystem}.
+We simplify the system from that paper by removing static instances and always having handlers contain all operations from a single effect.
+We extend the system with instance type variables,  universally quantified value types, existential computation types and a computation to dynamically create instances.
+For the effect annotations on the computation types (called the dirt in \cite{effectsystem}) we will take sets of instance variables. 
+
+\newpage
+\section{Syntax}
+The syntax stays the same as in \cite{effectsystem}, but we add dynamic instance creation and instance values.
+Instance values represent a certain index at run-time, indexed by an $n \in \mathbb{N}$.
+They are used to define the semantics of the system but would not appear in an user-facing language.
+The only way to get an instance value is by using the $\cnew{\eff}$ computation.  
+We assume there is set of effect names $\Eff = \{ \eff_1, ..., \eff_n \}$.
+Each effect has a set of operation names $\Op_\eff = \{ \op_1, ..., \op_n \}$.
+Every operation name only corresponds to a single effect.
+Each operation has a parameter type $\pty{\op}$ and a return type $\rty{\op}$.
+Annotations $r$ are sets of instance variables. 
+\\
+\begin{align*}
+	\ty \Coloneqq 				& 											\tag{value types} \\
+									& i, j, k									\tag{instance variables} \\
+									& \tunit									\tag{unit type} \\
+									& \tarr{\ty}{\cty}						\tag{type of functions} \\
+									& \thandler{\cty}{\cty}				\tag{type of handlers} \\
+									& \tforall{i}{\eff}{\ty}		\tag{universally quantified value type}\\
+	\cty \Coloneqq 			& 											\tag{computation types} \\
+									& \aty{\ty}{r}							\tag{annotated type} \\
+									& \texists{i}{\eff}{\cty}				\tag{existential} \\
+	\val \Coloneqq			&											\tag{values} \\
+									& x, y, z, k								\tag{variables} \\
+									& \vunit									\tag{unit value} \\
+									& \vinst{n}								\tag{instance values} \\
+									& \vabs{x}{\comp}					\tag{abstraction} \\
+									& \vhandlerci{\val}						\tag{handler} \\
+									& \vabst{i}{\eff}{\val}					\tag{instance type variable abstraction} \\
+									& \vappt{\val}{i}						\tag{type application} \\
+	\comp \Coloneqq		&											\tag{computations} \\
+									& \creturn{\val}						\tag{return value as computation} \\
+									& \capp{\val}{\val}					\tag{application} \\
+									& \cdo{x}{\comp}{\comp}			\tag{sequencing} \\
+									& \cunpack{i}{x}{\comp}{\comp}				\tag{existential unpack} \\
+									& \chandle{\val}{\comp}			\tag{handler application} \\
+									& \copi{\val}{\op}{\val}{y}{\comp}	\tag{operation call} \\
+									& \cnew{\eff}							\tag{instance creation} \\
+\end{align*}
+
+\newpage
+\section{Subtyping rules}
+
+The subtyping rules are mostly the same as the rules described in \cite{effectsystem}.
+These are as you would expect.
+
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+}{
+	\subty{\tunit}{\tunit}
+}\]
+\vspace{10pt}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\subty{a'}{a} \\
+	\subty{b}{b'}
+	\end{array}
+}{
+	\subty{\tarr{a}{b}}{\tarr{a'}{b'}}
+}\]
+\vspace{10pt}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\subty{a'}{a} \\
+	\subty{b}{b'}
+	\end{array}
+}{
+	\subty{\thandler{a}{b}}{\thandler{a'}{b'}}
+}\]\vspace{10pt}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\subty{a}{a'} \\
+	e \subseteq e'
+	\end{array}
+}{
+	\subty{\aty{a}{e}}{\aty{a'}{e'}}
+}\]\vspace{10pt}
+\end{minipage}
+
+We add rules for instance variables and existentials, which we compare structurally. \\
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+}{
+	\subty{i}{i}
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\subty{a}{b}
+}{
+	\subty{\texists{i}{\eff}{a}}{\texists{i}{\eff}{b}}
+}\]
+\end{minipage}
+
+For existentials we are allowed to remove one if the instance variable does not appear in the type (where $FIV(a)$ is the set of free instance variables of $a$). We are also allowed to swap two existentials.\\
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\subty{a}{b} \\
+	i \notin FIV(a)
+	\end{array}
+}{
+	\subty{\texists{i}{\eff}{a}}{b}
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+}{
+	\subty{\texists{i}{\eff}{\texists{j}{\eff'}{a}}}{\texists{j}{\eff'}{\texists{i}{\eff}{a}}}
+}\]
+\end{minipage}
+
+We can prove reflexivity and transitivity of the subtyping relation from these rules.
+\begin{theorem}[Subtyping reflexivity]
+for all value and computation types $a$, $\subty{a}{a}$
+\end{theorem}
+\begin{theorem}[Subtyping transitivity]
+for all value and computation types $a, b$ and $c$, if $\subty{a}{b}$ and $\subty{b}{c}$ then $\subty{a}{c}$
+\end{theorem}
+
+\newpage
+\section{Well-formedness judgement}
+We have a well-formedness judgement for both value and computation types $\Delta \vdash \ty$ and $\Delta \vdash \cty$.
+Where $\Delta$ stores bindings of instance variables to effects.
+For instance variables we simply check that they occur in $\Delta$.
+For computation types we check that all the variables in the annotation occur in $\Delta$.
+\\
+
+\begin{minipage}{0.25\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\Delta \vdash \tunit
+}\]
+\end{minipage}
+\begin{minipage}{0.25\textwidth}
+\[\frac{
+	\begin{array}{l}
+	(i : \eff) \in \Delta \\
+	\end{array}
+}{
+	\Delta \vdash i
+}\]
+\end{minipage}
+\begin{minipage}{0.25\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Delta \vdash a  \\
+	\Delta \vdash b
+	\end{array}
+}{
+	\Delta \vdash \tarr{a}{b}
+}\]
+\end{minipage}
+\begin{minipage}{0.25\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Delta \vdash a  \\
+	\Delta \vdash b
+	\end{array}
+}{
+	\Delta \vdash \thandler{a}{b}
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Delta \vdash a  \\
+	\Delta \vdash j_i
+	\end{array}
+}{
+	\Delta \vdash \aty{a}{\{ j_0, ..., j_n \}}
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Delta , i : \eff \vdash a  \\
+	\end{array}
+}{
+	\Delta \vdash \tforall{i}{\eff}{a}
+}\]
+\end{minipage}
+
+\[\frac{
+	\begin{array}{l}
+	\Delta , i : \eff \vdash a  \\
+	\end{array}
+}{
+	\Delta \vdash \texists{i}{\eff}{a}
+}\]
+
+\section{Typing rules}
+For the typing rules there are two judgments,
+$\Delta;\Gamma \vdash \val : \ty$ for assigning types to values and $\Delta;\Gamma \vdash \comp : \cty$ for assigning computation types to computations. $\Gamma$ stores bindings of variables to types and $\Delta$ stores bindings of instance variables to effects $\eff$.
+In the sub-typing and abstraction rules we check that the introduced types are well-formed, so that we don't introduce ill-formed types in the context.
+
+\begin{minipage}{0.25\textwidth}
+\textbf{T-SubVal}
+\end{minipage}
+\begin{minipage}{0.25\textwidth}
+\textbf{T-Var}
+\end{minipage}
+\begin{minipage}{0.25\textwidth}
+\textbf{T-Unit}
+\end{minipage}
+\begin{minipage}{0.25\textwidth}
+\textbf{T-Abs}
+\end{minipage}
+
+\begin{minipage}{0.25\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Delta;\Gamma \vdash \val : \ty_1 \\
+	\Delta \vdash \ty_2 \\
+	\subty{\ty_1}{\ty_2}
+	\end{array}
+}{
+	\Delta;\Gamma \vdash \val : \ty_2
+}\]
+\end{minipage}
+\begin{minipage}{0.25\textwidth}
+\[\frac{
+	(x:\ty) \in \Gamma
+}{
+	\Delta;\Gamma \vdash x : \ty
+}\]
+\end{minipage}
+\begin{minipage}{0.25\textwidth}
+\[\frac{
+}{
+	\Delta;\Gamma \vdash \vunit : \tunit
+}\]
+\end{minipage}
+\begin{minipage}{0.25\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Delta \vdash \ty_1 \\
+	\Delta;\Gamma, x : \ty_1 \vdash \comp : \cty_2
+	\end{array}
+}{
+	\Delta;\Gamma \vdash \vabs{x}{\comp} : \tarr{\ty_1}{\cty_2}
+}\]
+\end{minipage}
+
+\newpage
+In the following rule \\$h = 
+	\vhandleri{\val}{
+		\textit{return} \; x_r \rightarrow \comp_r,
+		\op_1(x_1 ; k_1) \rightarrow \comp_1,
+		...,
+		\op_n(x_n ; k_n) \rightarrow \comp_n
+	}$.\\
+\textbf{T-Handler}
+\[\frac{
+	\begin{array}{l}
+	\Delta;\Gamma \vdash \val : i \\
+	(i:\eff)\in\Delta \\
+	\Op_\eff = \{ op_1, ..., op_n \} \\
+	\Delta \vdash \ty_1 \\
+	\Delta;\Gamma, x_r : \ty_1 \vdash \comp_r : \aty{\ty_2}{r_2} \\
+	\Delta;\Gamma, x_i : \pty{\op_i}, k_i : \tarr{\rty{\op_i}}{\aty{\ty_2}{r_2}} \vdash \comp_i : \aty{\ty_2}{r_2} \\
+	r_1 \backslash \{ i \} \subseteq r_2 \\
+	\end{array}
+}{
+	\Delta;\Gamma \vdash h :
+	\thandler{\aty{\ty_1}{r_1}}{\aty{\ty_2}{r_2}}
+}\]
+For the handlers we first check that value $\val$ is bound to an instance variable $i$ of effect $\eff$.
+We check that the operations in the handlers are exactly the operations belonging to $\eff$.
+After we check that all the cases in the handler agree on the return type and annotations.
+We have the condition $r_1 \backslash \{ i \} \subseteq r_2$ to make sure that any extra effects before the handler remain unhandled after the handler is evaluated.
+We check that the types on the left and right sides of the handler type are well-formed to make sure that no instance variables are introduced that are not in the context $\Delta$.
+
+%%%
+Explain...\\
+\begin{minipage}{0.5\textwidth}
+\textbf{T-AbsT}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\textbf{T-AppT}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Delta,i:\eff;\Gamma \vdash \val : \ty \\
+	\end{array}
+}{
+	\Delta;\Gamma \vdash \vabst{i}{\eff}{\val} : \tforall{i}{\eff}{\ty}
+}\]
+\vspace{10pt}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Delta;\Gamma \vdash \val : \tforall{i}{\eff}{\ty}\\
+	(j : \eff) \in \Delta \\
+	\end{array}
+}{
+	\Delta;\Gamma \vdash \vappt{\val}{j} : \ty[j/i]
+}\]
+\vspace{10pt}
+\end{minipage}
+
+\begin{minipage}{0.5\textwidth}
+\textbf{T-SubComp}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\textbf{T-Return}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Delta;\Gamma \vdash \comp : \cty_1 \\
+	\Delta \vdash \cty_2 \\
+	\subty{\cty_1}{\cty_2}
+	\end{array}
+}{
+	\Delta;\Gamma \vdash \comp : \cty_2
+}\]
+\vspace{10pt}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\Delta;\Gamma \vdash \val : \ty
+}{
+	\Delta;\Gamma \vdash \creturn{\val} : \aty{\ty}{\varnothing}
+}\]
+\vspace{10pt}
+\end{minipage}
+\newpage
+\begin{minipage}{0.5\textwidth}
+\textbf{T-App}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\textbf{T-Handle}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Delta;\Gamma \vdash \val_1 : \tarr{\ty_1}{\cty_2} \\
+	\Delta;\Gamma \vdash \val_2 : \ty_1
+	\end{array}
+}{
+	\Delta;\Gamma \vdash \capp{\val_1}{\val_2} : \cty_2
+}\]
+\vspace{10pt}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Delta;\Gamma \vdash \val : \thandler{\cty_1}{\cty_2} \\
+	\Delta;\Gamma \vdash \comp : \cty_1 \\
+	\end{array}
+}{
+	\Delta;\Gamma \vdash \chandle{\val}{\comp} : \cty_2
+}\]
+\vspace{10pt}
+\end{minipage}
+\\
+
+
+Instances are checked to be in $\Delta$.\\
+\textbf{T-Instance}
+\[\frac{
+	\begin{array}{l}
+	(i:\eff)\in\Delta \\
+	\end{array}
+}{
+	\Delta;\Gamma \vdash \vinst{i} : i
+}\]
+
+
+
+For the operation calls we check that the value $\val_1$ is bound to an instance variable $i$ of effect $\eff$.
+We check that the operation belongs to $\eff$ and that the value $\val_2$ is of the parameter type of the operation.
+We then typecheck the continuation $c$ and make sure that the instance variable $i$ is in the annotation on the type of $c$. \\
+For the creation of instances we return an existential type to account for the newly created instance. \\
+\begin{minipage}{0.5\textwidth}
+\textbf{T-Op}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\textbf{T-New}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Delta;\Gamma \vdash \val_1 : i \\
+	(i:\eff)\in\Delta \\
+	\op \in \Op_\eff\\
+	\Delta;\Gamma \vdash \val_2 : \pty{\op} \\
+	\Delta;\Gamma , y : \rty{\op} \vdash \comp : \texistss{j}{\aty{\ty}{r}} \\
+	i \in r
+	\end{array}
+}{
+	\Delta;\Gamma \vdash \copi{\val_1}{\op}{\val_2}{y}{\comp} : \texistss{j}{\aty{\ty}{r}}
+}\]
+\vspace{10pt}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+}{
+	\Delta;\Gamma \vdash \cnew{\eff} : \texists{i}{\eff}{\aty{i}{\varnothing}}
+}\]
+\vspace{10pt}
+\end{minipage}
+\newpage
+Write here. \\
+\textbf{T-Do}
+\[\frac{
+	\begin{array}{l}
+	\Delta;\Gamma \vdash c_1 : \aty{\ty_1}{r} \\
+	\Delta; \Gamma, x : \ty_1 \vdash c_2 : \aty{\ty_2}{r}
+	\end{array}
+}{
+	\Delta;\Gamma \vdash \cdo{x}{c_1}{c_2} : \aty{\ty_2}{r}
+}\]
+\\
+We can unpack an existential type and get a reference to an instance and an instance type in the continuing computation.
+If the instance variable occurs free in the type of the resulting computation then we have to re-wrap the existential around it.
+Else we can leave out the existential, since the instance variable does not occur free in the type.\\
+\begin{minipage}{0.5\textwidth}
+\textbf{T-Unpack1}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\textbf{T-Unpack2}
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Delta;\Gamma \vdash c_1 : \texists{i}{\eff}{\cty_1} \\
+	\Delta,i:\eff;\Gamma,x:i \vdash c_2 : \cty_2 \\
+	i \notin \cty_2
+	\end{array}
+}{
+	\Delta;\Gamma \vdash \cunpack{i}{x}{c_1}{c_2} : \cty_2
+}\]
+\end{minipage}
+\begin{minipage}{0.5\textwidth}
+\[\frac{
+	\begin{array}{l}
+	\Delta;\Gamma \vdash c_1 : \texists{i}{\eff}{\cty_1} \\
+	\Delta,i:\eff;\Gamma,x:i \vdash c_2 : \cty_2 \\
+	i \in \cty_2
+	\end{array}
+}{
+	\Delta;\Gamma \vdash \cunpack{i}{x}{c_1}{c_2} : \texists{i}{\eff}{\cty_2}
+}\]
+\end{minipage}
+
+\section{Semantics}
+We give the small-step operational semantics for the system. These are the same as the one in \cite{effectsystem} but with the instance creation computation added. In order to handle instance creation we update the relation to $\comp; n \rightsquigarrow \comp;n$ where $\comp$ is the current computation and $n \in \mathbb{N}$ the id of the next instance that will be created. \\
+For abstractions we have the usual beta-reduction rule.\\
+\[\frac{
+}{
+	\capp{(\vabs{x}{\comp})}{\val}\sep i \rightsquigarrow \comp[\val/x]\sep i
+}\]
+For instance creation we replace the call to $new$ with the instance constant and we increase the instance id counter.\\
+\[\frac{
+}{
+	\cnew{E}\sep i \rightsquigarrow \creturn{\vinst{i}}\sep i + 1
+}\]
+For sequencing we have three rules. The first rule reduces the first computation.
+The second rule substitutes the value of a return computation in the second computation.
+The last rule floats an operation call over the sequencing, this makes the handle computation easier, since we won't have to think about sequencing inside of a handle computation.\\
+\[\frac{
+	\comp_1\sep i \rightsquigarrow \comp'_1\sep i'
+}{
+	(\cdo{x}{\comp_1}{\comp_2})\sep i \rightsquigarrow (\cdo{x}{\comp'_1}{\comp_2})\sep i'
+}\]
+\[\frac{
+}{
+	(\cdo{x}{\creturn{\val}}{\comp})\sep i \rightsquigarrow \comp[\val/x]\sep i
+}\]
+\[\frac{
+}{
+	(\cdo{x}{\copi{\vinst{j}}{\op}{\val}{y}{\comp_1}}{\comp_2})\sep i \rightsquigarrow \copi{\vinst{j}}{\op}{\val}{y}{(\cdo{x}{\comp_1}{\comp_2})}\sep i
+}\]
+
+For unpacking we can turn it in to do sequencing by just ignoring the type parameter.\\
+\[\frac{
+}{
+	\cunpack{i}{x}{c_1}{c_2}\sep i \rightsquigarrow \cdo{x}{c_1}{c_2}\sep i
+}\]
+
+In the following rules \\$h = 
+	\vhandleri{\vinst{j}}{
+		\textit{return} \; x_r \rightarrow \comp_r,
+		\op_1(x_1 ; k_1) \rightarrow \comp_1,
+		...,
+		\op_n(x_n ; k_n) \rightarrow \comp_n
+	}$.\\
+We can reduce the computation that we want to handle.\\
+\[\frac{
+	\comp\sep i \rightsquigarrow \comp'\sep i'
+}{
+	\chandle{h}{\comp}\sep i \rightsquigarrow \chandle{h}{\comp'}\sep i'
+}\]
+If we are handling a return computation we simply substitute the value in the return case of the handler.\\
+\[\frac{
+}{
+\chandle{h}{(\creturn{\val})}\sep i \rightsquigarrow \comp_r[\val/x_r]\sep i
+}\]
+If we are handling an operation call where the instance matches the instance of the handler and the operation is in the handler then we can reduce to the corresponding operation clause with the parameter value and the continuation substituted.
+Note that we nest the handle computation inside of the continuation, this describes deep handlers.\\
+\[\frac{
+	\op_i \in \{\op_1, ..., \op_n \}
+}{
+	\chandle{h}{(\copi{\vinst{j}}{\op_i}{\val}{x}{\comp})}\sep i \rightsquigarrow \comp_i[\val/x_i, (\vabs{x}{\chandle{h}{\comp}})/k_i]\sep i
+}\]
+If the instance is different from the instance in the handler or the operation is not in the handler then we float the operation
+call over the handling computation.\\
+\[\frac{
+	\op \notin \{\op_1, ..., \op_n \} \lor k \neq j
+}{
+	\chandle{h}{(\copi{\vinst{k}}{\op}{\val}{x}{\comp})}\sep i \rightsquigarrow \copi{\vinst{k}}{\op}{\val}{x}{\chandle{h}{\comp}}\sep i
+}\]
+
+\newpage
+\section{Theorems}
+
+The most important theorem is the type soundness theorem, which states that any computation that typechecks will not get stuck.
+This is proven using two auxiliary theorems preservation and progress.\\
+The preservation theorem states that for any program that typechecks, if we take a step using the semantics then the resulting program will still typecheck with the same type.
+\begin{theorem}[Preservation]
+If $\Delta;\Gamma \vdash \comp : \cty$ and $\comp \rightsquigarrow \comp'$ then $\Delta;\Gamma \vdash \comp' : \cty$
+\end{theorem}
+The progress theorem states that any computation that typechecks is either able to take a step, is a value.\\
+In order to proof this we have the auxiliary theorem for effectful computation where the evaluation can get stuck on operation calls.
+\begin{theorem}[Progress effectful]
+If $\cdot;\cdot \vdash \comp : \cty$ then either:
+\begin{itemize}
+\item $\comp \rightsquigarrow \comp'$ for some $\comp'$
+\item $\comp = \creturn{\val}$ for some $\val$
+\item $\comp = \copi{\vinst{i}}{\op}{\val}{x}{\comp}$ for some $i, \op, \val$ and $\comp$
+\end{itemize}
+\end{theorem}
+Note that the progress theorem requires that the computation has no effects ($!\varnothing$), else the computation could get stuck on an operation call.
+\begin{theorem}[Progress]
+If $\cdot;\cdot \vdash \comp : \texistss{i}{\aty{\ty}{\varnothing}}$ then either:
+\begin{itemize}
+\item $\comp \rightsquigarrow \comp'$ for some $\comp'$
+\item $\comp = \creturn{\val}$ for some $\val$
+\end{itemize}
+\end{theorem}
+
+Using preservation and progress we can proof type soundness (also called type safety). Here also we require that the computation has no effects.
+\begin{theorem}[Type soundness]
+If $\cdot;\cdot \vdash \comp : \texistss{i}{\aty{\ty}{\varnothing}}$ and $\comp, i \rightsquigarrow^* \comp', i'$ (where $\comp', i' \not\rightsquigarrow \comp'', i''$) then $\comp' = \creturn{\val}$ for some $\val$
+
+The determinism theorem states that any computation has a single evaluation path.
+\begin{theorem}[Determinism]
+If $\comp \rightsquigarrow \comp'$ and $\comp \rightsquigarrow \comp''$ then $\comp' = \comp''$  \\
+\end{theorem}
+\end{theorem}
+
+\section{Examples}
+We will show some examples together with the types that the discussed type system will assign to them.
+After each example is a fitch-style type derivation.
+For the examples we will assume that the following effect is in the context.
+\begin{minted}[tabsize=2]{haskell}
+effect Flip {
+	flip : () -> Bool
+}
+\end{minted}
+
+The following function $f$ creates a new instances and calls an operation on it, but does not return the instance itself.
+In the type we have an existential but we see that the instance does not appear in the value type, but only in the effect annotation. This way we know that we do not have access to the instance and so are unable to handle the effect.
+\begin{minted}[tabsize=2]{haskell}
+f : () -> exists (i:Flip). Bool!{i}
+f _ =
+	inst <- new Flip;
+	inst#flip ()
+\end{minted}
+
+\makebox[\textwidth]{$
+\begin{nd}
+  \open
+  \hypo {1} {\;|\; \_ : \tunit}
+  \have {2} {\cnew{Flip} : \texists{j}{Flip}{\aty{i}{\varnothing}}}
+  \open
+  \hypo {3} {i : E \;|\; inst : i}
+  \open
+  \hypo {4} {\;|\; x : Bool}
+  \have {5} {\creturn{x} : \aty{Bool}{\varnothing}} \by{T-Return}{4}
+  \have {6} {\creturn{x} : \aty{Bool}{\{i\}}} \by{T-SubComp}{3, 5}
+  \close
+  \have {7} {\copi{inst}{flip}{\vunit}{x}{\creturn{x}} : \aty{Bool}{\{i\}}} \by{T-Op}{6}
+  \close
+  \have {8} {\cdo{inst}{\cnew{Flip}}{\copi{inst}{flip}{\vunit}{x}{\creturn{x}}} : \texists{i}{Flip}{\aty{Bool}{\{i\}}}} \by{T-Do}{2, 7}
+  \close
+  \have {9} {\vabs{\_}{\cdo{inst}{\cnew{Flip}}{\copi{inst}{flip}{\vunit}{x}{\creturn{x}}}} : \tarr{\tunit}{\texists{i}{Flip}{\aty{Bool}{\{i\}}}}} \by{T-Abs}{8}
+\end{nd}
+$}\\
+
+In the following function $g$ we create a new instance, call an operation on it and then immediately handle this effect.
+The type of this function is pure, since the effect is immediately handled.
+\begin{minted}[tabsize=2]{haskell}
+g : () -> Bool!{}
+g _ =
+	inst <- new Flip;
+	with handler(inst) {
+		flip _ k -> k True
+	} handle inst#flip ()
+\end{minted}
+
+The following function is also pure because although an instance is created, this instance is never used or returned.
+\begin{minted}[tabsize=2]{haskell}
+g' : () -> ()!{}
+g' _ =
+	inst <- new Flip;
+	return ()
+\end{minted}
+
+\makebox[\textwidth]{$
+\begin{nd}
+  \open
+  \hypo {1} {\;|\; \_ : \tunit}
+  \have {2} {\cnew{Flip} : \texists{j}{Flip}{\aty{i}{\varnothing}}}
+  \open
+  \hypo {3} {i : E \;|\; inst : i}
+  \have {4} {\vunit : \tunit}
+  \have {5} {\creturn{\vunit} : \aty{\tunit}{\varnothing}} \by{T-Return}{4}
+  \close
+  \have {6} {\cdo{inst}{\cnew{Flip}}{\creturn{\vunit}} : \texists{i}{Flip}{\aty{\tunit}{\varnothing}}} \by{T-Do}{2, 5}
+  \have {7} {\cdo{inst}{\cnew{Flip}}{\creturn{\vunit}} : \aty{\tunit}{\varnothing}} \by{T-ExistsRemove}{6}
+  \close
+  \have {8} {\vabs{\_}{\cdo{inst}{\cnew{Flip}}{\creturn{\vunit}}} : \tarr{\tunit}{\aty{\tunit}{\varnothing}}} \by{T-Abs}{7}
+\end{nd}
+$}\\
+
+The following function simply wraps the creation of a $Flip$ instance.
+\begin{minted}[tabsize=2]{haskell}
+h' : () -> exists (i:Flip). i!{}
+h' _ =
+	inst <- new Flip;
+	return inst
+\end{minted}
+
+In $h''$ we use $h'$ twice. This means that we create two distinct $Flip$ instances and we also expect two instance variables bound in the type.
+\begin{minted}[tabsize=2]{haskell}
+h'' : () -> exists (i:Flip) (j:Flip). (i, j)!{}
+h'' _ =
+	i1 <- h' ();
+	i2 <- h' ();
+	return (i1, i2)
+\end{minted}
+
+In the following function $nested$ we create a new instance and handle it, but in the computation we want to handle another instance is created and used. Only one operation call will be handled by the handler, the one called on $i1$. The operation call made on $i2$ is unhandled and so we are left with one existential quantifier.
+\begin{minted}[tabsize=2]{haskell}
+nested : () -> exists (i:Flip). Bool!{i}
+nested _ =
+	i1 <- new Flip;
+	with handler(i1) {
+		flip _ k -> k True
+	} handle (
+		i2 <- new Flip;
+		x <- i1#flip ();
+		y <- i2#flip ();
+		return (x && y)
+	)
+\end{minted}
