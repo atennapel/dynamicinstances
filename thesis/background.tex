@@ -47,35 +47,130 @@
 
 In this chapter we will show the basics of algebraic effects and handlers. We will start with the simply-typed lambda calculus and add algebraic effects and instances to it. We end with dynamic instances and show why a type system for them is difficult to implement.
 
-\section{Fine-grained call-by-value simply-typed lambda calculus}
+\section{Fine-grained simply-typed lambda calculus}
 
 \subsection{Intro}
-
+Explain:
+\begin{itemize}
+	\item Why fine-grained
+	\begin{itemize}
+		\item effects require precise order of evaluation
+		\item fine-grain is explicit on order of evaluation
+		\item evaluation only happens in computations
+	\end{itemize}
+	\item difference between values and computations
+	\item subsume call-by-value and call-by-name (by using thunks)
+\end{itemize}
 
 \subsection{Syntax}
 \begin{align*}
-	\ty \Coloneqq 	& 												\tag{value types} \\
-									& \tunit											\tag{unit type} \\
-									& \tarr{\ty}{\cty}				\tag{type of functions} \\
-	\cty \Coloneqq 	& 											\tag{computation types} \\
-									& \ty										\tag{value type} \\
-	\val \Coloneqq			&											\tag{values} \\
-									& x, y, z, k								\tag{variables} \\
+	\val \Coloneqq	&													\tag{values} \\
+									& x, y, z, k							\tag{variables} \\
 									& \vunit									\tag{unit value} \\
 									& \vabs{x}{\comp}					\tag{abstraction} \\
-	\comp \Coloneqq		&											\tag{computations} \\
-									& \creturn{\val}						\tag{return value as computation} \\
-									& \capp{\val}{\val}					\tag{application} \\
-									& \cdo{x}{\comp}{\comp}			\tag{sequencing} \\
+	\comp \Coloneqq&													\tag{computations} \\
+									& \creturn{\val}					\tag{return value as computation} \\
+									& \capp{\val}{\val}				\tag{application} \\
+									& \cdo{x}{\comp}{\comp}		\tag{sequencing} \\
 \end{align*}
 
 \subsection{Semantics}
+\[\frac{
+}{
+	\capp{(\vabs{x}{\comp})}{\val} \rightsquigarrow \comp[x := \val]
+}\]
+
+\[\frac{
+}{
+	\cdo{x}{\creturn{\val}}{\comp} \rightsquigarrow \comp[x := \val]
+}\]
+
+\[\frac{
+	\comp_1 \rightsquigarrow \comp_1'
+}{
+	\cdo{x}{\comp_1}{\comp_2} \rightsquigarrow \cdo{x}{\comp_1'}{\comp_2}
+}\]
 
 \subsection{Type system}
+value types and computation types\\
+\begin{align*}
+	\ty \Coloneqq 	& 												\tag{value types} \\
+									& \tunit									\tag{unit type} \\
+									& \tarr{\ty}{\cty}				\tag{type of functions} \\
+	\cty \Coloneqq 	& 												\tag{computation types} \\
+									& \ty											\tag{value type} \\
+\end{align*}
 
+\[\frac{
+	\Gamma[x] = \ty
+}{
+	\Gamma \vdash x : \ty
+}\]
+
+\[\frac{
+}{
+	\Gamma \vdash \vunit : \tunit
+}\]
+
+\[\frac{
+	\Gamma, x : \ty_1 \vdash \comp : \ty_2
+}{
+	\Gamma \vdash \vabs{x}{\comp} : \tarr{\ty_1}{\ty_2}
+}\]
+
+\[\frac{
+	\Gamma \vdash \val : \ty
+}{
+	\Gamma \vdash \creturn{\val} : \ty
+}\]
+
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \val_1 : \tarr{\ty_1}{\ty_2}\\
+	\Gamma \vdash \val_2 : \ty_1
+	\end{array}
+}{
+	\Gamma \vdash \capp{\val_1}{\val_2} : \ty_2
+}\]
+
+\[\frac{
+	\begin{array}{l}
+	\Gamma \vdash \comp_1 : \ty_1\\
+	\Gamma, x : \ty_1 \vdash \comp_2 : \ty_2
+	\end{array}
+}{
+	\Gamma \vdash \cdo{x}{\comp_1}{\comp_2} : \ty_2
+}\]
+
+\subsection{Examples}
+Show explicit order of evaluation.
+Same application with different orders of evaluation.\\
+$\capp{\capp{f}{x}}{y}$ translated to fine-grained:\\
+Left-to-right call-by-value:\\
+$\cdo{x'}{x}{\cdo{y'}{y}{\cdo{g}{\capp{f}{x'}}{\capp{g}{y'}}}} $\\
+Right-to-left call-by-value:\\
+$\cdo{y'}{y}{\cdo{x'}{x}{\cdo{g}{\capp{f}{x'}}{\capp{g}{y'}}}} $\\
+Left-to-right call-by-value, apply f before evaluating y:\\
+$\cdo{x'}{x}{\cdo{g}{\capp{f}{x'}}{\cdo{y'}{y}{\capp{g}{y'}}}} $\\
+Call-by-name:\\
+$\cdo{g}{\capp{f}{(\vabs{\_}{x})}}{\capp{g}{(\vabs{\_}{y})}}$
+
+\newpage
 \section{Algebraic effects}
 
 \subsection{Intro}
+Explain:
+\begin{itemize}
+	\item What are algebraic effects and handlers
+	\item Why algebraic effects
+	\begin{itemize}
+		\item easy to use
+		\item can express often used monads
+		\item composable
+		\item always commuting
+		\item modular (split between computations and handlers)
+	\end{itemize}
+\end{itemize}
 
 \subsection{Syntax}
 
@@ -83,9 +178,21 @@ In this chapter we will show the basics of algebraic effects and handlers. We wi
 
 \subsection{Type system}
 
+\subsection{Examples}
+Show flip (non-determinism) and state examples.
+
+\newpage
 \section{Static instances}
 
+\textit{Should I even mention static instances?}
+
 \subsection{Intro}
+Explain:
+\begin{itemize}
+	\item Show problems with wanting to use multiple state instances
+	\item What are static instances
+	\item Show that static instances partially solve the problem
+\end{itemize}
 
 \subsection{Syntax}
 
@@ -93,13 +200,33 @@ In this chapter we will show the basics of algebraic effects and handlers. We wi
 
 \subsection{Type system}
 
-\section{Dynamic instances}
+\subsection{Examples}
+Show state with multiple static instances (references).
+
+\newpage
+\section{Dynamic instances (untyped)}
 
 \subsection{Intro}
+Explain:
+\begin{itemize}
+	\item Show that static instances require pre-defining all instances on the top-level.
+	\item Static instances not sufficient to implement references.
+	\item Show that dynamic instances are required to truly implement references.
+	\item Show more uses of dynamic instances (file system stuff, local exceptions)
+	\item No type system yet.
+\end{itemize}
 
 \subsection{Syntax}
 
 \subsection{Semantics}
 
+\subsection{Examples}
+Show untyped examples.
+\begin{itemize}
+	\item Local exceptions
+	\item ML-style references
+\end{itemize}
+
 \subsection{Type system (discussion, problems)}
+Show difficulty of implementing a type system for this.
 }
