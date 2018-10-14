@@ -1,0 +1,57 @@
+\section{Algebraic effects}
+
+Algebraic effects and handlers are a way of treating computational effects that is modular and compositional.
+
+\textit{
+theory?,
+Category theory, algebras,
+forget about equations
+}
+
+With algebraic effects impure behavior is modeled using operations.
+For example a mutable store has get and put operations, exceptions have a throw operation and console input/output has read and print operations.
+Handlers of algebraic effects generalize handlers of exceptions by not only catching called operations but also adding the ability to resume where the operation was called.
+While not all monads can be written in terms of algebraic effects, for example the continuation monad, in practice most useful computation effects can be modeled this way.
+\\
+For example we can model stateful computations that mutate an integer by defining the following algebraic effect signature:
+
+\[ \textbf{State} := \{ \textbf{Get} : () \rightarrow \textbf{Int}, \textbf{Put} : \textbf{Int} \rightarrow () \} \]
+
+\textbf{State} is an effect that has two operations \textbf{Get} and \textbf{Put}. \textbf{Get} takes unit has its parameter type and returns an integer value, \textbf{Put} takes an integer value and returns unit.
+\\
+We can then use the \textbf{State} operations in a program:
+
+\[ \textit{inc} \; () := x \leftarrow \textbf{Get} \; () ;\; \textbf{Put} \; (x + 1) \]
+
+The program \textbf{inc} uses the \textbf{Get} and \textbf{Put}, but these operations are abstract.
+Handlers are used to give the abstract effects in a computation semantics.
+
+\section{Handlers}
+
+Exception handlers can be generalized by also supplying a continuation to the programmer.
+The programmer can then decide to continue at the point where the exception was thrown.
+These generalized exception handlers were further generalized by Plotkin and Pretnar to allow for many different effects.
+
+For example the following handler gives the \textbf{Get} and \textbf{Put} the usual function-passing style state semantics:
+
+\[ \textit{state} \; := \textbf{handler} \; \{ \;
+  \textbf{return} \; v \rightarrow \lambda s \rightarrow v,
+  \textbf{Get} \; () \; k \rightarrow \lambda s \rightarrow k \; s \; s,
+  \textbf{Put} \; s \; k \rightarrow \lambda s' \rightarrow k \; () \; s,
+\} \]
+
+We are able to give different interpretations of a computation by using different handlers.
+We could for example think of a transaction state interpretation where changed to the state are only applied at the end if the computation succeeds.
+
+\textit{
+citations,
+example of interpretation,
+more examples? (effects)
+}
+
+\section{Instances}
+One problem that occurs with the basic algebraic effects system described above is when we try to 
+
+\section{Dynamic instances}
+\section{Resources}
+\section{Effect systems for algebraic effects}

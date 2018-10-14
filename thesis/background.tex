@@ -1,57 +1,105 @@
+{
+% types
+\newcommand\ty[0]{\tau}
+\newcommand\tunit[0]{()}
+\newcommand\tarr[2]{#1 \rightarrow #2}
+\newcommand\thandler[2]{#1 \Rightarrow #2}
+\newcommand\tforall[3]{\forall(#1:#2) . #3}
+
+% computation type
+\newcommand\cty[0]{\underline{\ty}}
+\newcommand\aty[2]{#1 \; ! \; #2}
+\newcommand\texists[3]{\exists(#1:#2) . #3}
+\newcommand\texistss[2]{\exists \overrightarrow{#1} . #2}
+
+% values
+\newcommand\val[0]{\nu}
+\newcommand\vunit[0]{()}
+\newcommand\vinst[1]{\mathsf{inst}(#1)}
+\newcommand\vabst[3]{\Lambda(#1:#2) . #3}
+\newcommand\vabs[2]{\lambda #1 . #2}
+\newcommand\vappt[2]{#1 \; [ #2 ]}
+\newcommand\vhandler[1]{\textit{handler} \; \{#1\}}
+\newcommand\vhandleri[2]{\textit{handler} ( #1 ) \; \{#2\}}
+\newcommand\vhandlerc[0]{\vhandler{
+	\textit{return} \; x \rightarrow \comp,
+	\op_1(x ; k) \rightarrow \comp,
+	...,
+	\op_n(x ; k) \rightarrow \comp
+}}
+\newcommand\vhandlerci[1]{\vhandleri{#1}{
+	\textit{return} \; x \rightarrow \comp,
+	\op_1(x ; k) \rightarrow \comp,
+	...,
+	\op_n(x ; k) \rightarrow \comp
+}}
+
+% computations
+\newcommand\comp[0]{c}
+\newcommand\creturn[1]{\textit{return} \; #1}
+\newcommand\capp[2]{#1 \; #2}
+\newcommand\cdo[3]{#1 \leftarrow #2 ; #3}
+\newcommand\cop[4]{#1(#2 ; #3 . #4)}
+\newcommand\copi[5]{#1 \# #2(#3 ; #4 . #5)}
+\newcommand\chandle[2]{\textit{with} \; #1 \; \textit{handle} \; #2}
+\newcommand\cnew[1]{\textit{new} \; #1}
+\newcommand\cunpack[4]{(#1, #2) \leftarrow #3 ; #4}
+
+In this chapter we will show the basics of algebraic effects and handlers. We will start with the simply-typed lambda calculus and add algebraic effects and instances to it. We end with dynamic instances and show why a type system for them is difficult to implement.
+
+\section{Fine-grained call-by-value simply-typed lambda calculus}
+
+\subsection{Intro}
+
+
+\subsection{Syntax}
+\begin{align*}
+	\ty \Coloneqq 	& 												\tag{value types} \\
+									& \tunit											\tag{unit type} \\
+									& \tarr{\ty}{\cty}				\tag{type of functions} \\
+	\cty \Coloneqq 	& 											\tag{computation types} \\
+									& \ty										\tag{value type} \\
+	\val \Coloneqq			&											\tag{values} \\
+									& x, y, z, k								\tag{variables} \\
+									& \vunit									\tag{unit value} \\
+									& \vabs{x}{\comp}					\tag{abstraction} \\
+	\comp \Coloneqq		&											\tag{computations} \\
+									& \creturn{\val}						\tag{return value as computation} \\
+									& \capp{\val}{\val}					\tag{application} \\
+									& \cdo{x}{\comp}{\comp}			\tag{sequencing} \\
+\end{align*}
+
+\subsection{Semantics}
+
+\subsection{Type system}
+
 \section{Algebraic effects}
 
-Algebraic effects and handlers are a way of treating computational effects that is modular and compositional.
+\subsection{Intro}
 
-\textit{
-theory?,
-Category theory, algebras,
-forget about equations
-}
+\subsection{Syntax}
 
-With algebraic effects impure behavior is modeled using operations.
-For example a mutable store has get and put operations, exceptions have a throw operation and console input/output has read and print operations.
-Handlers of algebraic effects generalize handlers of exceptions by not only catching called operations but also adding the ability to resume where the operation was called.
-While not all monads can be written in terms of algebraic effects, for example the continuation monad, in practice most useful computation effects can be modeled this way.
-\\
-For example we can model stateful computations that mutate an integer by defining the following algebraic effect signature:
+\subsection{Semantics}
 
-\[ \textbf{State} := \{ \textbf{Get} : () \rightarrow \textbf{Int}, \textbf{Put} : \textbf{Int} \rightarrow () \} \]
+\subsection{Type system}
 
-\textbf{State} is an effect that has two operations \textbf{Get} and \textbf{Put}. \textbf{Get} takes unit has its parameter type and returns an integer value, \textbf{Put} takes an integer value and returns unit.
-\\
-We can then use the \textbf{State} operations in a program:
+\section{Static instances}
 
-\[ \textit{inc} \; () := x \leftarrow \textbf{Get} \; () ;\; \textbf{Put} \; (x + 1) \]
+\subsection{Intro}
 
-The program \textbf{inc} uses the \textbf{Get} and \textbf{Put}, but these operations are abstract.
-Handlers are used to give the abstract effects in a computation semantics.
+\subsection{Syntax}
 
-\section{Handlers}
+\subsection{Semantics}
 
-Exception handlers can be generalized by also supplying a continuation to the programmer.
-The programmer can then decide to continue at the point where the exception was thrown.
-These generalized exception handlers were further generalized by Plotkin and Pretnar to allow for many different effects.
-
-For example the following handler gives the \textbf{Get} and \textbf{Put} the usual function-passing style state semantics:
-
-\[ \textit{state} \; := \textbf{handler} \; \{ \;
-  \textbf{return} \; v \rightarrow \lambda s \rightarrow v,
-  \textbf{Get} \; () \; k \rightarrow \lambda s \rightarrow k \; s \; s,
-  \textbf{Put} \; s \; k \rightarrow \lambda s' \rightarrow k \; () \; s,
-\} \]
-
-We are able to give different interpretations of a computation by using different handlers.
-We could for example think of a transaction state interpretation where changed to the state are only applied at the end if the computation succeeds.
-
-\textit{
-citations,
-example of interpretation,
-more examples? (effects)
-}
-
-\section{Instances}
-One problem that occurs with the basic algebraic effects system described above is when we try to 
+\subsection{Type system}
 
 \section{Dynamic instances}
-\section{Resources}
-\section{Effect systems for algebraic effects}
+
+\subsection{Intro}
+
+\subsection{Syntax}
+
+\subsection{Semantics}
+
+\subsection{Type system (discussion, problems)}
+}
