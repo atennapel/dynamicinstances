@@ -62,14 +62,23 @@ D;G |- v2 : t1
 D;G |- v1#op(v2) : t2!{i}
 
 D;G |- v1 : Inst i
-D;G |- v2 : InstOf i E -> t1!r1
-D;G,x_r:t1 |- c_r : t2!r2
-op_k in E : ta_k -> tb_k
-D;G,x_k:ta_k,k_k:tb_k -> t2!r2 |- c_k : t2!r2
-r1\{i} <= r2
+D;G |- v2 : InstOf i E -> t!r
 ---------------------
-D;G |- handleInstOf(v1)(E)(v2) {
-  return x_r -> c_r
-  op_1 x_1 k_1 -> c_1
-  op_n x_n k_n -> c_n
+D;G |- handleInstOf(v1)(E)(v2) : 
+
+handle(c ()) {
+  ref v k ->
+    handleInstOf(h)(State)
 }
+
+runHeap : forall(hi:Heap). Inst hi -> (() -> Int!{hi}) -> Int
+runHeap = /\(hi:Heap).\(h:Inst hi)(c:() -> Int!{hi}).
+  handle(c ()) {
+    h#ref v k ->
+      handleInstOf(h@State)(\r -> runState r (k r))
+  }
+
+main : forall(hi:Heap). Inst hi -> Int!{hi}
+main = /\(hi:Heap).\(h:Inst hi).
+  r <- h#ref 42;
+  r#get ()

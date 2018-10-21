@@ -1,0 +1,49 @@
+\documentclass[12pt]{article}
+
+\title{Problem statement}
+\author{Albert ten Napel}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Problem statement}
+%Part A (The ideal): Describes a desired goal or ideal situation; explains how things should be.
+Algebraic effects and handlers is an approach to computation effects that allows users to easily define, combine and handle effects. Using algebraic effects one can implement effects such as non-determinism, mutable state, backtracking and cooperative concurrency.
+Dynamic instances is an extension where multiple instances of effects can be dynamically created. This allows for dynamic effects. Using instances we can implement things such as encapsulated effects and polymorphic heaps.
+\\
+%Part B (The reality): Describes a condition that prevents the goal, state, or value in Part A from being achieved or realized at this time; explains how the current situation falls short of the goal or ideal.
+There have been multiple type-and-effects systems proposed for algebraic effects and handler but unfortunately none of them account for dynamic instances. As such programs that use them can still crash at runtime due to unhandled operations. \\
+%Part C (The consequences): Identifies the way you propose to improve the current situation and move it closer to the goal or ideal.
+We define a type-and-effect system for algebraic effects and handlers in the presence of dynamic instances.
+We show how to define local exceptions and polymorphic heaps in this system.
+We also formalize the system in Coq and prove type soundness.
+
+\section{Contributions}
+\begin{itemize}
+\item We define a type-and-effect system for algebraic effects and handlers in the presence of dynamic instances
+\item We show how to implement local exceptions and polymorphic heaps in this system
+\item We also formalize the system in Coq and prove type soundness
+\end{itemize}
+
+\section{Milestones}
+\begin{itemize}
+\item (1w) Formal system: syntax
+\item (1w) Formal system: type system
+\item (1w) Formal system: Semantics
+\item (1w) Coq: syntax, typing rules and semantics
+\item (1m) Coq: progress and preservation proofs
+\item (1w) Thesis chapter: Introduction (problem statement, proposed solution)
+\item (1m) Thesis chapter: Background (effects, algebraic effects and handlers, instances)
+\item (1m) Thesis chapter: Our system
+\item (2w) Thesis chapter: Examples (encapsulated effects, polymorphic heaps)
+\item (2w) Thesis chapter: Formalization
+\item (2w) Thesis chapter: Related work
+\item (2w) Thesis chapter: Conclusion and future work (polymorphic operations, indexed effects)
+\item (maybe) Haskell implementation (parser, typechecker, interpreter) 
+\end{itemize}
+
+Total: 6m 1w \\
+Done around April?
+
+\end{document}
