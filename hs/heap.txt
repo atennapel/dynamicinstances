@@ -1,0 +1,75 @@
+effect State {
+	get : () -> Int
+	put : Int -> ()
+}
+
+type Packed E = exists(i:E).Inst i
+
+effect Heap {
+	ref : Int -> Packed State
+}
+
+runState : forall(i:State). Inst i -> Int -> (() -> Int!{i}) -> Int
+runState = /\(i:State).\s v c.
+	f <- handle(c ()) {
+		s#get () k -> \s -> k s s
+		s#put s' k -> \s -> k () s'
+		return v -> \s -> v
+	};
+	f v
+
+runHeap : forall(h:Heap). Inst h -> (() -> Int!{h}) -> Int
+runHeap = /\(h:Heap).\i c.
+	handle(c ()) {
+		i#ref v k ->
+			(ri, r) := new State;
+      p <- pack r;
+			runState [ri] r v (\() -> k p)
+	}
+
+p : 
+p =
+	(hi, h) := new Heap;
+	runHeap [hi] h $ \() ->
+	r <- h#ref 42;
+	r#get ()
+	
+
+
+listRefs : forall(h:Heap). Inst h -> List Int -> (List (InstOf h State))!{h}
+listRefs hi l =
+  case l of
+    [] -> return []
+    (h :: t) ->
+      href <- h#ref h;
+      trefs <- listRefs hi t;
+      return (href :: trefs)
+
+listUnrefs : forall(h:Heap). List (InstOf h State) -> (List Int)!{h}
+listUnrefs l =
+  case l of
+    [] -> return []
+    (h :: t) ->
+      x <- h#get ();
+      txs <- listUnrefs t;
+      return (x :: txs)
+
+
+D;G |- v1 : InstOf i E
+op in E : t1 -> t2
+D;G |- v2 : t1
+-------------------------
+D;G |- v1#op(v2) : t2!{i}
+
+D;G |- v1 : Inst i
+D;G |- v2 : InstOf i E -> t1!r1
+D;G,x_r:t1 |- c_r : t2!r2
+op_k in E : ta_k -> tb_k
+D;G,x_k:ta_k,k_k:tb_k -> t2!r2 |- c_k : t2!r2
+r1\{i} <= r2
+---------------------
+D;G |- handleInstOf(v1)(E)(v2) {
+  return x_r -> c_r
+  op_1 x_1 k_1 -> c_1
+  op_n x_n k_n -> c_n
+}
