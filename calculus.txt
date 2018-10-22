@@ -4,12 +4,12 @@ t ::=     value types
 i,j,k     instance variable
 ()        unit type
 t -> T    function type
+forall(i:e).T   universal instance type
 
 r ::= { i, j, k, ... } instance variable set
 
 T ::= computation types
 t!r             annotated type
-forall(i:e).T   universal instance type
 exists(i:e).T   existential type
 
 v ::= values
@@ -83,7 +83,7 @@ D;G |- x : t
 --------------
 D;G |- () : ()
 
-D[i] = e
+D[i] = E
 ------------------
 D;G |- inst(i) : i
 
@@ -91,9 +91,9 @@ D;G,x:t |- c : T
 --------------------
 D;G |- \x.c : t -> T
 
-D,i:e;G |- c : T
+D,i:E;G |- c : T
 --------------------------------
-D;G |- /\(i:e).c : forall(i:e).T
+D;G |- /\(i:E).c : forall(i:E).T
 
 D;G |- v : t1
 t1 <: t2
@@ -106,13 +106,13 @@ D;G |- v : t
 ----------------------
 D;G |- return v : t!{}
 
-D;G |- v : t -> T
-D;G |- v : t
+D;G |- v1 : t -> T
+D;G |- v2 : t
 --------------
-D;G |- v v : T
+D;G |- v1 v2 : T
 
-D;G |- v : forall(j:e). T
-D[i] = e
+D;G |- v : forall(j:E). T
+D[i] = E
 ------------------------
 D;G |- v [i] : T[j := i]
 

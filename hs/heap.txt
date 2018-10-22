@@ -7,8 +7,8 @@ effect h@Heap {
   ref : Int -> Inst h State
 }
 
-runState : forall t i. Int -> Inst i State -> (() -> t!{i}) -> t
-runState = /\t. \v is c.
+runState : forall i. Int -> Inst i State -> (() -> Int!{i}) -> Int
+runState = /\i. \v is c.
   f <- handle(c ()) {
     is#return x -> \s -> x
     is#get () k -> \s -> k s s
@@ -16,8 +16,8 @@ runState = /\t. \v is c.
   };
   f v
 
-runHeap : forall t. (forall h. Inst h Heap -> t!{h}) -> t
-runHeap = /\t. \c.
+runHeap : (forall h. Inst h Heap -> Int!{h}) -> Int
+runHeap = \c.
   (hi, i) := new Heap;
   handle(c [hi] i) {
     ref v k ->
@@ -25,19 +25,11 @@ runHeap = /\t. \c.
       k r
   }
 
-program : forall(hi:Heap). Inst hi -> Int!{hi}
-program = /\(hi:Heap). \h.
-  rex <- h#ref 42;
-  (ri, r) := unpack rex;
+program : forall hi. Inst hi Heap -> Int!{hi}
+program = /\hi. \h.
+  r <- h#ref 42;
   r#get ()
 
 main : () -> Int
 main = \().
   runHeap [Int] program
-
-D |- i
-D;G |- v : forall j. Inst j E -> (() -> t1!r1) -> t2!r2
-j not_in r2
-D;G,x:Inst i E |- c : t1!r1
----------------------------------------------
-D;G |- x <- new i@E with v; c : t2!r2
