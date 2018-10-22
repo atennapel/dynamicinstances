@@ -3,82 +3,41 @@ effect State {
 	put : Int -> ()
 }
 
-type Packed E = exists(i:E).Inst i
-
-effect Heap {
-	ref : Int -> Packed State
+effect h@Heap {
+  ref : Int -> Inst h State
 }
 
-runState : forall(i:State). Inst i -> Int -> (() -> Int!{i}) -> Int
-runState = /\(i:State).\s v c.
-	f <- handle(c ()) {
-		s#get () k -> \s -> k s s
-		s#put s' k -> \s -> k () s'
-		return v -> \s -> v
-	};
-	f v
+runState : forall t i. Int -> Inst i State -> (() -> t!{i}) -> t
+runState = /\t. \v is c.
+  f <- handle(c ()) {
+    is#return x -> \s -> x
+    is#get () k -> \s -> k s s
+    is#put s' k -> \s -> k () s'
+  };
+  f v
 
-runHeap : forall(h:Heap). Inst h -> (() -> Int!{h}) -> Int
-runHeap = /\(h:Heap).\i c.
-	handle(c ()) {
-		i#ref v k ->
-			(ri, r) := new State;
-      p <- pack r;
-			runState [ri] r v (\() -> k p)
-	}
-
-p : 
-p =
-	(hi, h) := new Heap;
-	runHeap [hi] h $ \() ->
-	r <- h#ref 42;
-	r#get ()
-	
-
-
-listRefs : forall(h:Heap). Inst h -> List Int -> (List (InstOf h State))!{h}
-listRefs hi l =
-  case l of
-    [] -> return []
-    (h :: t) ->
-      href <- h#ref h;
-      trefs <- listRefs hi t;
-      return (href :: trefs)
-
-listUnrefs : forall(h:Heap). List (InstOf h State) -> (List Int)!{h}
-listUnrefs l =
-  case l of
-    [] -> return []
-    (h :: t) ->
-      x <- h#get ();
-      txs <- listUnrefs t;
-      return (x :: txs)
-
-
-D;G |- v1 : InstOf i E
-op in E : t1 -> t2
-D;G |- v2 : t1
--------------------------
-D;G |- v1#op(v2) : t2!{i}
-
-D;G |- v1 : Inst i
-D;G |- v2 : InstOf i E -> t!r
----------------------
-D;G |- handleInstOf(v1)(E)(v2) : 
-
-handle(c ()) {
-  ref v k ->
-    handleInstOf(h)(State)
-}
-
-runHeap : forall(hi:Heap). Inst hi -> (() -> Int!{hi}) -> Int
-runHeap = /\(hi:Heap).\(h:Inst hi)(c:() -> Int!{hi}).
-  handle(c ()) {
-    h#ref v k ->
-      handleInstOf(h@State)(\r -> runState r (k r))
+runHeap : forall t. (forall h. Inst h Heap -> t!{h}) -> t
+runHeap = /\t. \c.
+  (hi, i) := new Heap;
+  handle(c [hi] i) {
+    ref v k ->
+      r <- new hi@State with runState;
+      k r
   }
 
-main : forall(hi:Heap). Inst hi -> Int!{hi}
-main = /\(hi:Heap).\(h:Inst hi).
-  r <- h#ref 42;
+program : forall(hi:Heap). Inst hi -> Int!{hi}
+program = /\(hi:Heap). \h.
+  rex <- h#ref 42;
+  (ri, r) := unpack rex;
   r#get ()
+
+main : () -> Int
+main = \().
+  runHeap [Int] program
+
+D |- i
+D;G |- v : forall j. Inst j E -> (() -> t1!r1) -> t2!r2
+j not_in r2
+D;G,x:Inst i E |- c : t1!r1
+---------------------------------------------
+D;G |- x <- new i@E with v; c : t2!r2

@@ -1,212 +1,36 @@
 SYNTAX
-E ::= Exc, Flip, State, ... effects
+E ::=     effects
+  Exc, Flip, State,
+
 t ::=     value types
-i,j,k     instance variable
-()        unit type
-Inst i E  instance type
-t -> T    function type
-forall(i:e).T   universal instance type
+  i,j,k     labels
+  ()        unit type
+  Inst i E  instance type
+  t -> T    function type
+  forall i.T   universally quantified type over a label
 
-r ::= { i, j, k, ... } instance variable set
+r ::=   instance variable set
+  { i, j, k, ... }
 
-T ::= computation types
-t!r             annotated type
+T ::=   computation types
+  t!r             annotated type
 
-v ::= values
-x,y,z,k     variables
-()          unit value
-inst(n)     instances (for the semantics)
-\x.c        abstractions
-/\i.c   instance abstractions
+v ::=   values
+  x,y,z,k     variables
+  ()          unit value
+  inst(n)     instances (for the semantics)
+  \x.c        abstractions
+  /\i.c       instance abstractions
 
-h ::= handlers
-{ return x_r. c_r, v#op_1 x_1 k_1. c_1, ..., v#op_n x_n k_n. c_n }
+h ::=   handlers
+  { return x_r. c_r, v#op_1 x_1 k_1. c_1, ..., v#op_n x_n k_n. c_n }
 
-c ::= computations
-return v                return value
-v v                     application
-v [i]                   instance application
-x <- c; c               sequencing
-v#op(v)                 operation call
-new e                   new instance
-(i, x) <- unpack c; c   unpack existential
-handle(c) h             handle computation with handler
-
-SUBTYPING
-value types
-
-------
-i <: i
-
---------
-() <: ()
-
-t2 <: t1
-T1 <: T2
---------------------
-t1 -> T1 <: t2 -> T2
-
-computation types
-
-t1 <: t2
-r1 `subset_of` r2
---------------
-t1!r1 <: t2!r2
-
-T1 <: T2
---------------------------------
-forall(i:e).T1 <: forall(i:e).T2
-
-T1 <: T2
---------------------------------
-exists(i:e).T1 <: exists(i:e).T2
-
-i not_in freeInstVars(T)
-------------------
-exists(i:e).T <: T
-
-----------------------------------------
-exists(i:e)(j:e).T <: exists(j:e)(i:e).T
-
-T1 <: T2
-T2 <: T3
---------
-T1 <: T3
-
-TYPING RULES
-values
-
-G[x] = t
-------------
-D;G |- x : t
-
---------------
-D;G |- () : ()
-
-D[i] = e
-------------------
-D;G |- inst(i) : i
-
-D;G,x:t |- c : T
---------------------
-D;G |- \x.c : t -> T
-
-D,i:e;G |- c : T
---------------------------------
-D;G |- /\(i:e).c : forall(i:e).T
-
-D;G |- v : t1
-t1 <: t2
--------------
-D;G |- v : t2
-
-computations
-
-D;G |- v : t
-----------------------
-D;G |- return v : t!{}
-
-D;G |- v : t -> T
-D;G |- v : t
---------------
-D;G |- v v : T
-
-D;G |- v : forall(j:e). T
-D[i] = e
-------------------------
-D;G |- v [i] : T[j := i]
-
-D;G |- c1 : t1!r
-D;G,x:t1 |- c2 : t2!r
--------------------------
-D;G |- x <- c1; c2 : t2!r
-
-D;G |- v1 : i
-D[i] = e
-op in e
-D;G |- v2 : paramty(op)
-----------------------
-D;G |- v1#op(v2) : t!{e}
-
---------------------------------
-D;G |- new e : exists(i:e). i!{}
-
-D;G |- c1 : exists(j:e). T1
-D,j:e ; G, i:j, x:() -> T1 |- c2 : T2
---------------------------------
-D;G |- (i, x) <- unpack c1; c2 : exists(j:e). T2
-
-D;G |- c : t1!r1
-D; G,x_r:t1 |- c_r : t2!r2
-D;G |- v_i : j_i
-D[j_i] = e_i
-D; G, x_i:paramty(op_i), k_i:returnty(op_i) -> t2!r2 |- c_i : t2!r2
-handled = { j_i | i <- { 1, ..., n }, ops of e_i = ops_i }   -- all instances where all operations of the effect are in the handler
-r1 \ handled `subset_of` r2
---------------------------------------------------------------------------
-D;G |- handle(c) h : t2!r2
-  where h = { return x_r. c_r, v_1#op_1 x_1 k_1. c_1, ..., v_n#op_n x_n k_n. c_n }
-
-D;G |- c : T1
-T1 <: T2
--------------
-D;G |- c : T2
-
-SEMANTICS
-
-----------------------------
-(\x. c) v; n ~> c[x := v]; n
-
------------------------------------
-(/\(i:e). c) [j]; n ~> c[i := j]; n
-
--------------------------------
-new e; n ~> return inst(n); n+1
-
-c1 ; n ~> c1' ; n'
-------------------------------------------------------------
-(i, x) <- unpack c1; c2 ; n ~> (i, x) <- unpack c1'; c2 ; n'
-
--------------------------------------------------------------------------------------------
-(i, x) <- unpack (return inst(n)); c2 ; n ~> c2[i := inst(n); x := \u. return inst(n)] ; n
-
-----------------------------------------------------------------------------------------
-(i, x) <- unpack (y <- return inst(n); c2); c3 ; n ~> c3[i := inst(n); x := \u. c2] ; n'
-
-c1 ; n ~> c1' ; n'
-------------------------------------
-x <- c1; c2 ; n ~> x <- c1'; c2 ; n'
-
--------------------------------------
-x <- return v; c ; n ~> c[x := v] ; n
-
---------------------------------------------------------
-x <- (y <- c1; c2); c3 ; n ~> y <- c1; (x <- c2; c3) ; n
-
-c ; n ~> c' ; n'
-------------------------------------
-handle(c) h ; n ~> handle(c') h ; n'
-
----------------------------------------
-handle(return v) h ; n ~> c_r[x_r := v] ; n
-  where h = { return x_r. c_r, v_1#op_1 x_1 k_1. c_1, ..., v_n#op_n x_n k_n. c_n }
-
-inst(i)#op in h as i_m    -- instance/operation combo is in the handler with index m
---------------------------------------
-handle(inst(i)#op(v)) h ; n ~> c_m[x_m := v, k_m := \x. handle(return x) h] ; n
-  where h = { return x_r. c_r, inst(i_1)#op_1 x_1 k_1. c_1, ..., inst(i_n)#op_n x_n k_n. c_n }
-
-inst(i)#op not_in h       -- instance/operation combo is not in the handler
---------------------------------------
-handle(inst(i)#op(v)) h ; n ~> x <- inst(i)#op(v); handle(return x) h ; n
-  where h = { return x_r. c_r, inst(i_1)#op_1 x_1 k_1. c_1, ..., inst(i_n)#op_n x_n k_n. c_n }
-
-inst(i)#op in h as i_m    -- instance/operation combo is in the handler with index m
---------------------------------------
-handle(x <- inst(i)#op(v); c) h ; n ~> c_m[x_m := v, k_m := \x. handle(c) h] ; n
-  where h = { return x_r. c_r, inst(i_1)#op_1 x_1 k_1. c_1, ..., inst(i_n)#op_n x_n k_n. c_n }
-
-inst(i)#op not_in h       -- instance/operation combo is not in the handler
---------------------------------------
-handle(x <- inst(i)#op(v); c) h ; n ~> x <- inst(i)#op(v); handle(c) h ; n
-  where h = { return x_r. c_r, inst(i_1)#op_1 x_1 k_1. c_1, ..., inst(i_n)#op_n x_n k_n. c_n }
+c ::=   computations
+  return v                return value
+  v v                     application
+  v [i]                   instance application
+  x <- c; c               sequencing
+  v#op(v)                 operation call
+  new e                   new instance
+  (i, x) <- unpack c; c   unpack existential
+  handle(c) h             handle computation with handler
