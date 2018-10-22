@@ -133,14 +133,14 @@ D;G |- handle(c) h : t2!r2
 D,i;G,x:Inst i E |- c : T
 i not_in T
 -----------------------------
-D;G |- (i, x) := new E; c : T
+D;G |- new E as (i, x); c : T
 
 D |- i
 D;G |- v : forall i. Inst i E -> (() -> t1!r1) -> t2!r2
 i not_int r2
 D;G,x:Inst i E |- c : t1!r1
 -----------------------------
-D;G |- x := new i@E with v; c : t2!r2
+D;G |- new i@E with v as x; c : t2!r2
 
 D;G |- c : T1
 T1 <: T2
@@ -194,9 +194,8 @@ inst(i)#op not_in h       -- instance/operation combo is not in the handler
 handle(x <- inst(i)#op(v); c) h ; n ~> x <- inst(i)#op(v); handle(c) h ; n
   where h = { return x_r. c_r, inst(i_1)#op_1 x_1 k_1. c_1, ..., inst(i_n)#op_n x_n k_n. c_n }
 
+-----------------------------------------------
+(new E as (i, x); c) ; n ~> c[x := inst(n)] ; n+1
 
 -----------------------------------------------
-((i, x) := new E; c) ; n ~> c[x := inst(n)] ; n+1
-
------------------------------------------------
-(x := new i@E with v; c) ; n ~> c[x := inst(n)] ; n+1
+(new i@E with v as x; c) ; n ~> c[x := inst(n)] ; n+1
