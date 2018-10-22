@@ -32,8 +32,8 @@ c ::=                     computations
   x <- c; c               sequencing
   v#op(v)                 operation call
   handle(c) h             handle computation with handler
-  (i, x) := new E; c      new instance
-  x := new i@E with v; c  new encapsulated instance
+  new E as (i, x); c      new instance
+  new i@E with v as x; c  new encapsulated instance
 
 =========
 SUBTYPING
@@ -196,7 +196,7 @@ handle(x <- inst(i)#op(v); c) h ; n ~> x <- inst(i)#op(v); handle(c) h ; n
 
 
 -----------------------------------------------
-(i, x) := new E; c ; n ~> c[x := inst(n)] ; n+1
+((i, x) := new E; c) ; n ~> c[x := inst(n)] ; n+1
 
 -----------------------------------------------
-x := new i@E with v; c ; n ~> c[x := inst(n)] ; n+1
+(x := new i@E with v; c) ; n ~> c[x := inst(n)] ; n+1

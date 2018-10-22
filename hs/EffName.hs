@@ -150,14 +150,14 @@ data ValTy
   = TVar Var
   | TFun ValTy CompTy
   | TForall Name Kind CompTy
-  | TInst ValTy
+  | TInst ValTy Name
   deriving (Eq, Ord)
 
 instance Show ValTy where
   show (TVar x) = show x
   show (TFun a b) = "(" ++ (show a) ++ " -> " ++ (show b) ++ ")"
   show (TForall x t b) = "(forall(" ++ (show x) ++ " : " ++ (show t) ++ "). " ++ (show b) ++ ")"
-  show (TInst a) = "(Inst " ++ (show a) ++ ")"
+  show (TInst a n) = "(Inst " ++ (show a) ++ ")"
 
 instance IsString ValTy where
   fromString = TVar . Free . Name
