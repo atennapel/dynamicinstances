@@ -8,4 +8,4 @@ thesis/*.toc
 thesis/*.log
 thesis/*.synctex.gz
 thesis/_minted-*
-
+coq/.coqdeps.d

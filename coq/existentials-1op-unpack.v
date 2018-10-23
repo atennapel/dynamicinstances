@@ -14,7 +14,7 @@
 Require Import Coq.Lists.List.
 Require Import Coq.Init.Nat.
 Require Import Coq.omega.Omega.
-Require Import Util.
+Require Import eff.Util.
 From stdpp Require Import fin_collections gmap.
 
 (* effects *)
@@ -41,24 +41,9 @@ Combined Scheme ty_mut_ind from vty_mut_ind, cty_mut_ind.
 Hint Constructors ty.
 Hint Constructors cty.
 
-(* env & contenxt *)
+(* env & context *)
 Definition env := list eff.
 Definition context := list ty.
-
-Record eff_env := EffEnv {
-  eff_env_paramty : eff -> ty;
-  eff_env_returnty : eff -> ty;
-}.
-
-(* flatten cty *)
-Inductive unwrap_cty : env -> cty -> cty -> Prop :=
-  | Ex_nil : forall t r,
-    unwrap_cty [] (tannot t r) (tannot t r)
-  | Ex_cons : forall E l t1 t2,
-    unwrap_cty l t1 t2 ->
-    unwrap_cty (E :: l) (texists E t1) t2.
-
-Hint Constructors unwrap_cty.
 
 (* ast *)
 Inductive val : Type :=
@@ -72,8 +57,9 @@ with comp : Type :=
   | app : val -> val -> comp
   | do : comp -> comp -> comp
   | handle : val -> comp -> comp
-  | opc : val -> val -> comp -> comp
-  | new : eff -> comp.
+  | opc : val -> val -> comp
+  | new : eff -> comp
+  | unpack : comp -> comp -> comp.
 
 Scheme val_mut_ind := Induction for val Sort Prop
   with comp_mut_ind := Induction for comp Sort Prop.
@@ -145,11 +131,31 @@ Definition swap_2_tinst_cty t := swap_2_tinst_cty_rec 0 1 t.
 Hint Unfold swap_2_tinst_ty.
 Hint Unfold swap_2_tinst_cty.
 
+(* type shifting *)
+Fixpoint shiftty' (d:nat) (c:nat) (t:ty) : ty :=
+  match t with
+  | tinst k => if k <? c then t else tinst (k + d)
+  | tunit => t
+  | tarr t1 t2 => tarr (shiftty' d c t1) (shiftcty' d c t2)
+  | thandler t1 t2 => thandler (shiftcty' d c t1) (shiftcty' d c t2)
+  end
+with shiftcty' (d:nat) (c:nat) (t:cty) : cty :=
+  match t with
+  | tannot t' r => tannot (shiftty' d c t') r
+  | texists e t' => texists e (shiftcty' d (S c) t')
+  end.
+
+Definition shiftty d t := shiftty' d 0 t.
+Definition shiftcty d t := shiftcty' d 0 t.
+
+Hint Unfold shiftty.
+Hint Unfold shiftcty.
+
 (* substitution *)
 Fixpoint shiftval' (d:nat) (c:nat) (t:val) : val :=
   match t with
   | unit => t
-  | vinst _ =>t
+  | vinst _ => t
   | var k => if k <? c then t else var (k + d)
   | abs t' => abs (shiftcomp' d (S c) t')
   | handler v cr co => handler (shiftval' d c v) (shiftcomp' d (S c) cr) (shiftcomp' d (S (S c)) co)
@@ -159,9 +165,10 @@ with shiftcomp' (d:nat) (c:nat) (t:comp) : comp :=
   | ret t' => ret (shiftval' d c t')
   | app t1 t2 => app (shiftval' d c t1) (shiftval' d c t2)
   | do t1 t2 => do (shiftcomp' d c t1) (shiftcomp' d (S c) t2)
-  | opc vi v t => opc (shiftval' d c vi) (shiftval' d c v) (shiftcomp' d (S c) t)
+  | opc vi v => opc (shiftval' d c vi) (shiftval' d c v)
   | handle v t => handle (shiftval' d c v) (shiftcomp' d c t)
   | new E => t
+  | unpack t1 t2 => do (shiftcomp' d c t1) (shiftcomp' d (S c) t2)
   end.
 
 Definition shiftval d t := shiftval' d 0 t.
@@ -184,9 +191,10 @@ with substcomp' (j:nat) (s:val) (t:comp) : comp :=
   | ret t' => ret (substval' j s t')
   | app t1 t2 => app (substval' j s t1) (substval' j s t2)
   | do t1 t2 => do (substcomp' j s t1) (substcomp' (S j) (shiftval 1 s) t2)
-  | opc vi v t => opc (substval' j s vi) (substval' j s v) (substcomp' (S j) (shiftval 1 s) t)
+  | opc vi v => opc (substval' j s vi) (substval' j s v)
   | handle v t => handle (substval' j s v) (substcomp' j s t)
   | new E => t
+  | unpack t1 t2 => do (substcomp' j s t1) (substcomp' (S j) (shiftval 1 s) t2)
   end.
 
 Definition substval s t := substval' 0 s t.
@@ -208,28 +216,7 @@ Inductive step : comp -> nat -> comp -> nat -> Prop :=
     step (do (ret v) t) i (substcomp v t) i
   | S_Do : forall t1 t1' i i' t2,
     step t1 i t1' i' ->
-    step (do t1 t2) i (do t1' t2) i'
-  | S_DoOp : forall vi v c1 c2 i,
-    step (do (opc vi v c1) c2) i (opc vi v (do c1 (shiftcomp' 1 1 c2))) i
-  | S_Handle : forall v cr hl c c' i i',
-    step c i c' i' ->
-    step (handle (handler v cr hl) c) i (handle (handler v cr hl) c') i'
-  | S_HandleReturn : forall vi cr hl v i,
-    step (handle (handler vi cr hl) (ret v)) i (substcomp v cr) i
-  | S_HandleOp1 : forall cr vi i co v c,
-    step
-      (handle (handler vi cr co) (opc vi v c))
-      i
-      (substcomp v
-        (substcomp (abs (handle (shiftval 2 (handler vi cr co)) (shiftcomp' 1 1 c))) co))
-      i
-  | S_HandleOp2 : forall cr co i vi vi' v c,
-    ~(vi = vi') ->
-    step
-      (handle (handler vi cr co) (opc vi' v c))
-      i
-      (opc vi' v (handle (shiftval 1 (handler vi cr co)) c))
-      i.
+    step (do t1 t2) i (do t1' t2) i'.
 
 Hint Constructors step.
 
@@ -321,6 +308,12 @@ Hint Constructors wf_cty.
 
 Notation wf_context E := (Forall (wf_ty E)).
 
+(* eff & ops *)
+Record eff_env := EffEnv {
+  eff_env_paramty : eff -> ty;
+  eff_env_returnty : eff -> ty;
+}.
+
 (* typing rules *)
 Inductive tc_val : eff_env -> env -> context -> val -> ty -> Prop :=
   | TC_unit : forall F E C,
@@ -356,29 +349,25 @@ with tc_comp : eff_env -> env -> context -> comp -> cty -> Prop :=
     tc_val F E C v1 (tarr t1 t2) ->
     tc_val F E C v2 t1 ->
     tc_comp F E C (app v1 v2) t2
-  | TC_do : forall F E C c1 c2 is1 is2 t1 t2 r1 r2 t1c t2c tr,
-    tc_comp F E C c1 t1c ->
-    unwrap_cty is1 (tannot t1 r1) t1c ->
-    tc_comp F (is1 ++ E) (t1 :: C) c2 t2c ->
-    unwrap_cty is2 (tannot t2 r2) t2c ->
-    unwrap_cty (is1 ++ is2) (tannot t2 (r1 ∪ r2)) tr ->
-    tc_comp F E C (do c1 c2) tr
-  | TC_handle : forall F E C v c tc tr is t1 t2,
-    tc_comp F E C c tc ->
-    unwrap_cty is t1 tc ->
-    tc_val F (is ++ E) C v (thandler t1 t2) ->
-    unwrap_cty is t2 tr ->
-    tc_comp F E C (handle v c) tr
-  | TC_opc : forall F E C vi vv cc i e tr t efs is,
+  | TC_do : forall F E C c1 c2 t1 r tr2,
+    tc_comp F E C c1 (tannot t1 r) ->
+    tc_comp F E (t1 :: C) c2 tr2 ->
+    tc_comp F E C (do c1 c2) tr2
+  | TC_handle : forall F E C v c t1 t2,
+    tc_comp F E C c t1 ->
+    tc_val F E C v (thandler t1 t2) ->
+    tc_comp F E C (handle v c) t2
+  | TC_opc : forall F E C vi vv i e,
     tc_val F E C vi (tinst i) ->
     nth_error E i = Some e ->
     tc_val F E C vv (eff_env_paramty F e) ->
-    tc_comp F E (eff_env_returnty F e :: C) cc tr ->
-    unwrap_cty is (tannot t efs) tr ->
-    i ∈ efs ->
-    tc_comp F E C (opc vi vv cc) tr
+    tc_comp F E C (opc vi vv) (tannot (eff_env_returnty F e) {[i]})
   | TC_new : forall F E C e,
     tc_comp F E C (new e) (texists e (tannot (tinst 0) empty))
+  | TC_unpack : forall F E C c1 c2 e t tr,
+    tc_comp F E C c1 (texists e t) ->
+    tc_comp F (e :: E) (tarr tunit t :: map (shiftty 1) C) c2 tr ->
+    tc_comp F E C (unpack c1 c2) (texists e tr)
   | TC_sub_comp : forall F E C c t1 t2,
     tc_comp F E C c t1 ->
     wf_cty E t2 ->
@@ -404,12 +393,6 @@ Proof.
   - apply IHstep in H6.
     destruct H6.
     subst; split; auto.
-  - apply IHstep in H8.
-    destruct H8.
-    subst; split; auto.
-  - contradiction.
-  - inv H0.
-    contradiction.
 Qed.
 
 Theorem sub_refl :
@@ -457,22 +440,28 @@ Proof.
 Qed.
 
 Theorem tc_wf :
-  (forall F E C v t, tc_val F E C v t -> wf_context E C -> wf_ty E t) /\
-  (forall F E C v t, tc_comp F E C v t -> wf_context E C -> wf_cty E t).
+  (forall F E C v t, tc_val F E C v t ->
+    (forall E e, wf_ty E (eff_env_returnty F e)) ->
+     wf_context E C -> wf_ty E t) /\
+  (forall F E C v t, tc_comp F E C v t ->
+    (forall E e, wf_ty E (eff_env_returnty F e)) ->
+    wf_context E C -> wf_cty E t).
 Proof.
   apply tc_mut_ind; intros; auto.
-  - rewrite Forall_forall in H.
+  - rewrite Forall_forall in H0.
     apply nth_error_In in e.
     rewrite <- elem_of_list_In in e.
-    apply H in e.
+    apply H0 in e.
     auto.
   - apply WF_tinst with (ef := e); auto.
   - assert (w' := w).
-    assert (H2' := H2).
+    assert (H3' := H3).
     apply Forall_cons_2 with (l := C) in w; auto.
-    apply H0 in w.
+    assert (H2' := H2).
+    apply H0 in H2; auto.
     inv w.
-    apply H in H2.
+    apply H in H3; auto.
+    inv H2.
     apply WF_thandler; apply WF_tannot; auto.
     apply partial_subset_prop_holds with (r := {[i]}) (r2 := r2); auto.
     intros.
@@ -481,5 +470,24 @@ Proof.
   - constructor; auto. set_solver.
   - apply H in H1.
     inv H1.
-  - 
-
+    auto.
+  - assert (H1' := H1).
+    apply H in H1.
+    inv H1.
+    auto.
+  - apply H0 in H1.
+    inv H1.
+    auto.
+  - constructor; auto.
+    intros.
+    assert (i0 = i); set_solver.
+  - repeat constructor.
+    + apply WF_tinst with (ef := e); auto.
+    + set_solver.
+  - constructor.
+    apply H0 in H1; auto.
+    apply List.Forall_cons; auto.
+    + assert (H1' := H1).
+      apply H in H1'; auto.
+      inv H1'.
+    + 

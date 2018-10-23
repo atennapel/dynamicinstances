@@ -442,7 +442,7 @@ instance Show Comp where
   show (Op i o v) = (show i) ++ "#" ++ (show o) ++ "(" ++ (show v) ++ ")"
   show (Handle c h) = "handle(" ++ (show c) ++ ") { " ++ (show h) ++ " }"
   show (New i e x c) = "(new " ++ (show i) ++ "@" ++ (show e) ++ " as " ++ (show x) ++ "; " ++ (show c) ++ ")"
-  show (Fresh l c) = "(new " ++ (show l) ++ "; " ++ (show c) ++ ")"
+  show (Fresh l c) = "(fresh " ++ (show l) ++ "; " ++ (show c) ++ ")"
 
 instance IsString Comp where
   fromString = Return . Var . Free . Name
