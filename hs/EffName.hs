@@ -428,8 +428,8 @@ data Comp
   | Handle Comp Handler
   -- new E as (i, x); c
   | New Name Name Name Comp
-  -- new i@E with v as x; c
-  | NewE ValTy Name Val Name Comp
+  -- new i@E as x; c
+  | NewE ValTy Name Name Comp
   deriving (Eq)
 
 instance Show Comp where
@@ -442,7 +442,7 @@ instance Show Comp where
   show (Op i o v) = (show i) ++ "#" ++ (show o) ++ "(" ++ (show v) ++ ")"
   show (Handle c h) = "handle(" ++ (show c) ++ ") { " ++ (show h) ++ " }"
   show (New e i x c) = "(new " ++ (show e) ++ " as (" ++ (show i) ++ ", " ++ (show x) ++ "); " ++ (show c) ++ ")"
-  show (NewE i e v x c) = "(new " ++ (show i) ++ "@" ++ (show e) ++ " with " ++ (show v) ++ " as " ++ (show x) ++ "; " ++ (show c) ++ ")"
+  show (NewE i e x c) = "(new " ++ (show i) ++ "@" ++ (show e) ++ " as " ++ (show x) ++ "; " ++ (show c) ++ ")"
 
 instance IsString Comp where
   fromString = Return . Var . Free . Name
@@ -456,7 +456,7 @@ instance HasVar Comp where
   openR k u (Op i o b) = Op (openR k u i) o (openR k u b)
   openR k u (Handle c r) = Handle (openR k u c) (openR k u r)
   openR k u (New e i x c) = New e i x (openR (k + 1) u c)
-  openR k u (NewE i e v x c) = NewE i e (openR k u v) x (openR (k + 1) u c)
+  openR k u (NewE i e x c) = NewE i e x (openR (k + 1) u c)
 
   closeR k u (Return v) = Return (closeR k u v)
   closeR k u (App a b) = App (closeR k u a) (closeR k u b)
@@ -466,7 +466,7 @@ instance HasVar Comp where
   closeR k u (Op i o b) = Op (closeR k u i) o (closeR k u b)
   closeR k u (Handle c r) = Handle (closeR k u c) (closeR k u r)
   closeR k u (New e i x c) = New e i x (closeR (k + 1) u c)
-  closeR k u (NewE i e v x c) = NewE i e (closeR k u v) x (closeR (k + 1) u c)
+  closeR k u (NewE i e x c) = NewE i e x (closeR (k + 1) u c)
 
   isLocallyClosedR k (Return v) = isLocallyClosedR k v
   isLocallyClosedR k (App a b) = isLocallyClosedR k a && isLocallyClosedR k b
@@ -476,7 +476,7 @@ instance HasVar Comp where
   isLocallyClosedR k (Op i o b) = isLocallyClosedR k i && isLocallyClosedR k b
   isLocallyClosedR k (Handle a b) = isLocallyClosedR k a && isLocallyClosedR k b
   isLocallyClosedR k (New _ _ _ c) = isLocallyClosedR (k + 1) c
-  isLocallyClosedR k (NewE _ _ v _ c) = isLocallyClosedR k v && isLocallyClosedR (k + 1) c
+  isLocallyClosedR k (NewE _ _ _ c) = isLocallyClosedR (k + 1) c
 
   freeVars (Return v) = freeVars v
   freeVars (App a b) = Set.union (freeVars a) (freeVars b)
@@ -486,7 +486,7 @@ instance HasVar Comp where
   freeVars (Op i o a) = Set.union (freeVars i) (freeVars a)
   freeVars (Handle a b) = Set.union (freeVars a) (freeVars b)
   freeVars (New _ _ _ c) = freeVars c
-  freeVars (NewE _ _ v _ c) = Set.union (freeVars v) (freeVars c)
+  freeVars (NewE _ _ _ c) = freeVars c
 
 instance HasTVar Comp where
   openTyR k u (Return v) = Return (openTyR k u v)
@@ -497,7 +497,7 @@ instance HasTVar Comp where
   openTyR k u (Op i o b) = Op (openTyR k u i) o (openTyR k u b)
   openTyR k u (Handle a b) = Handle (openTyR k u a) (openTyR k u b)
   openTyR k u (New e i x c) = New e i x (openTyR (k + 1) u c)
-  openTyR k u (NewE i e v x c) = NewE (openTyR k u i) e (openTyR k u v) x (openTyR k u c)
+  openTyR k u (NewE i e x c) = NewE (openTyR k u i) e x (openTyR k u c)
 
   closeTyR k u (Return v) = Return (closeTyR k u v)
   closeTyR k u (App a b) = App (closeTyR k u a) (closeTyR k u b)
@@ -507,7 +507,7 @@ instance HasTVar Comp where
   closeTyR k u (Op i o b) = Op (closeTyR k u i) o (closeTyR k u b)
   closeTyR k u (Handle a b) = Handle (closeTyR k u a) (closeTyR k u b)
   closeTyR k u (New e i x b) = New e i x (closeTyR (k + 1) u b)
-  closeTyR k u (NewE i e v x b) = NewE (closeTyR k u i) e (closeTyR k u v) x (closeTyR k u b)
+  closeTyR k u (NewE i e x b) = NewE (closeTyR k u i) e x (closeTyR k u b)
 
   isLocallyClosedTyR k (Return v) = isLocallyClosedTyR k v
   isLocallyClosedTyR k (App a b) = isLocallyClosedTyR k a && isLocallyClosedTyR k b
@@ -517,7 +517,7 @@ instance HasTVar Comp where
   isLocallyClosedTyR k (Op i o v) = isLocallyClosedTyR k i && isLocallyClosedTyR k v
   isLocallyClosedTyR k (Handle a b) = isLocallyClosedTyR k a && isLocallyClosedTyR k b
   isLocallyClosedTyR k (New _ _ _ c) = isLocallyClosedTyR (k + 1) c
-  isLocallyClosedTyR k (NewE _ _ v _ c) = isLocallyClosedTyR k v && isLocallyClosedTyR k c
+  isLocallyClosedTyR k (NewE _ _ _ c) = isLocallyClosedTyR k c
 
   freeTVars (Return v) = freeTVars v
   freeTVars (App a b) = Set.union (freeTVars a) (freeTVars b)
@@ -527,7 +527,7 @@ instance HasTVar Comp where
   freeTVars (Op i o v) = Set.union (freeTVars i) (freeTVars v)
   freeTVars (Handle a b) = Set.union (freeTVars a) (freeTVars b)
   freeTVars (New _ _ _ v) = freeTVars v
-  freeTVars (NewE _ _ v _ c) = Set.union (freeTVars v) (freeTVars c)
+  freeTVars (NewE _ _ _ c) = freeTVars c
 
 instance Nameless Comp where
   toNameless (Return e) = Return (toNameless e)
@@ -538,7 +538,7 @@ instance Nameless Comp where
   toNameless (Op i o e) = Op (toNameless i) o (toNameless e)
   toNameless (Handle a b) = Handle (toNameless a) (toNameless b)
   toNameless (New e i x c) = New e i x (closeTy i $ close x $ toNameless c)
-  toNameless (NewE i e v x c) = NewE (toNamelessTy i) e (toNameless v) x (close x $ toNameless c)
+  toNameless (NewE i e x c) = NewE (toNamelessTy i) e x (close x $ toNameless c)
 
   toNamed (Return e) = Return (toNamed e)
   toNamed (App a b) = App (toNamed a) (toNamed b)
@@ -548,7 +548,7 @@ instance Nameless Comp where
   toNamed (Op i o e) = Op (toNamed i) o (toNamed e)
   toNamed (Handle a b) = Handle (toNamed a) (toNamed b)
   toNamed (New e i x c) = New e i x (openTVar i $ openVar x $ toNamed c)
-  toNamed (NewE i e v x c) = NewE (toNamedTy i) e (toNamed v) x (openVar x $ toNamed c)
+  toNamed (NewE i e x c) = NewE (toNamedTy i) e x (openVar x $ toNamed c)
 
 -- type checking monad
 type TC t = Either String t
@@ -804,6 +804,14 @@ typecheckInst ctx v = do
     TInst n e -> return (n, e)
     _ -> err $ "expected instance type but got " ++ (show t) ++ " in " ++ (show v)
 
+typecheckLabel :: Context -> ValTy -> TC Name
+typecheckLabel ctx t = do
+  k <- wfValTy ctx t
+  checkKind kLabel k $ "expected label but got " ++ (show t)
+  case t of
+    TVar (Free x) -> return x
+    _ -> err $ "expected label but got " ++ (show t)
+
 typecheckHandler :: Context -> ValTy -> Handler -> TC (Effs, CompTy)
 typecheckHandler ctx rt (HReturn x c) = do
   t <- typecheckComp (add ctx $ CVar x rt) $ openVar x c
@@ -872,22 +880,13 @@ typecheckComp ctx c = do
       tr <- typecheckComp (adds ctx [CTVar i' kLabel, CVar x' (TInst (TVar $ Free i') e)]) (openVar x' $ openTVar i' c')
       tcBool ("instance " ++ (show i') ++ " escaped its scope in " ++ (show tr) ++ " in " ++ (show c)) $ not $ Set.member i' (freeTVars tr)
       return tr
-    NewE i e v x c' -> do
-      k <- wfValTy ctx i
-      checkKind kLabel k $ show c
-      tv <- typecheckVal ctx v
-      let expected = tforallP "i" kLabel $ tfunP (TInst (TVar $ Bound 0) e) $ TFun (TFun (TVar $ Free "Unit") $ TAnnot (TVar $ Free "Unit") (singletonEffs (TVar $ Bound 0))) $ TAnnot (TVar $ Free "Unit") emptyEffs  
-      subValTy expected tv $ "new with clause " ++ (show c)
-      case tv of
-        TForall _ _ (TAnnot (TFun _ (TAnnot (TFun (TFun _ t1) t2) _)) _) -> do
-          let i' = freshTVarInContext ctx t2 "i"
-          tcBool ("invalid handler in newE: " ++ (show v)) $ not $ Set.member i' (freeTVars $ openTVar i' t2)
-          let x' = freshVarInContext ctx c' x
-          tc <- typecheckComp (add ctx $ CVar x' (TInst i e)) (openVar x' c')
-          --trace (show (tv, tc)) $ return ()
-          subCompTy tc t1 $ "continuation of newE: " ++ (show c)
-          return t2
-        _ -> err $ "invalid type in new with clause " ++ (show c)
+    NewE i e x c' -> do
+      findEff ctx e
+      i' <- typecheckLabel ctx i
+      let x' = freshVarInContext ctx c' x
+      tr <- typecheckComp (add ctx $ CVar x' (TInst i e)) (openVar x' c')
+      tcBool ("instance " ++ (show i) ++ " escaped its scope in " ++ (show tr) ++ " in " ++ (show c)) $ not $ Set.member i' (freeTVars tr)
+      return tr
 
 infer :: Context -> Comp -> TC CompTy
 infer ctx e = do
@@ -939,12 +938,9 @@ reduceR co =
     c@(New e n x c') -> do
       i <- incInstId
       reduceR $ open (Inst i) $ openTVar n c'
-    c@(NewE n e v x c') -> do
+    c@(NewE n e x c') -> do
       i <- incInstId
-      reduceR $
-        Do "__f" (AppT v n) $
-        Do "__g" (App "__f" (Inst i)) $
-        App "__g" (Abs "_" "Unit" $ open (Inst i) c')
+      reduceR $ open (Inst i) c'
     c -> return c
 
 reduce :: Comp -> Comp
@@ -993,11 +989,36 @@ stateH i c = Handle c $
 stateF :: Val -> Val -> Comp -> Comp
 stateF i v c = Do "f" (stateH i c) $ App "f" v
 
+heapH :: ValTy -> Val -> Comp -> Comp
+heapH l h c = Handle c $
+  HOp h "ref" "v" "k" (
+    NewE l "State" "r" $
+    stateF "r" "v" (App "k" "r")
+  ) $
+  HReturn "x" "x"
+
+getO :: Val -> Comp
+getO r = Op r "get" "Unit"
+
+putO :: Val -> Val -> Comp
+putO r v = Op r "put" v
+
+incO :: Val
+incO = AbsT "l" kLabel $ Return $ Abs "r" (TInst "l" "State") $
+  Do "x" (getO "r") $
+  Do "_" (putO "r" "True") $
+  Return "x"
+
 term :: Comp
 term =
-  New "State" "l" "r" $
-  stateF "r" "True" $
-  "r"
+  New "Heap" "l" "h" $
+  heapH "l" "h" $
+  Do "r1" (Op "h" "ref" "True") $
+  Do "r2" (Op "h" "ref" "False") $
+  Do "x" (getO "r1") $
+  Do "_" (putO "r2" "x") $
+  Do "f" (AppT incO "l") $
+  App "f" "r2"
 
 main :: IO ()
 main = do
