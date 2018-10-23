@@ -897,12 +897,6 @@ infer ctx e = do
   return t
 
 -- semantics
-incInstId :: State InstId InstId
-incInstId = do
-  x <- get
-  put (nextInstId x)
-  return x
-
 reduceR :: Comp -> State InstId Comp
 reduceR co =
   case co of
@@ -934,7 +928,8 @@ reduceR co =
             Nothing -> return $ Do x (Op i o v) $ Handle b h
         c' -> return $ Handle c' h
     c@(New n e x c') -> do
-      i <- incInstId
+      i <- get
+      put (nextInstId i)
       reduceR $ open (Inst i) c'
     c@(Fresh l c') ->
       reduceR $ openTVar l c'
