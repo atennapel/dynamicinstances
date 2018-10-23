@@ -1,15 +1,3 @@
-
-
-r1 <- h#ref 1;      -- Inst h State
-runState r1 $ \().  -- Int
-  r2 <- h#ref 2;
-  x <- r1#get ();
-  r2#get x          -- not handled!
-
-
-
-
-
 effect State {
 	get : () -> Int
 	put : Int -> ()
@@ -19,29 +7,27 @@ effect h@Heap {
   ref : Int -> Inst h State
 }
 
-runState : forall i. Int -> Inst i State -> (() -> Int!{i}) -> Int
-runState = /\i. \v ins action.
+runState : forall l. Int -> Inst l State -> (() -> Int!{l}) -> Int
+runState = /\l. \v ins action.
   f <- handle(action ()) {
-    is#return x -> \s -> x
-    is#get () k -> \s -> k s s
-    is#put s' k -> \s -> k () s'
+    ins#return x -> \s -> x
+    ins#get () k -> \s -> k s s
+    ins#put s' k -> \s -> k () s'
   };
   f v
 
-runHeap : (forall h. Inst h Heap -> Int!{h}) -> Int
+runHeap : (forall l. Inst l Heap -> Int!{l}) -> Int
 runHeap = \c.
-  (hi, i) := new Heap;
-  handle(c [hi] i) {
+  fresh l;
+  new l@Heap as h;
+  handle(c [l] h) {
     ref v k ->
-      r <- new hi@State with runState;
-      k r
-  
+      new l@State as r;
+      runState [l] r (\(). k r)
+  }
 
-ref : forall hi. Int -> Inst hi heap -> (Inst h State)!{hi}
-ref = /\hi. \v h -> h#ref v
-
-program : forall hi. Inst hi Heap -> Int!{hi}
-program = /\hi. \h.
+program : forall l. Inst l Heap -> Int!{l}
+program = /\l. \h.
   r <- h#ref 42;
   r#get ()
 

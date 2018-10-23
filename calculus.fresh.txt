@@ -32,7 +32,7 @@ c ::=                     computations
   x <- c; c               sequencing
   v#op(v)                 operation call
   handle(c) h             handle computation with handler
-  new E as (i, x); c      new instance
+  fresh i; c              fresh instance label
   new i@E as x; c         new encapsulated instance
 
 =========
@@ -130,10 +130,10 @@ r1 \ handled `subset_of` r2
 D;G |- handle(c) h : t2!r2
   where h = { return x_r. c_r, v_1#op_1 x_1 k_1. c_1, ..., v_n#op_n x_n k_n. c_n }
 
-D,i;G,x:Inst i E |- c : T
+D,i;G |- c : T
 i not_in T
 -----------------------------
-D;G |- new E as (i, x); c : T
+D;G |- fresh i; c : T
 
 D |- i
 D;G,x:Inst i E |- c : T
@@ -194,7 +194,7 @@ handle(x <- inst(i)#op(v); c) h ; n ~> x <- inst(i)#op(v); handle(c) h ; n
   where h = { return x_r. c_r, inst(i_1)#op_1 x_1 k_1. c_1, ..., inst(i_n)#op_n x_n k_n. c_n }
 
 -----------------------------------------------
-(new E as (i, x); c) ; n ~> c[x := inst(n)] ; n+1
+(fresh i; c) ; n ~> c ; n
 
 -----------------------------------------------
 (new i@E as x; c) ; n ~> c[x := inst(n)] ; n+1
