@@ -20,7 +20,7 @@
 
 \section{Problem statement}
 %Part A (The ideal): Describes a desired goal or ideal situation; explains how things should be.
-Programming languages with .... Algebraic effects and handlers is an approach to computational effects that allows users to easily define, combine and handle effects. Using algebraic effects one can implement effects such as non-determinism, mutable state, backtracking and cooperative concurrency.
+Programming languages with .... Algebraic effects and handlers is an approach to computational effects that allows users to easily define, combine, and handle effects. Using algebraic effects one can implement effects such as non-determinism, mutable state, backtracking, and cooperative multi-threading.
 Dynamic instances is an extension where multiple instances of effects can be dynamically created. This allows for dynamic effects. Using instances we can implement things such as encapsulated effects and polymorphic heaps.
 \\
 %Part B (The reality): Describes a condition that prevents the goal, state, or value in Part A from being achieved or realized at this time; explains how the current situation falls short of the goal or ideal.
@@ -32,9 +32,10 @@ We also formalize the system in Coq and prove type soundness.
 
 \section{Contributions}
 \begin{itemize}
-\item We define a type-and-effect system for algebraic effects and handlers in the presence of dynamic instances
+\item We define a type-sound type-and-effect system for algebraic effects and handlers in the presence of dynamic instances
 \item We show how to implement local exceptions and polymorphic heaps in this system
-\item We also formalize the system in Coq and prove type soundness
+\item We formally prove type-soundness of the system
+\item We formalize the system in Coq
 \end{itemize}
 
 \section{Milestones}
@@ -49,12 +50,13 @@ We also formalize the system in Coq and prove type soundness.
 \item (1m) Thesis chapter: Our system
 \item (2w) Thesis chapter: Examples (encapsulated effects, polymorphic heaps)
 \item (2w) Thesis chapter: Formalization
+\item (1w) Thesis chapter: Evaluation and discussion
 \item (2w) Thesis chapter: Related work
 \item (2w) Thesis chapter: Conclusion and future work (polymorphic operations, indexed effects)
 \item (maybe) Haskell implementation (parser, typechecker, interpreter) 
 \end{itemize}
 
-Total: 6m 1w \\
+Total: 6m 2w \\
 Done around April?
 
 \end{document}
