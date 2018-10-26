@@ -9,8 +9,8 @@
 \newcommand\pty[1]{\ty^1_{#1}}
 \newcommand\rty[1]{\ty^2_{#1}}
 
-\newcommand\Lbl[0]{L}
-\newcommand\lbl[0]{l}
+\newcommand\Loc[0]{L}
+\newcommand\loc[0]{l}
 
 % value types
 \newcommand\ty[0]{\tau}
@@ -57,7 +57,7 @@ We assume there is set of effect names $\Eff = \{ \eff_1, ..., \eff_n \}$.
 Each effect has a set of operation names $\Op_\eff = \{ \op_1, ..., \op_n \}$.
 Every operation name only corresponds to a single effect.
 Each operation has a parameter type $\pty{\op}$ and a return type $\rty{\op}$.
-We have a set of labels $\lbl \in \Lbl$.
+We have a set of locations $\loc \in \Loc$, each instance has a unique location.
 Annotations $r$ are sets of instance variables.
 \\
 \begin{align*}
@@ -72,7 +72,7 @@ Annotations $r$ are sets of instance variables.
 	\val \Coloneqq	&																		\tag{values} \\
 									& x, y, z, k												\tag{variables} \\
 									& \vunit														\tag{unit value} \\
-									& \vinst{n}													\tag{instance values} \\
+									& \vinst{\loc}											\tag{instance values} \\
 									& \vabs{x}{\comp}										\tag{abstraction} \\
 									& \vabst{i}{\comp}									\tag{instance type variable abstraction} \\
 	\comp \Coloneqq	&																		\tag{computations} \\
@@ -206,9 +206,9 @@ Annotations $r$ are sets of instance variables.
 	\Delta;\Sigma;\Gamma \vdash \vunit : \tunit
 }\]
 \[\frac{
-	\Sigma(n) = (i, \eff)
+	\Sigma(\loc) = (i, \eff)
 }{
-	\Delta;\Sigma;\Gamma \vdash \vinst{n} : \tinst{i}{\eff}
+	\Delta;\Sigma;\Gamma \vdash \vinst{\loc} : \tinst{i}{\eff}
 }\]
 \[\frac{
 	\begin{array}{l}
@@ -221,11 +221,20 @@ Annotations $r$ are sets of instance variables.
 
 \[\frac{
 	\begin{array}{l}
-	i \notin \Delta\\
 	\Delta,i;\Sigma;\Gamma \vdash \comp : \cty
 	\end{array}
 }{
 	\Delta;\Sigma;\Gamma \vdash \vabst{i}{\comp} : \tforall{i}{\cty}
+}\]
+
+\[\frac{
+	\begin{array}{l}
+	\Delta;\Sigma;\Gamma \vdash \comp : \cty_1 \\
+	\Delta \vdash \cty_2 \\
+	\subty{\cty_1}{\cty_2}
+	\end{array}
+}{
+	\Delta;\Sigma;\Gamma \vdash \comp : \cty_2
 }\]
 
 \[\frac{
@@ -270,22 +279,11 @@ Annotations $r$ are sets of instance variables.
 	\Delta;\Sigma;\Gamma \vdash \val_2 : \pty{\op}
 	\end{array}
 }{
-	\Delta;\Sigma;\Gamma \vdash \cop{\val_1}{\op}{\val_2} : \aty{\rty{o}}{\{i\}}
+	\Delta;\Sigma;\Gamma \vdash \cop{\val_1}{\op}{\val_2} : \aty{\rty{\op}}{\{i\}}
 }\]
 
 \[\frac{
 	\begin{array}{l}
-	\Delta;\Sigma;\Gamma \vdash \val_1 : \tinst{i}{\eff} \\
-	\op \in \Op_\eff \\
-	\Delta;\Sigma;\Gamma \vdash \val_2 : \pty{\op}
-	\end{array}
-}{
-	\Delta;\Sigma;\Gamma \vdash \cop{\val_1}{\op}{\val_2} : \aty{\rty{o}}{\{i\}}
-}\]
-
-\[\frac{
-	\begin{array}{l}
-	i \notin \Delta \\
 	\Delta,i;\Sigma;\Gamma \vdash \comp : \cty \\
 	i \notin \cty
 	\end{array}
@@ -323,6 +321,7 @@ In the following rule \\$h =
 	\Delta;\Sigma;\Gamma \vdash h : \aty{\ty_2}{r_2}
 }\]
 
+\newpage
 \section{Semantics}
 
 \[\frac{
@@ -370,10 +369,10 @@ In the following rule \\$h =
 
 \[\frac{
 	\begin{array}{l}
-	n \notin Dom(\mu)
+	\loc \notin Dom(\mu)
 	\end{array}
 }{
-	\sss{\cnew{\eff}{i}{x}{\comp}}{\mu}{\comp[x := \vinst{n}]}{\mu,x := (i, \eff)}
+	\sss{\cnew{\eff}{i}{x}{\comp}}{\mu}{\comp[x := \vinst{\loc}]}{\mu,\loc := (i, \eff)}
 }\]
 
 In the following rules \\$h = {
@@ -388,31 +387,31 @@ In the following rules \\$h = {
 	\sss{\comp}{\mu}{\comp'}{\mu'}
 	\end{array}
 }{
-	\sss{\chandle{\vinst{n}}{\comp}{h}}{\mu}{\chandle{\vinst{n}}{\comp'}{h}}{\mu'}
+	\sss{\chandle{\vinst{\loc}}{\comp}{h}}{\mu}{\chandle{\vinst{\loc}}{\comp'}{h}}{\mu'}
 }\]
 
 \[\frac{
 	\begin{array}{l}
 	\end{array}
 }{
-	\sss{\chandle{\vinst{n}}{\creturn{\val}}{h}}{\mu}{\comp_r[x_r := \val]}{\mu}
+	\sss{\chandle{\vinst{\loc}}{\creturn{\val}}{h}}{\mu}{\comp_r[x_r := \val]}{\mu}
 }\]
 
 \[\frac{
 	\begin{array}{l}
 	\end{array}
 }{
-	\sss{\chandle{\vinst{n}}{\cop{\vinst{n}}{\op_i}{\val}}{h}}{\mu}
+	\sss{\chandle{\vinst{\loc}}{\cop{\vinst{\loc}}{\op_i}{\val}}{h}}{\mu}
 			{\comp_i[x_i := \val, k_i := \vabs{x_r}{\comp_r}]}{\mu}
 }\]
 
 \[\frac{
 	\begin{array}{l}
-	n \neq m
+	\loc \neq \loc'
 	\end{array}
 }{
-	\sss{\chandle{\vinst{n}}{\cop{\vinst{m}}{\op}{\val}}{h}}{\mu}
-			{\cdo{x_r}{\cop{\vinst{m}}{\op}{\val}}{\comp_r}}{\mu}
+	\sss{\chandle{\vinst{\loc}}{\cop{\vinst{\loc'}}{\op}{\val}}{h}}{\mu}
+			{\cdo{x_r}{\cop{\vinst{\loc'}}{\op}{\val}}{\comp_r}}{\mu}
 }\]
 
 \[\frac{
@@ -420,18 +419,18 @@ In the following rules \\$h = {
 	\end{array}
 }{
 	\begin{array}{l}
-	\chandle{\vinst{n}}{\cdo{x}{(\cop{\vinst{n}}{\op_i}{\val})}{\comp}}{h} \; | \; \mu \rightsquigarrow \\
-	\comp_i[x_i := \val, k_i := (\vabs{x}{\chandle{\vinst{n}}{\comp}{h}})] \; | \; \mu
+	\chandle{\vinst{\loc}}{\cdo{x}{(\cop{\vinst{\loc}}{\op_i}{\val})}{\comp}}{h} \; | \; \mu \rightsquigarrow \\
+	\comp_i[x_i := \val, k_i := (\vabs{x}{\chandle{\vinst{\loc}}{\comp}{h}})] \; | \; \mu
 	\end{array}
 }\]
 
 \[\frac{
 	\begin{array}{l}
-	n \neq m
+	\loc \neq \loc'
 	\end{array}
 }{
 	\begin{array}{l}
-	\chandle{\vinst{n}}{\cdo{x}{(\cop{\vinst{m}}{\op}{\val})}{\comp}}{h} \; | \; \mu \rightsquigarrow \\
-	\cdo{x}{(\cop{\vinst{m}}{\op}{\val})}{(\chandle{\vinst{n}}{\comp}{h})} \; | \; \mu
+	\chandle{\vinst{\loc}}{\cdo{x}{(\cop{\vinst{\loc'}}{\op}{\val})}{\comp}}{h} \; | \; \mu \rightsquigarrow \\
+	\cdo{x}{(\cop{\vinst{\loc'}}{\op}{\val})}{(\chandle{\vinst{\loc}}{\comp}{h})} \; | \; \mu
 	\end{array}
 }\]
