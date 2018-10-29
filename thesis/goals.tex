@@ -19,23 +19,46 @@
 % what we have done
 
 \section{Problem statement}
-%Part A (The ideal): Describes a desired goal or ideal situation; explains how things should be.
-Programming languages with .... Algebraic effects and handlers is an approach to computational effects that allows users to easily define, combine, and handle effects. Using algebraic effects one can implement effects such as non-determinism, mutable state, backtracking, and cooperative multi-threading.
-Dynamic instances is an extension where multiple instances of effects can be dynamically created. This allows for dynamic effects. Using instances we can implement things such as encapsulated effects and polymorphic heaps.
+In the real world programs are effectful. They have to interact with the outside world, manage state, throw exceptions and more.
+Purely functional programming is often said to be easier to reason about than imperative.
+This is partly because in purely functional programming effects are usually explicit.
+Many functional language use monads to encapsulate effects such that programs written in them can remain referentially transparant, which aids in reasoning.
+Unfortunately monads are hard to compose, requiring monad transformer stacks that are hard to understand and manage.
 \\
-%Part B (The reality): Describes a condition that prevents the goal, state, or value in Part A from being achieved or realized at this time; explains how the current situation falls short of the goal or ideal.
-There have been multiple type-and-effects systems proposed for algebraic effects and handler but unfortunately none of them account for dynamic instances. As such programs that use them can still crash at runtime due to unhandled operations. \\
-%Part C (The consequences): Identifies the way you propose to improve the current situation and move it closer to the goal or ideal.
+Algebraic effects and handlers is an alternative approach to effectful programming.
+Using algebraic effects effects one can easily implement effects such as non-determinism, mutable state, exceptions, backtracking, and cooperative multi-threading.
+These effects can be composed and ordered in any way without any extra effort required from the user.
+\\
+Unfortunately not all effectful programs can be easily expressed using algebraic effects.
+Handlers will handle all operations of a certain effects making state threads using multiple mutable references impossible to define.
+These so-called dynamic effects can be implemented by adding dynamic instances to the system.
+In such a system we can dynamically create instances of effects, distinct from other instances.
+Handlers then only handle a specific instance, giving fine-grained control over effects.
+\\
+There have been multiple type-and-effects systems proposed for algebraic effects and handler but unfortunately none of them account for dynamic instances. Programming with them can still result in runtime crashes because of unhandled operations.
+\\
 We define a type-and-effect system for algebraic effects and handlers in the presence of dynamic instances.
-We show how to define local exceptions and polymorphic heaps in this system.
+The system is sound with respect to progress and preservation and will ensure that a typed program with an empty effect set will have no unhandled operations.
+We show that functional state threads can be expressed in this system.
 We also formalize the system in Coq and prove type soundness.
 
 \section{Contributions}
 \begin{itemize}
-\item We define a type-sound type-and-effect system for algebraic effects and handlers in the presence of dynamic instances
-\item We show how to implement local exceptions and polymorphic heaps in this system
-\item We formally prove type-soundness of the system
-\item We formalize the system in Coq
+
+\item \textbf{We define a type-and-effect system for algebraic effects and handlers in the presence of dynamic instances.}
+The system is sound with respect to progress and preservation and will ensure that a typed program with an empty effect set will have no unhandled operations.
+Furthermore the system is a simple extension of a system with algebraic effects without instances.
+
+\item \textbf{We show how to implement state threads in this system.}
+Using our sytem we implement state threads similar to Haskell's ST-monad.
+We show that references cannot escape their scope and that we cannot use a variable from one state thread in another state thread.
+
+\item \textbf{We formally prove type-soundness of the system.}
+We prove that typed programs with empty effects sets will not have unhandled operations and so do not get stuck.
+We explain what techniques we used to implement the proofs.
+
+\item \textbf{We formalize the system in Coq.}
+
 \end{itemize}
 
 \section{Milestones}
@@ -53,10 +76,27 @@ We also formalize the system in Coq and prove type soundness.
 \item (1w) Thesis chapter: Evaluation and discussion
 \item (2w) Thesis chapter: Related work
 \item (2w) Thesis chapter: Conclusion and future work (polymorphic operations, indexed effects)
-\item (maybe) Haskell implementation (parser, typechecker, interpreter) 
 \end{itemize}
 
-Total: 6m 2w \\
-Done around April?
+\section{Timeplan}
+%\begin{table}[]
+\begin{tabular}{ l | l }
+\textbf{Date}             & \textbf{Milestones}                      \\ \hline
+12 November 2018 & Syntax, part of background      \\ \hline
+26 November 2018 & Type system, more of background \\ \hline
+10 December 2018 & Semantics, background done      \\ \hline
+7 January 2019 & Coq syntax, typing rules, semantics, part of System chapter  \\ \hline
+21 January 2019 &  part of Coq proofs, course practical exercise  \\ \hline
+28 January 2019 & Exam course \\ \hline
+1 February 2019 & course practical exercise deadline    \\ \hline
+11 February 2018 & part of Coq proofs, part of System chapter      \\ \hline
+25 February 2019 & Coq proofs done, System chapter done      \\ \hline
+11 March 2019 & Examples done      \\ \hline
+25 March 2019 & Formalization chapter done      \\ \hline
+8 April 2019 & Related work done     \\ \hline
+22 April 2019 & Introduction and Evaluation done      \\ \hline
+6 May 2019 & Improvements, thesis done      \\ \hline
+\end{tabular}
+%\end{table}
 
 \end{document}
