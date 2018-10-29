@@ -18,6 +18,7 @@
 \newcommand\tinst[2]{\mathsf{Inst} \; #1 \; #2}
 \newcommand\tarr[2]{#1 \rightarrow #2}
 \newcommand\tforall[2]{\forall #1 . #2}
+\newcommand\texists[2]{\exists #1 . #2}
 
 % computation type
 \newcommand\cty[0]{\underline{\ty}}
@@ -35,7 +36,9 @@
 \newcommand\creturn[1]{\mathsf{return} \; #1}
 \newcommand\capp[2]{#1 \; #2}
 \newcommand\cappt[2]{#1 \; [ #2 ]}
-\newcommand\cdo[3]{#1 \leftarrow #2 ; #3}
+\newcommand\cpack[2]{\mathsf{pack} \; #1 \; \mathsf{in} \; #2}
+\newcommand\cunpack[4]{\mathsf{unpack} \; #1 \; \mathsf{as} \; ( #2, #3 ) ;\; #4 }
+\newcommand\cdo[3]{#1 \leftarrow #2 ;\; #3}
 \newcommand\cop[3]{#1 \# #2(#3)}
 \newcommand\cfresh[2]{\mathsf{fresh} \; #1 ;\; #2}
 \newcommand\cnew[4]{\mathsf{new} \; #1 \; \mathsf{of} \; #2 \; \mathsf{as} \; #3 ;\; #4}
@@ -433,4 +436,61 @@ In the following rules \\$h = {
 	\chandle{\vinst{\loc}}{\cdo{x}{(\cop{\vinst{\loc'}}{\op}{\val})}{\comp}}{h} \; | \; \mu \rightsquigarrow \\
 	\cdo{x}{(\cop{\vinst{\loc'}}{\op}{\val})}{(\chandle{\vinst{\loc}}{\comp}{h})} \; | \; \mu
 	\end{array}
+}\]
+
+\section{Existential types}
+\begin{align*}
+	\ty \Coloneqq 	& 																	\tag{value types} \\
+									& \texists{i}{\cty}									\tag{existentially quantified type}\\
+	\comp \Coloneqq	&																		\tag{computations} \\
+									& \cpack{l}{\val}									\tag{pack instance variable}\\
+									& \cunpack{\val}{i}{x}{\comp}				\tag{unpack existential type} \\
+\end{align*}
+
+\[
+\frac{
+	\subty{a}{b}
+}{
+	\subty{\texists{i}{a}}{\texists{i}{b}}
+}
+\]
+
+\[\frac{
+	\begin{array}{l}
+	\Delta , i \vdash a  \\
+	\end{array}
+}{
+	\Delta \vdash \texists{i}{a}
+}\]
+
+\[\frac{
+	\begin{array}{l}
+	\Delta;\Sigma;\Gamma \vdash \val : \ty \\
+	\end{array}
+}{
+	\Delta;\Sigma;\Gamma \vdash \cpack{i}{\val} : \aty{(\texists{i}{\ty})}{\varnothing}
+}\]
+
+\[\frac{
+	\begin{array}{l}
+	\Delta;\Sigma;\Gamma \vdash \val : \texists{i}{\ty} \\
+	\Delta,i;\Sigma;\Gamma,x:\ty \vdash \comp : \cty \\
+	i \notin \cty \\
+	\end{array}
+}{
+	\Delta;\Sigma;\Gamma \vdash \cunpack{\val}{i}{x}{\comp} : \cty
+}\]
+
+\[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\sss{\cpack{i}{\val}}{\mu}{\creturn{\val}}{\mu}
+}\]
+
+\[\frac{
+	\begin{array}{l}
+	\end{array}
+}{
+	\sss{\cunpack{\val}{i}{x}{\comp}}{\mu}{\comp[x := \val]}{\mu}
 }\]
