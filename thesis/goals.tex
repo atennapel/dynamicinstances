@@ -18,8 +18,21 @@
 % why is not enough
 % what we have done
 
+
+% people that know SOME functional programming
+% no theoretical background
+
+% why keep track of effects
+% mention guarantees given by type system (safety guarantees)
+
+% standard algebraic effects?
+% effect handlers
+
+% dynamically allocated cells
+% explain ``state threads''
+
 \section{Problem statement}
-In the real world programs are effectful. They have to interact with the outside world, manage state, throw exceptions and more.
+In the real world programs are effectful. They have to interact with the outside world, manage state, throw exceptions, and more.
 Purely functional programming is often said to be easier to reason about than imperative programming.
 This is partly because in purely functional programming effects are usually explicit.
 Many functional languages use monads to encapsulate effects.
@@ -36,7 +49,7 @@ These so-called dynamic effects can be implemented by adding dynamic instances t
 In such a system we can dynamically create instances of effects, distinct from other instances.
 Handlers then only handle a specific instance, giving fine-grained control over effects.
 \\
-There have been multiple type-and-effects systems proposed for algebraic effects and handler but unfortunately none of them account for dynamic instances. Programming with them can still result in runtime crashes because of unhandled operations.
+There have been multiple type-and-effect systems proposed for algebraic effects and handler but none of them account for dynamic instances. Programming with them can still result in runtime crashes because of unhandled operations.
 \\
 We define a type-and-effect system for algebraic effects and handlers in the presence of dynamic instances.
 The system is sound with respect to progress and preservation and will ensure that a typed program with an empty effect set will have no unhandled operations.
@@ -46,12 +59,16 @@ We also formalize the system in Coq and prove type soundness.
 \section{Contributions}
 \begin{itemize}
 
-\item \textbf{We define a type-and-effect system for algebraic effects and handlers in the presence of dynamic instances.}
-The system is sound with respect to progress and preservation and will ensure that a typed program with an empty effect set will have no unhandled operations.
+% type-safe preferred, type-sound
+\item \textbf{We define a type-safe type-and-effect system for algebraic effects and handlers in the presence of dynamic instances.}
+% The system is sound with respect to progress and preservation and will ensure that a typed program with an empty effect set will have no unhandled operations.
+
+% instead, core system is a principled extension, so easy to proof results and compose with other features
+% and easy for users to understand. 
 Furthermore the system is a simple extension of a system with algebraic effects without instances.
 
 \item \textbf{We show how to implement state threads in this system.}
-Using our sytem we implement state threads similar to Haskell's ST-monad.
+Using our sytem we implement state threads similar to a monomorphic version Haskell's ST-monad.
 We show that references cannot escape their scope and that we cannot use a variable from one state thread in another state thread.
 
 \item \textbf{We formally prove type-soundness of the system.}
@@ -59,6 +76,8 @@ We prove that typed programs with empty effects sets will not have unhandled ope
 We explain what techniques we used to implement the proofs.
 
 \item \textbf{We formalize the system in Coq.}
+% explain why mechanization.
+% mechanized, lists parts (typing rules, semantics, proofs)
 
 \end{itemize}
 
