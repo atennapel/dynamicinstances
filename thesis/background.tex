@@ -47,9 +47,11 @@
 
 In this chapter we will show the basics of algebraic effects and handlers. We will start with the simply-typed lambda calculus and add algebraic effects and instances to it. We end with dynamic instances and show why a type system for them is difficult to implement.
 
-\section{Fine-grained simply-typed lambda calculus}
+\section{Simply-typed lambda calculus}
 
 \subsection{Intro}
+
+
 Explain:
 \begin{itemize}
 	\item Why fine-grained
@@ -75,17 +77,17 @@ Explain:
 \end{align*}
 
 \subsection{Semantics}
-\[\frac{
+\[\inferrule{
 }{
 	\capp{(\vabs{x}{\comp})}{\val} \rightsquigarrow \comp[x := \val]
 }\]
 
-\[\frac{
+\[\inferrule{
 }{
 	\cdo{x}{\creturn{\val}}{\comp} \rightsquigarrow \comp[x := \val]
 }\]
 
-\[\frac{
+\[\inferrule{
 	\comp_1 \rightsquigarrow \comp_1'
 }{
 	\cdo{x}{\comp_1}{\comp_2} \rightsquigarrow \cdo{x}{\comp_1'}{\comp_2}
@@ -101,46 +103,46 @@ value types and computation types\\
 									& \ty											\tag{value type} \\
 \end{align*}
 
-\[\frac{
+$$\inferrule{
 	\Gamma[x] = \ty
 }{
 	\Gamma \vdash x : \ty
-}\]
-
-\[\frac{
+}
+\hspace{3em}
+\mprset{vskip=0 ex}
+\inferrule{
 }{
 	\Gamma \vdash \vunit : \tunit
-}\]
-
-\[\frac{
+}
+\hspace{3em}
+\mprset{vskip=0 ex}
+\inferrule{
 	\Gamma, x : \ty_1 \vdash \comp : \ty_2
 }{
 	\Gamma \vdash \vabs{x}{\comp} : \tarr{\ty_1}{\ty_2}
-}\]
-
-\[\frac{
+}
+\hspace{3em}
+\mprset{vskip=0 ex}
+\inferrule{
 	\Gamma \vdash \val : \ty
 }{
 	\Gamma \vdash \creturn{\val} : \ty
-}\]
+}$$
 
-\[\frac{
-	\begin{array}{l}
+$$\inferrule{
 	\Gamma \vdash \val_1 : \tarr{\ty_1}{\ty_2}\\
 	\Gamma \vdash \val_2 : \ty_1
-	\end{array}
 }{
 	\Gamma \vdash \capp{\val_1}{\val_2} : \ty_2
-}\]
-
-\[\frac{
-	\begin{array}{l}
+}
+\hspace{3em}
+\mprset{vskip=0 ex}
+\inferrule{
 	\Gamma \vdash \comp_1 : \ty_1\\
 	\Gamma, x : \ty_1 \vdash \comp_2 : \ty_2
-	\end{array}
 }{
-	\Gamma \vdash \cdo{x}{\comp_1}{\comp_2} : \ty_2
-}\]
+	\Gamma \vdash (\cdo{x}{\comp_1}{\comp_2}) : \ty_2
+}$$
 
 \subsection{Examples}
 Show explicit order of evaluation.
