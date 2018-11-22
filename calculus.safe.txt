@@ -1,0 +1,162 @@
+SYNTAX
+E ::=         effects
+  Exc, Flip, State,
+
+t ::=         value types
+  i,j,k       labels
+  ()          unit type
+  Inst i E    instance type
+  t -> T      function type
+  forall i.T  universally quantified type over a label
+
+r ::=         instance variable set
+  { i, j, k, ... }
+
+T ::=         computation types
+  t!r         annotated type
+
+v ::=         values
+  x,y,z,k     variables
+  ()          unit value
+  inst(n)     instances (for the semantics)
+  \x.c        abstractions
+  /\i.c       instance abstractions
+
+h ::=             handlers
+  op x k -> c; h  operation case
+  return x -> c   return case
+
+c ::=                       computations
+  return v                  return value
+  v v                       application
+  v [i]                     instance application
+  x <- c; c                 sequencing
+  v#op(v)                   operation call
+  handle(v)(c) { h }        handle computation with handler
+  handle(E)(v) { h }        handle umbrella effect
+  new E as (i,x); c         new encapsulated instance
+
+=========
+SUBTYPING
+value types
+
+------
+i <: i
+
+--------
+() <: ()
+
+--------------------
+Inst i E <: Inst i E
+
+t2 <: t1
+T1 <: T2
+--------------------
+t1 -> T1 <: t2 -> T2
+
+T1 <: T2
+--------------------------------
+forall i.T1 <: forall i.T2
+
+computation types
+
+t1 <: t2
+r1 `subset_of` r2
+--------------
+t1!r1 <: t2!r2
+
+============
+TYPING RULES
+values
+
+G[x] = t
+------------
+D;G |- x : t
+
+--------------
+D;G |- () : ()
+
+???
+------------------
+D;G |- inst(n) : Inst j E
+
+D;G,x:t |- c : T
+--------------------
+D;G |- \x.c : t -> T
+
+D,i:E;G |- c : T
+--------------------------------
+D;G |- /\(i:E).c : forall(i:E).T
+
+D;G |- v : t1
+t1 <: t2
+-------------
+D;G |- v : t2
+
+computations
+
+D;G |- v : t
+----------------------
+D;G |- return v : t!{}
+
+D;G |- v1 : t -> T
+D;G |- v2 : t
+--------------
+D;G |- v1 v2 : T
+
+D;G |- v : forall j. T
+D |- i
+------------------------
+D;G |- v [i] : T[j := i]
+
+D;G |- c1 : t1!r
+D;G,x:t1 |- c2 : t2!r
+-------------------------
+D;G |- x <- c1; c2 : t2!r
+
+D;G |- v1 : Inst i E
+op in E
+D;G |- v2 : paramty(op)
+-----------------------------------
+D;G |- v1#op(v2) : returnty(op)!{i}
+
+D;G |- v : Inst i E
+h contains all operations of E and no other
+D;G |- c : t1!r1
+D;G |-(t1) h : t2!r2
+if (E encapsulates) r1 < r2 else r1 \ { i } < r2
+---------------------------------
+D;G |- handle(v)(c) { h } : t2!r2
+
+h contains all operations of E and no other
+D;G |- v : forall i. Inst i E -> t1!r1
+D;G |-(t1) h : t2!r2
+r1 \ { i } < r2
+---------------------------------
+D;G |- handle(E)(v) { h } : t2!r2
+
+D;G,x:t1 |- c : T
+--------------------------------------
+D;G |-(t1) return x -> c : T
+
+D;G |-(t1) h : T
+op does not encapsulate
+D;G,x:paramty(op),k:returnty(op) -> T |- c : T
+------------------------------------
+D;G |-(t1) op x k -> c; h : T
+
+D;G |-(t1) h : T
+op encapsulates effect E
+D;G,x:paramty(op),k:forall j. Inst j E -> T |- c : T
+------------------------------------
+D;G |-(t1) op x k -> c; h : T
+
+D,i;G,x:Inst i E |- c : T
+i not_in T
+-----------------------------
+D;G |- new E as (i, x); c : T
+
+D;G |- c : T1
+T1 <: T2
+-------------
+D;G |- c : T2
