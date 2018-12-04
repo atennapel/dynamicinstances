@@ -1,0 +1,268 @@
+======
+Syntax
+======
+
+E ::=         effects
+  Exc, Flip, State,
+
+i, j, k from countable set of type variables
+
+t ::=             value types
+  Inst i E        instance type
+  t -> T          function type
+  forall i.T      universally quantified type over a label
+
+r ::=         instance variable set
+  { E_1@i_1, ..., E_n@i_n }
+
+T ::=         computation types
+  t!r         annotated type
+
+v ::=         values
+  x,y,z,k     variables
+  inst(n)     instances (for the semantics)
+  \x.c        abstractions
+  /\i.c       instance abstractions
+
+h ::=         handlers
+  op x k -> c; h
+  return x -> c; new x y -> c; returnnew x -> c
+
+c ::=                     computations
+  return v                return value
+  v v                     application
+  v [i]                   instance application
+  x <- c; c               sequencing
+  v#op(v)                 operation call
+  new E(v)                new instance
+  handle E(v) { h }       handle computation with handler
+
+=========
+SUBTYPING
+=========
+
+value types
+
+--------------------
+Inst i E <: Inst i E
+
+t2 <: t1
+T1 <: T2
+--------------------
+t1 -> T1 <: t2 -> T2
+
+T1 <: T2
+--------------------------------
+forall i.T1 <: forall i.T2
+
+computation types
+
+t1 <: t2
+r1 `subset_of` r2
+--------------
+t1!r1 <: t2!r2
+
+============
+TYPING RULES
+============
+
+values
+
+G[x] = t
+------------
+D;G |- x : t
+
+D;G,x:t |- c : T
+--------------------
+D;G |- \x.c : t -> T
+
+D,i;G |- c : T
+--------------------------------
+D;G |- /\i.c : forall i.T
+
+D;G |- v : t1
+t1 <: t2
+-------------
+D;G |- v : t2
+
+computations
+
+D;G |- v : t
+----------------------
+D;G |- return v : t!{}
+
+D;G |- v1 : t -> T
+D;G |- v2 : t
+--------------
+D;G |- v1 v2 : T
+
+D;G |- v : forall j. T
+D |- i
+------------------------
+D;G |- v [i] : T[j := i]
+
+D;G |- c1 : t1!r
+D;G,x:t1 |- c2 : t2!r
+-------------------------
+D;G |- x <- c1; c2 : t2!r
+
+D;G |- v1 : Inst i E
+op in E
+D;G |- v2 : paramty(op)
+-----------------------------------
+D;G |- v1#op(v2) : returnty(op)!{E@i}
+
+D;G |- v : newty(E)
+-----------------------------
+D;G |- new E(v) : forall i. (Inst i E)!{ E@i }
+
+D;G |- v : forall i. t1!r1
+op in h <=> op in E
+D;G |-(E,t1) h : t3!r2 with t2
+r1 \ { E@i } <= r2
+---------------------------------
+D;G |- handle E(v) { h } : t3!r2
+
+D;G |-(E,t1) h : t3!r2 with t2
+D;G,x:paramty(op),k:returnty(op) -> t2!r2 |- c : t2!r2
+---------------------------------
+D;G |-(E,t1) op x k -> c; h : t3!r2 with t2
+
+D;G,xr:t1 |- cr : t2!r2
+D;G,xn:newty(E),yn:t2 |- cn : t3!r2
+D;G,xrn:t1 |- crn : t3!r2
+--------------------------------------------------------------------
+D;G |-(E,t1) (return xr -> cr; new xn yn -> cn; returnnew xrn -> crn) : t3!r2 with t2
+
+D;G |- c : T1
+T1 <: T2
+-------------
+D;G |- c : T2
+
+===========
+ELABORATION
+===========
+
+x ~> x 
+
+inst(n) ~> inst(n)
+
+c ~> c'
+------------
+\x.c ~> \x.c'
+
+fresh x
+c ~> c'
+--------------
+/\i.c ~> \x. c'
+
+v ~> v'
+--------------------
+return v ~> return v'
+
+v1 ~> v3
+v2 ~> v4
+-------------
+v1 v2 ~> v3 v4
+
+v ~> v'
+-------------
+v [i] ~> v' ()
+
+c1 ~> c3
+c2 ~> c4
+-------------------
+x <- c1; c2 ~> x <- c3; c4
+
+v1 ~> v3
+v2 ~> v4
+----------------------
+v1#op(v2) ~> v3#op(v4)
+
+v ~> v'
+E' is token for effect E
+------------------------------
+new E(v) ~> global#new((E', v'))
+
+v ~> v'
+------------------------------------
+handle E(v) { h } ~> handle(v' ()) { h }
+
+h ::=         handlers
+  op x k -> c; h
+  return x -> c; new x y -> c; returnnew x -> c
+
+=========
+SEMANTICS
+=========
+
+----------------------------
+(\x. c) v; n ~> c[x := v]; n
+
+-----------------------------------
+(/\i. c) [j]; n ~> c[i := j]; n
+
+c1 ; n ~> c1' ; n'
+------------------------------------
+x <- c1; c2 ; n ~> x <- c1'; c2 ; n'
+
+-------------------------------------
+x <- return v; c ; n ~> c[x := v] ; n
+
+--------------------------------------------------------
+x <- (y <- c1; c2); c3 ; n ~> y <- c1; (x <- c2; c3) ; n
+
+fresh j
+---------------------------------------------------------------
+handle E(/\i. c) { h } ; n ~> handle_c E((/\i.c) [j]) { h } ; n
+
+c ; n ~> c' ; n'
+---------------------------------------------------------------
+handle_c E(c) { h } ; n ~> handle_c E(c') { h } ; n'
+
+---------------------------------------
+handle_c E(return v) { h } ; n ~> c[x := v] ; n
+  where h = { ..., returnnew x -> c }
+
+fresh x
+-----------------------------------------------------------
+handle_c E(new E'(v)) { h } ; n ~> handle_c E(x <- new E'(v); return x) { h } ; n
+
+fresh x
+-----------------------------------------------------------
+handle_c E(v#op(v)) { h } ; n ~> handle_c E(x <- (v#op(v)); return x) { h } ; n
+
+E != E'
+------------------------------------------------------------------------
+handle_c E(x <- new E'(v); c) { h } ; n ~> x <- new E'(v); (handle_c E(c) { h }) ; n
+
+------------------------------------------------------------------------
+handle_c E(x <- new E(v); c) { h } ; n ~> handle_i(n)(handle_c E(c[x := inst(n)]) { h }) { h } ; n + 1
+
+
+------------------------------------------------------------------------
+handle_c E(x <- new E'(v); c) { h } ; n ~> x <- new E'(v); (handle_c E(c) { h }) ; n
+
+
+
+
+
+inst(i)#op in h as i_m    -- instance/operation combo is in the handler with index m
+--------------------------------------
+handle(inst(i)#op(v)) h ; n ~> c_m[x_m := v, k_m := \x. handle(return x) h] ; n
+  where h = { return x_r. c_r, inst(i_1)#op_1 x_1 k_1. c_1, ..., inst(i_n)#op_n x_n k_n. c_n }
+
+inst(i)#op not_in h       -- instance/operation combo is not in the handler
+--------------------------------------
+handle(inst(i)#op(v)) h ; n ~> x <- inst(i)#op(v); handle(return x) h ; n
+  where h = { return x_r. c_r, inst(i_1)#op_1 x_1 k_1. c_1, ..., inst(i_n)#op_n x_n k_n. c_n }
+
+inst(i)#op in h as i_m    -- instance/operation combo is in the handler with index m
+--------------------------------------
+handle(x <- inst(i)#op(v); c) h ; n ~> c_m[x_m := v, k_m := \x. handle(c) h] ; n
+  where h = { return x_r. c_r, inst(i_1)#op_1 x_1 k_1. c_1, ..., inst(i_n)#op_n x_n k_n. c_n }
+
+inst(i)#op not_in h       -- instance/operation combo is not in the handler
+--------------------------------------
+handle(x <- inst(i)#op(v); c) h ; n ~> x <- inst(i)#op(v); handle(c) h ; n
+  where h = { return x_r. c_r, inst(i_1)#op_1 x_1 k_1. c_1, ..., inst(i_n)#op_n x_n k_n. c_n }

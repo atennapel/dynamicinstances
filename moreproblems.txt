@@ -1,0 +1,28 @@
+f : forall hi. Inst hi Heap -> Int!{hi}
+f [hi] h =
+  r0 <- h#ref 1;
+  r1 <- h#ref r0;
+  (\() ->
+    r2 <- h#ref 2;
+    r1#put r2) ();
+  r <- r1#get ();
+  r#get ()
+
+r1 <- h#ref 1;
+r2 <- h#ref 2;
+handle(r1)(r2#get ()) { ... } // not pure, r2#get escapes
+
+r <- h#ref 1;
+handle(h)(r#get ()) { ref v k -> ... } // not pure r#get escapes
+
+h ::=
+  op x k -> c; h
+  return x -> c
+
+
+G |- h : t!r
+op : t1 -> t2 in E
+t2 = Inst i E2
+G,x:t1,k:forall j. Inst j E2 -> t!r |- c : t!r
+----------------------------------------------
+G |-_i op x k -> c; h : t!r
