@@ -1,4 +1,4 @@
-
+{
 % effects
 \newcommand\Eff[0]{E}
 \newcommand\eff[0]{\varepsilon}
@@ -37,18 +37,19 @@
 \newcommand\capp[2]{#1 \; #2}
 \newcommand\cappt[2]{#1 \; [ #2 ]}
 \newcommand\cpack[2]{\mathsf{pack} \; #1 \; \mathsf{in} \; #2}
-\newcommand\cunpack[4]{\mathsf{unpack} \; #1 \; \mathsf{as} \; ( #2, #3 ) ;\; #4 }
+\newcommand\cunpack[4]{\mathsf{unpack} \; #1 \; \mathsf{as} \; ( #2, #3 ) ;\; #4}
 \newcommand\cdo[3]{#1 \leftarrow #2 ;\; #3}
 \newcommand\cop[3]{#1 \# #2(#3)}
 \newcommand\cfresh[2]{\mathsf{fresh} \; #1 ;\; #2}
-\newcommand\cnew[4]{\mathsf{new} \; #1 \; \mathsf{of} \; #2 \; \mathsf{as} \; #3 ;\; #4}
-\newcommand\chandle[3]{\mathsf{handle}^{#1} ( #2 ) \; \{#3\}}
-\newcommand\chandlec[2]{\chandle{#1}{#2}{
-	\mathsf{return} \; x \rightarrow \comp,
-	\op_1(x ; k) \rightarrow \comp,
-	...,
-	\op_n(x ; k) \rightarrow \comp
-}}
+\newcommand\cnew[5]{\mathsf{new} \; #1 @ #2 \; \{ #3 \} \; \mathsf{as} \; #4 \;\mathsf{in}\; #5}
+\newcommand\chandle[1]{\mathsf{handle} ( #1 )}
+\newcommand\chandlec[2]{\mathsf{handle}^{#1} ( #2 )}
+\newcommand\chandlei[3]{\mathsf{handle}^{#1} \{ #2 \} ( #3 )}
+
+% handlers
+\newcommand\handler[0]{h}
+\newcommand\hop[5]{#1 \; #2 \; #3 \rightarrow #4 ; #5}
+\newcommand\hreturn[4]{\mathsf{return} \; #1 \rightarrow #2 ; \mathsf{finally} \; #3 \rightarrow #4}
 
 % misc
 \newcommand\subty[2]{#1 <: #2}
@@ -67,437 +68,409 @@ We assume there is set of effect names $\Eff = \{ \eff_1, ..., \eff_n \}$.
 Each effect has a set of operation names $\Op_\eff = \{ \op_1, ..., \op_n \}$.
 Every operation name only corresponds to a single effect.
 Each operation has a parameter type $\pty{\op}$ and a return type $\rty{\op}$.
-We have a set of locations $\loc \in \Loc$, each instance has a unique location.
-Annotations $r$ are sets of instance variables.
+We have scope variables $s$ modeled by some countable infinite set.
+And we have locations $l$ modeled by some countable infinite set.
+Annotations $r$ are sets of pairs of an effect name with a scope variable: $\{ \Eff_1@s_1, ..., \Eff_n@s_n \}$.
 \\
 \begin{align*}
 	\ty \Coloneqq 	& 																	\tag{value types} \\
-									& i, j, k														\tag{instance variables} \\
-									& \tunit														\tag{unit type} \\
-									& \tinst{i}{\eff}										\tag{instance type} \\
+									& \tinst{s}{\eff}										\tag{instance type} \\
 									& \tarr{\ty}{\cty}									\tag{type of functions} \\
-									& \tforall{i}{\cty}									\tag{universally quantified type}\\
+									& \tforall{s}{\cty}									\tag{universally quantified type over scope $s$}\\
 	\cty \Coloneqq 	& 																	\tag{computation types} \\
 									& \aty{\ty}{r}											\tag{annotated type} \\
 	\val \Coloneqq	&																		\tag{values} \\
 									& x, y, z, k												\tag{variables} \\
-									& \vunit														\tag{unit value} \\
-									& \vinst{\loc}											\tag{instance values} \\
+									& \vinst{\loc}											\tag{instance values (for semantics)} \\
 									& \vabs{x}{\comp}										\tag{abstraction} \\
-									& \vabst{i}{\comp}									\tag{instance type variable abstraction} \\
+									& \vabst{s}{\comp}									\tag{scope abstraction} \\
 	\comp \Coloneqq	&																		\tag{computations} \\
 									& \creturn{\val}										\tag{return value as computation} \\
 									& \capp{\val}{\val}									\tag{application} \\
-									& \cappt{\val}{i}										\tag{type application} \\
+									& \cappt{\val}{s}										\tag{scope application} \\
 									& \cdo{x}{\comp}{\comp}							\tag{sequencing} \\
 									& \cop{\val}{\op}{\val}							\tag{operation call} \\
-									& \cfresh{i}{\comp}									\tag{fresh instance variable} \\
-									& \cnew{\eff}{i}{x}{\comp}					\tag{instance creation} \\
-									& \chandlec{\val}{\comp}						\tag{handle computation} \\
+									& \cnew{\eff}{s}{\handler}{x}{\comp}		\tag{instance creation} \\
+									& \chandle{\val}										\tag{handle scoped computation} \\
+									& \chandlec{s}{\comp}								\tag{handle computation (for semantics)} \\
+									& \chandlei{\val}{\handler}{\comp}	\tag{handle instance (for semantics)} \\
+	\handler \Coloneqq 		&															\tag{handlers} \\
+									& \hop{\op}{x}{k}{\comp}{\handler}	\tag{operation case} \\
+									& \hreturn{x}{\comp}{x}{\comp}			\tag{return/finally case} \\
 \end{align*}
 
-\newpage
-\section{Subtyping rules}
+\section{Subtyping}
+\begin{figure}
+\caption{Subtyping}
+\centering
+\fbox{
+\begin{minipage}{14 cm}
+$$\inferrule{
+}{
+	\subty{ \tinst{s}{\eff} }{ \tinst{s}{\eff} } 
+}
+\hspace{3em}
+\mprset{vskip=0 ex}
+\inferrule{
+	\subty{\ty_2}{\ty_1} \\
+	\subty{\cty_1}{\cty_2} \\
+}{
+	\subty{ \tarr{\ty_1}{\cty_1} }{ \tarr{\ty_2}{\cty_2} }
+}
+\hspace{3em}
+\mprset{vskip=0 ex}
+$$
+$$
+\inferrule{
+	\subty{ \cty_1 }{ \cty_2 }
+}{
+	\subty{ \tforall{s}{\cty_1} }{ \tforall{s}{\cty_2} }
+}
+\hspace{3em}
+\mprset{vskip=0 ex}
+\inferrule{
+	\subty{ \ty_1 }{ \ty_2 } \\
+	r_1 \subseteq r_2
+}{
+	\subty{ \aty{\ty_1}{r_1} }{ \aty{\ty_2}{r_2} }
+}$$
+\label{fig:subtyping-calc}
+\end{minipage}
+}
+\end{figure}
 
-\[
-\frac{
+\section{Well-formedness}
+\begin{figure}
+\caption{Well-formedness}
+\centering
+\fbox{
+\begin{minipage}{14 cm}
+$$\inferrule{
+	s \in \Delta \\
 }{
-	\subty{i}{i}
+	\Delta \vdash \tinst{s}{\eff}
 }
-\]
-\[
-\frac{
+\hspace{3em}
+\mprset{vskip=0 ex}
+\inferrule{
+	\Delta \vdash \ty \\
+	\Delta \vdash \cty \\
 }{
-	\subty{\tunit}{\tunit}
+	\Delta \vdash \tarr{\ty}{\cty}
 }
-\]
-\[
-\frac{
+\hspace{3em}
+\mprset{vskip=0 ex}
+$$
+$$
+\inferrule{
+	\Delta,s \vdash \cty 
 }{
-	\subty{\tinst{i}{\eff}}{\tinst{i}{\eff}}
+	\Delta \vdash \tforall{s}{\cty}
 }
-\]
-
-\[
-\frac{
-	\begin{array}{l}
-	\subty{a'}{a} \\
-	\subty{b}{b'}
-	\end{array}
+\hspace{3em}
+\mprset{vskip=0 ex}
+\inferrule{
+	\Delta \vdash \ty \\
+	\forall (\eff@s \in r) \Rightarrow s \in \Delta \\
 }{
-	\subty{\tarr{a}{b}}{\tarr{a'}{b'}}
+	\Delta \vdash \aty{\ty}{r}
+}$$
+\label{fig:wf-calc}
+\end{minipage}
 }
-\]
-
-\[
-\frac{
-	\subty{a}{b}
-}{
-	\subty{\tforall{i}{a}}{\tforall{i}{b}}
-}
-\]
-\[
-\frac{
-	\begin{array}{l}
-	\subty{a}{a'} \\
-	e \subseteq e'
-	\end{array}
-}{
-	\subty{\aty{a}{e}}{\aty{a'}{e'}}
-}
-\]
-
-\section{Well-formedness judgement}
-
-\[\frac{
-	\begin{array}{l}
-	i \in \Delta \\
-	\end{array}
-}{
-	\Delta \vdash i
-}\]
-\[\frac{
-	\begin{array}{l}
-	\end{array}
-}{
-	\Delta \vdash \tunit
-}\]
-\[\frac{
-	\begin{array}{l}
-	\Delta \vdash i
-	\end{array}
-}{
-	\Delta \vdash \tinst{i}{\eff}
-}\]
-\[\frac{
-	\begin{array}{l}
-	\Delta \vdash a  \\
-	\Delta \vdash b
-	\end{array}
-}{
-	\Delta \vdash \tarr{a}{b}
-}\]
-\[\frac{
-	\begin{array}{l}
-	\Delta , i \vdash a  \\
-	\end{array}
-}{
-	\Delta \vdash \tforall{i}{a}
-}\]
-\[\frac{
-	\begin{array}{l}
-	\Delta \vdash a  \\
-	\Delta \vdash j_i
-	\end{array}
-}{
-	\Delta \vdash \aty{a}{\{ j_0, ..., j_n \}}
-}\]
+\end{figure}
 
 \section{Typing rules}
-
-
-\[\frac{
-	\begin{array}{l}
-	\Delta;\Sigma;\Gamma \vdash \val : \ty_1 \\
-	\Delta \vdash \ty_2 \\
-	\subty{\ty_1}{\ty_2}
-	\end{array}
-}{
-	\Delta;\Sigma;\Gamma \vdash \val : \ty_2
-}\]
-
-\[\frac{
-	(x:\ty) \in \Gamma
+\begin{figure}
+\caption{Value typing rules}
+\centering
+\fbox{
+\begin{minipage}{14 cm}
+$$\inferrule{
+	\Gamma[x] = \ty
 }{
 	\Delta;\Sigma;\Gamma \vdash x : \ty
-}\]
-\[\frac{
-}{
-	\Delta;\Sigma;\Gamma \vdash \vunit : \tunit
-}\]
-\[\frac{
+}
+\hspace{3em}
+\mprset{vskip=0 ex}
+\inferrule{
 	\Sigma(\loc) = (i, \eff)
 }{
 	\Delta;\Sigma;\Gamma \vdash \vinst{\loc} : \tinst{i}{\eff}
-}\]
-\[\frac{
-	\begin{array}{l}
-	\Delta \vdash \ty_1 \\
-	\Delta;\Sigma;\Gamma, x : \ty_1 \vdash \comp : \cty_2
-	\end{array}
+}
+\hspace{3em}
+\mprset{vskip=0 ex}
+\inferrule{
+	\Delta;\Sigma;\Gamma, x : \ty \vdash \comp : \cty
 }{
-	\Delta;\Sigma;\Gamma \vdash \vabs{x}{\comp} : \tarr{\ty_1}{\cty_2}
-}\]
-
-\[\frac{
-	\begin{array}{l}
-	\Delta,i;\Sigma;\Gamma \vdash \comp : \cty
-	\end{array}
+	\Delta;\Sigma;\Gamma \vdash \vabs{x}{\comp} : \tarr{\ty}{\cty}
+}
+$$
+$$
+\inferrule{
+	\Delta,s;\Sigma;\Gamma \vdash \comp : \cty
 }{
-	\Delta;\Sigma;\Gamma \vdash \vabst{i}{\comp} : \tforall{i}{\cty}
-}\]
+	\Delta;\Sigma;\Gamma \vdash \vabst{s}{\comp} : \tforall{s}{\cty}
+}
+\hspace{3em}
+\mprset{vskip=0 ex}
+\inferrule{
+	\Delta;\Sigma;\Gamma \vdash \val : \ty_1 \\
+	\Delta \vdash \ty_2 \\
+	\subty{\ty_1}{\ty_2}
+}{
+	\Delta;\Sigma;\Gamma \vdash \val : \ty_2
+}
+$$
+\label{fig:val-typing-calc}
+\end{minipage}
+}
+\end{figure}
 
-\[\frac{
-	\begin{array}{l}
+\begin{figure}
+\caption{Computation typing rules}
+\centering
+\fbox{
+\begin{minipage}{14 cm}
+$$\inferrule{
+	\Delta;\Sigma;\Gamma \vdash \val : \ty
+}{
+	\Delta;\Sigma;\Gamma \vdash \creturn{\val} : \aty{\ty}{\varnothing}
+}
+\hspace{3em}
+\mprset{vskip=0 ex}
+\inferrule{
+	\Delta;\Sigma;\Gamma \vdash \val_1 : \tarr{\ty}{\cty} \\
+	\Delta;\Sigma;\Gamma \vdash \val_2 : \ty \\
+}{
+	\Delta;\Sigma;\Gamma \vdash \capp{\val_1}{\val_2} : \cty
+}
+$$
+$$
+\inferrule{
+	s \in \Delta \\
+	\Delta;\Sigma;\Gamma \vdash \val : \tforall{s'}{\cty}
+}{
+	\Delta;\Sigma;\Gamma \vdash \cappt{\val}{s} : \cty[s' := s]
+}
+$$
+$$
+\inferrule{
+	\Delta;\Sigma;\Gamma \vdash \comp_1 : \aty{\ty_1}{r} \\
+	\Delta;\Sigma;\Gamma,x:\ty_1 \vdash \comp_2 : \aty{\ty_2}{r} \\
+}{
+	\Delta;\Sigma;\Gamma \vdash (\cdo{x}{\comp_1}{\comp_2}) : \aty{\ty_2}{r}
+}
+$$
+$$
+\inferrule{
+	\Delta;\Sigma;\Gamma \vdash \val_1 : \tinst{s}{\eff} \\
+	\op \in \Op_\eff \\
+	\Delta;\Sigma;\Gamma \vdash \val_2 : \pty{\op} \\
+}{
+	\Delta;\Sigma;\Gamma \vdash \cop{\val_1}{\op}{\val_2} : \aty{\rty{\op}}{\{\eff@s\}}
+}
+$$
+$$
+\inferrule{
+	s \in \Delta \\
+	\op \in \Op_\eff \iff \op \in \handler \\
+	\Delta;\Sigma;\Gamma \vdash^{(\ty_1, \aty{\ty_2}{r_2})} \handler : \aty{\ty_3}{r_3} \\
+	\Delta;\Sigma;\Gamma,x:\tinst{s}{\eff} \vdash \comp : \aty{\ty_1}{r_1} \\
+	(\eff@s \notin r_3) \land (r_1 \subseteq r_3)
+}{
+	\Delta;\Sigma;\Gamma \vdash \cnew{\eff}{s}{\handler}{x}{\comp} : \aty{\ty_3}{r_3}
+}
+$$
+$$
+\inferrule{
+	\Delta;\Sigma;\Gamma \vdash \val : \tforall{s}{\cty} \\
+	s \notin \cty
+}{
+	\Delta;\Sigma;\Gamma \vdash \chandle{\val} : \cty
+}
+$$
+$$
+\inferrule{
 	\Delta;\Sigma;\Gamma \vdash \comp : \cty_1 \\
 	\Delta \vdash \cty_2 \\
 	\subty{\cty_1}{\cty_2}
-	\end{array}
 }{
 	\Delta;\Sigma;\Gamma \vdash \comp : \cty_2
-}\]
-
-\[\frac{
-	\begin{array}{l}
-	\Delta;\Sigma;\Gamma \vdash \val : \ty
-	\end{array}
-}{
-	\Delta;\Sigma;\Gamma \vdash \creturn{\val} : \aty{\ty}{\varnothing}
-}\]
-
-\[\frac{
-	\begin{array}{l}
-	\Delta;\Sigma;\Gamma \vdash \val_1 : \tarr{\ty}{\cty}\\
-	\Delta;\Sigma;\Gamma \vdash \val_2 : \ty
-	\end{array}
-}{
-	\Delta;\Sigma;\Gamma \vdash \capp{\val_1}{\val_2} : \cty
-}\]
-
-\[\frac{
-	\begin{array}{l}
-	\Delta \vdash j \\
-	\Delta;\Sigma;\Gamma \vdash \val : \tforall{i}{\cty}
-	\end{array}
-}{
-	\Delta;\Sigma;\Gamma \vdash \cappt{\val}{j} : \cty[i := j]
-}\]
-
-\[\frac{
-	\begin{array}{l}
-	\Delta;\Sigma;\Gamma \vdash \comp_1 : \aty{\ty_1}{r} \\
-	\Delta;\Sigma;\Gamma,x:\ty_1 \vdash \comp_2 : \aty{\ty_2}{r} \\
-	\end{array}
-}{
-	\Delta;\Sigma;\Gamma \vdash \cdo{x}{\comp_1}{\comp_2} : \aty{\ty_2}{r}
-}\]
-
-\[\frac{
-	\begin{array}{l}
-	\Delta;\Sigma;\Gamma \vdash \val_1 : \tinst{i}{\eff} \\
-	\op \in \Op_\eff \\
-	\Delta;\Sigma;\Gamma \vdash \val_2 : \pty{\op}
-	\end{array}
-}{
-	\Delta;\Sigma;\Gamma \vdash \cop{\val_1}{\op}{\val_2} : \aty{\rty{\op}}{\{i\}}
-}\]
-
-\[\frac{
-	\begin{array}{l}
-	\Delta,i;\Sigma;\Gamma \vdash \comp : \cty \\
-	i \notin \cty
-	\end{array}
-}{
-	\Delta;\Sigma;\Gamma \vdash \cfresh{i}{\comp} : \cty
-}\]
-
-\[\frac{
-	\begin{array}{l}
-	\Delta \vdash i \\
-	\Delta;\Sigma;\Gamma,x:\tinst{i}{\eff} \vdash \comp : \cty \\
-	i \notin \cty
-	\end{array}
-}{
-	\Delta;\Sigma;\Gamma \vdash \cnew{\eff}{i}{x}{\comp} : \cty
-}\]
-
-In the following rule \\$h = 
-	\chandle{\val}{\comp}{
-		\mathsf{return} \; x_r \rightarrow \comp_r,
-		\op_1(x_1 ; k_1) \rightarrow \comp_1,
-		...,
-		\op_n(x_n ; k_n) \rightarrow \comp_n
-	}$.\\
-\[\frac{
-	\begin{array}{l}
-	\Delta;\Sigma;\Gamma \vdash \val : \tinst{i}{\eff} \\
-	\Op_\eff = \{ op_1, ..., op_n \} \\
-	\Delta;\Sigma;\Gamma \vdash \comp : \aty{\ty_1}{r_1} \\
-	\Delta;\Sigma;\Gamma, x_r : \ty_1 \vdash \comp_r : \aty{\ty_2}{r_2} \\
-	\Delta;\Sigma;\Gamma, x_i : \pty{\op_i}, k_i : \tarr{\rty{\op_i}}{\aty{\ty_2}{r_2}} \vdash \comp_i : \aty{\ty_2}{r_2} \\
-	r_1 \backslash \{ i \} \subseteq r_2 \\
-	\end{array}
-}{
-	\Delta;\Sigma;\Gamma \vdash h : \aty{\ty_2}{r_2}
-}\]
-
-\newpage
-\section{Semantics}
-
-\[\frac{
-	\begin{array}{l}
-	\end{array}
-}{
-	\sss{\capp{(\vabs{x}{\comp})}{\val}}{\mu}{\comp[x := \val]}{\mu}
-}\]
-
-\[\frac{
-	\begin{array}{l}
-	\end{array}
-}{
-	\sss{\capp{(\vabst{i}{\comp})}{j}}{\mu}{\comp}{\mu}
-}\]
-
-\[\frac{
-	\begin{array}{l}
-	\sss{\comp_1}{\mu}{\comp_1'}{\mu'}
-	\end{array}
-}{
-	\sss{\cdo{x}{\comp_1}{\comp_2}}{\mu}{\cdo{x}{\comp_1'}{\comp_2}}{\mu'}
-}\]
-
-\[\frac{
-	\begin{array}{l}
-	\end{array}
-}{
-	\sss{\cdo{x}{(\creturn{\val})}{\comp}}{\mu}{\comp[x := \val]}{\mu}
-}\]
-
-\[\frac{
-	\begin{array}{l}
-	\end{array}
-}{
-	\sss{\cdo{y}{(\cdo{x}{\comp_1}{\comp_2})}{\comp_3}}{\mu}{\cdo{x}{\comp_1}{\cdo{y}{\comp_2}{\comp_3}}}{\mu}
-}\]
-
-\[\frac{
-	\begin{array}{l}
-	\end{array}
-}{
-	\sss{\cfresh{i}{\comp}}{\mu}{\comp}{\mu}
-}\]
-
-\[\frac{
-	\begin{array}{l}
-	\loc \notin Dom(\mu)
-	\end{array}
-}{
-	\sss{\cnew{\eff}{i}{x}{\comp}}{\mu}{\comp[x := \vinst{\loc}]}{\mu,\loc := (i, \eff)}
-}\]
-
-In the following rules \\$h = {
-		\mathsf{return} \; x_r \rightarrow \comp_r,
-		\op_1(x_1 ; k_1) \rightarrow \comp_1,
-		...,
-		\op_n(x_n ; k_n) \rightarrow \comp_n
-}$.\\
-
-\[\frac{
-	\begin{array}{l}
-	\sss{\comp}{\mu}{\comp'}{\mu'}
-	\end{array}
-}{
-	\sss{\chandle{\vinst{\loc}}{\comp}{h}}{\mu}{\chandle{\vinst{\loc}}{\comp'}{h}}{\mu'}
-}\]
-
-\[\frac{
-	\begin{array}{l}
-	\end{array}
-}{
-	\sss{\chandle{\vinst{\loc}}{\creturn{\val}}{h}}{\mu}{\comp_r[x_r := \val]}{\mu}
-}\]
-
-\[\frac{
-	\begin{array}{l}
-	\end{array}
-}{
-	\sss{\chandle{\vinst{\loc}}{\cop{\vinst{\loc}}{\op_i}{\val}}{h}}{\mu}
-			{\comp_i[x_i := \val, k_i := \vabs{x_r}{\comp_r}]}{\mu}
-}\]
-
-\[\frac{
-	\begin{array}{l}
-	\loc \neq \loc'
-	\end{array}
-}{
-	\sss{\chandle{\vinst{\loc}}{\cop{\vinst{\loc'}}{\op}{\val}}{h}}{\mu}
-			{\cdo{x_r}{\cop{\vinst{\loc'}}{\op}{\val}}{\comp_r}}{\mu}
-}\]
-
-\[\frac{
-	\begin{array}{l}
-	\end{array}
-}{
-	\begin{array}{l}
-	\chandle{\vinst{\loc}}{\cdo{x}{(\cop{\vinst{\loc}}{\op_i}{\val})}{\comp}}{h} \; | \; \mu \rightsquigarrow \\
-	\comp_i[x_i := \val, k_i := (\vabs{x}{\chandle{\vinst{\loc}}{\comp}{h}})] \; | \; \mu
-	\end{array}
-}\]
-
-\[\frac{
-	\begin{array}{l}
-	\loc \neq \loc'
-	\end{array}
-}{
-	\begin{array}{l}
-	\chandle{\vinst{\loc}}{\cdo{x}{(\cop{\vinst{\loc'}}{\op}{\val})}{\comp}}{h} \; | \; \mu \rightsquigarrow \\
-	\cdo{x}{(\cop{\vinst{\loc'}}{\op}{\val})}{(\chandle{\vinst{\loc}}{\comp}{h})} \; | \; \mu
-	\end{array}
-}\]
-
-\section{Existential types}
-\begin{align*}
-	\ty \Coloneqq 	& 																	\tag{value types} \\
-									& \texists{i}{\cty}									\tag{existentially quantified type}\\
-	\comp \Coloneqq	&																		\tag{computations} \\
-									& \cpack{l}{\val}									\tag{pack instance variable}\\
-									& \cunpack{\val}{i}{x}{\comp}				\tag{unpack existential type} \\
-\end{align*}
-
-\[
-\frac{
-	\subty{a}{b}
-}{
-	\subty{\texists{i}{a}}{\texists{i}{b}}
 }
-\]
+$$
+\label{fig:comp-typing-calc}
+\end{minipage}
+}
+\end{figure}
 
-\[\frac{
-	\begin{array}{l}
-	\Delta , i \vdash a  \\
-	\end{array}
+\begin{figure}
+\caption{Handler typing rules}
+\centering
+\fbox{
+\begin{minipage}{14 cm}
+$$
+\inferrule{
+	\Delta;\Sigma;\Gamma,x:\pty{\op},k:\tarr{\rty{\op}}{\aty{\ty_2}{r_2}} \vdash \comp : \aty{\ty_2}{r_2} \\
+	\Delta;\Sigma;\Gamma \vdash^{(\ty_1, \aty{\ty_2}{r_2})} \handler : \aty{\ty_3}{r_3} \\
 }{
-	\Delta \vdash \texists{i}{a}
-}\]
+	\Delta;\Sigma;\Gamma \vdash^{(\ty_1, \aty{\ty_2}{r_2})} (\hop{\op}{x}{k}{\comp}{\handler}) : \aty{\ty_3}{r_3}
+}
+$$
+$$
+\inferrule{
+	\Delta;\Sigma;\Gamma,x_r : \ty_1  \vdash \comp_r : \aty{\ty_2}{r_2} \\
+	\Delta;\Sigma;\Gamma,x_f : \ty_2  \vdash \comp_f : \aty{\ty_3}{r_3} \\
+}{
+	\Delta;\Sigma;\Gamma \vdash^{(\ty_1, \aty{\ty_2}{r_2})} (\hreturn{x_r}{\comp_r}{x_f}{\comp_f}) : \aty{\ty_3}{r_3}
+}
+$$
+\label{fig:handler-typing-calc}
+\end{minipage}
+}
+\end{figure}
 
-\[\frac{
-	\begin{array}{l}
-	\Delta;\Sigma;\Gamma \vdash \val : \ty \\
-	\end{array}
+\section{Semantics}
+\begin{figure}
+\caption{Semantics}
+\centering
+\fbox{
+\begin{minipage}{17 cm}
+$$
+\inferrule{
 }{
-	\Delta;\Sigma;\Gamma \vdash \cpack{i}{\val} : \aty{(\texists{i}{\ty})}{\varnothing}
-}\]
+	\capp{(\vabs{x}{\comp})}{\val} \;|\; n \rightsquigarrow \comp[x := \val] \;|\; n
+}
+\hspace{3em}
+\mprset{vskip=0 ex}
+\inferrule{
+}{
+	\cappt{(\vabst{s}{\comp})}{s'} \;|\; n \rightsquigarrow \comp[s := s'] \;|\; n
+}
+$$
+$$
+\inferrule{
+	\comp_1 ; n \rightsquigarrow \comp'_1 ; n'
+}{
+	(\cdo{x}{\comp_1}{\comp_2}) \;|\; n \rightsquigarrow (\cdo{x}{\comp'_1}{\comp_2}) \;|\; n'
+}
+\hspace{3em}
+\mprset{vskip=0 ex}
+\inferrule{
+}{
+	(\cdo{x}{(\creturn{\val})}{\comp}) \;|\; n \rightsquigarrow \comp[x := \val] \;|\; n
+}
+$$
+$$
+\inferrule{
+}{
+	(\cdo{y}{(\cdo{x}{\comp_1}{\comp_2})}{\comp_3} \;|\; n \rightsquigarrow
+	(\cdo{x}{\comp_1}{\cdo{y}{\comp_2}{\comp_3}}) \;|\; n
+}
+$$
+$$
+\inferrule{
+}{
+	(\cdo{x}{(\cnew{\eff}{s}{\handler}{y}{\comp_1})}{\comp_2}) \;|\; n \rightsquigarrow \cnew{\eff}{s}{\handler}{y}{(\cdo{x}{\comp_1}{\comp_2})} \;|\; n
+}
+$$
+$$
+\inferrule{
+	\mathsf{fresh}\; s'
+}{
+	\chandle{\vabst{s}{\comp}} \;|\; n \rightsquigarrow \chandlec{s'}{\comp[s := s']} \;|\; n
+}
+\hspace{3em}
+\mprset{vskip=0 ex}
+\inferrule{
+	\comp \;|\; n \rightsquigarrow \comp' \;|\; n'
+}{
+	\chandlec{s}{\comp} \;|\; n \rightsquigarrow \chandlec{s}{\comp'} \;|\; n'
+}
+$$
+$$
+\inferrule{
+}{
+	\chandlec{s}{\creturn{\val}} \;|\; n \rightsquigarrow
+	\creturn{\val} \;|\; n
+}
+$$
+$$
+\inferrule{
+}{
+	\chandlec{s}{\cop{\val_1}{\op}{\val_2}} \;|\; n \rightsquigarrow
+	\chandlec{s}{\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\creturn{x}}} \;|\; n
+}
+$$
+$$
+\inferrule{
+}{
+	\chandlec{s}{\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\comp}} \;|\; n \rightsquigarrow
+	(\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\chandlec{s}{\comp}}) \;|\; n
+}
+$$
+$$
+\inferrule{
+	s \neq s'
+}{
+	\chandlec{s}{\cnew{\eff}{s'}{\handler}{x}{\comp}} \;|\; n \rightsquigarrow
+	\cnew{\eff}{s'}{\handler}{x}{\chandlec{s}{\comp}} \;|\; n
+}
+$$
+$$
+\inferrule{
+}{
+	\chandlec{s}{\cnew{\eff}{s}{\handler}{x}{\comp}} \;|\; n \rightsquigarrow
+	\chandlei{\vinst{n}}{\handler}{\chandlec{s}{\comp[x := \vinst{n}]}} \;|\; n + 1
+}
+$$
+$$
+\inferrule{
+	\comp \;|\; n \rightsquigarrow \comp' \;|\; n'
+}{
+	\chandlei{\vinst{n}}{\handler}{\comp} \;|\; n \rightsquigarrow \chandlei{\vinst{n}}{\handler}{\comp'} \;|\; n'
+}
+$$
+$$
+\inferrule{
+}{
+	\chandlei{\vinst{n}}{\handler}{\cnew{\eff}{s}{\handler'}{x}{\comp}} \;|\; n \rightsquigarrow
+	\cnew{\eff}{s}{\handler'}{x}{\chandlei{\vinst{n}}{\handler}{\comp}} \;|\; n
+}
+$$
+$$
+\inferrule{
+}{
+	\chandlei{\vinst{n}}{\handler}{\cop{\val_1}{\op}{\val_2}} \;|\; n \rightsquigarrow
+	\chandlei{\vinst{n}}{\handler}{\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\creturn{x}}} \;|\; n
+}
+$$
+$$
+\inferrule{
+	n \neq n'
+}{
+	\chandlei{\vinst{n}}{\handler}{\cdo{x}{\cop{\vinst{n'}}{\op}{\val}}{\comp}} \;|\; n \rightsquigarrow
+	(\cdo{x}{\cop{\vinst{n'}}{\op}{\val}}{\chandlei{\vinst{n}}{\handler}{{\comp}}}) \;|\; n
+}
+$$
+$$
+\inferrule{
+	\handler[\op] = (x, k, \comp_{\op})
+}{
+	\chandlei{\vinst{n}}{\handler}{\cdo{x}{\cop{\vinst{n}}{\op}{\val}}{\comp}} \;|\; n \rightsquigarrow
+	\comp_{\op}[x := \val, k := (\vabs{x}{\chandlei{\vinst{n}}{\handler}{\comp}})] \;|\; n
+}
+$$
+$$
+\inferrule{
+}{
+	\chandlei{\vinst{n}}{\handler; \hreturn{x_r}{\comp_r}{x_f}{\comp_f}}{\creturn{\val}} \;|\; n \rightsquigarrow
+	(\cdo{x}{\comp_r[x_r := \val]}{\comp_f[x_f := x]}) \;|\; n
+}
+$$
+\label{fig:semantics-calc}
+\end{minipage}
+}
+\end{figure}
 
-\[\frac{
-	\begin{array}{l}
-	\Delta;\Sigma;\Gamma \vdash \val : \texists{i}{\ty} \\
-	\Delta,i;\Sigma;\Gamma,x:\ty \vdash \comp : \cty \\
-	i \notin \cty \\
-	\end{array}
-}{
-	\Delta;\Sigma;\Gamma \vdash \cunpack{\val}{i}{x}{\comp} : \cty
-}\]
-
-\[\frac{
-	\begin{array}{l}
-	\end{array}
-}{
-	\sss{\cpack{i}{\val}}{\mu}{\creturn{\val}}{\mu}
-}\]
-
-\[\frac{
-	\begin{array}{l}
-	\end{array}
-}{
-	\sss{\cunpack{\val}{i}{x}{\comp}}{\mu}{\comp[x := \val]}{\mu}
-}\]
+}
