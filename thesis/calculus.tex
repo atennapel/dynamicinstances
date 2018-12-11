@@ -194,9 +194,9 @@ $$\inferrule{
 \hspace{3em}
 \mprset{vskip=0 ex}
 \inferrule{
-	\Sigma(\loc) = (i, \eff)
+	\Sigma(\loc) = (s, \eff)
 }{
-	\Delta;\Sigma;\Gamma \vdash \vinst{\loc} : \tinst{i}{\eff}
+	\Delta;\Sigma;\Gamma \vdash \vinst{\loc} : \tinst{s}{\eff}
 }
 \hspace{3em}
 \mprset{vskip=0 ex}
@@ -292,6 +292,21 @@ $$
 $$
 $$
 \inferrule{
+	???
+}{
+	\Delta;\Sigma;\Gamma \vdash \chandlec{s}{\comp} : \cty
+}
+$$
+$$
+\inferrule{
+	\Delta;\Sigma\Gamma \vdash \val : \tinst{s}{\eff} \\
+	???
+}{
+	\Delta;\Sigma;\Gamma \vdash \chandlei{\val}{\handler}{\comp} : \cty
+}
+$$
+$$
+\inferrule{
 	\Delta;\Sigma;\Gamma \vdash \comp : \cty_1 \\
 	\Delta \vdash \cty_2 \\
 	\subty{\cty_1}{\cty_2}
@@ -339,133 +354,134 @@ $$
 $$
 \inferrule{
 }{
-	\capp{(\vabs{x}{\comp})}{\val} \;|\; n \rightsquigarrow \comp[x := \val] \;|\; n
+	\capp{(\vabs{x}{\comp})}{\val} \;|\; \Sigma \rightsquigarrow \comp[x := \val] \;|\; \Sigma
 }
 \hspace{3em}
 \mprset{vskip=0 ex}
 \inferrule{
 }{
-	\cappt{(\vabst{s}{\comp})}{s'} \;|\; n \rightsquigarrow \comp[s := s'] \;|\; n
+	\cappt{(\vabst{s}{\comp})}{s'} \;|\; \Sigma \rightsquigarrow \comp[s := s'] \;|\; \Sigma
 }
 $$
 $$
 \inferrule{
-	\comp_1 ; n \rightsquigarrow \comp'_1 ; n'
+	\comp_1 ; \Sigma \rightsquigarrow \comp'_1 ; \Sigma'
 }{
-	(\cdo{x}{\comp_1}{\comp_2}) \;|\; n \rightsquigarrow (\cdo{x}{\comp'_1}{\comp_2}) \;|\; n'
+	(\cdo{x}{\comp_1}{\comp_2}) \;|\; \Sigma \rightsquigarrow (\cdo{x}{\comp'_1}{\comp_2}) \;|\; \Sigma'
 }
 \hspace{3em}
 \mprset{vskip=0 ex}
 \inferrule{
 }{
-	(\cdo{x}{(\creturn{\val})}{\comp}) \;|\; n \rightsquigarrow \comp[x := \val] \;|\; n
+	(\cdo{x}{(\creturn{\val})}{\comp}) \;|\; \Sigma \rightsquigarrow \comp[x := \val] \;|\; \Sigma
 }
 $$
 $$
 \inferrule{
 }{
-	(\cdo{y}{(\cdo{x}{\comp_1}{\comp_2})}{\comp_3} \;|\; n \rightsquigarrow
-	(\cdo{x}{\comp_1}{\cdo{y}{\comp_2}{\comp_3}}) \;|\; n
+	(\cdo{y}{(\cdo{x}{\comp_1}{\comp_2})}{\comp_3} \;|\; \Sigma \rightsquigarrow
+	(\cdo{x}{\comp_1}{\cdo{y}{\comp_2}{\comp_3}}) \;|\; \Sigma
 }
 $$
 $$
 \inferrule{
 }{
-	(\cdo{x}{(\cnew{\eff}{s}{\handler}{y}{\comp_1})}{\comp_2}) \;|\; n \rightsquigarrow \cnew{\eff}{s}{\handler}{y}{(\cdo{x}{\comp_1}{\comp_2})} \;|\; n
+	(\cdo{x}{(\cnew{\eff}{s}{\handler}{y}{\comp_1})}{\comp_2}) \;|\; \Sigma \rightsquigarrow \cnew{\eff}{s}{\handler}{y}{(\cdo{x}{\comp_1}{\comp_2})} \;|\; \Sigma
 }
 $$
 $$
 \inferrule{
 	\mathsf{fresh}\; s'
 }{
-	\chandle{\vabst{s}{\comp}} \;|\; n \rightsquigarrow \chandlec{s'}{\comp[s := s']} \;|\; n
+	\chandle{\vabst{s}{\comp}} \;|\; \Sigma \rightsquigarrow \chandlec{s'}{\comp[s := s']} \;|\; \Sigma
 }
 \hspace{3em}
 \mprset{vskip=0 ex}
 \inferrule{
-	\comp \;|\; n \rightsquigarrow \comp' \;|\; n'
+	\comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma'
 }{
-	\chandlec{s}{\comp} \;|\; n \rightsquigarrow \chandlec{s}{\comp'} \;|\; n'
+	\chandlec{s}{\comp} \;|\; \Sigma \rightsquigarrow \chandlec{s}{\comp'} \;|\; \Sigma'
 }
 $$
 $$
 \inferrule{
 }{
-	\chandlec{s}{\creturn{\val}} \;|\; n \rightsquigarrow
-	\creturn{\val} \;|\; n
+	\chandlec{s}{\creturn{\val}} \;|\; \Sigma \rightsquigarrow
+	\creturn{\val} \;|\; \Sigma
 }
 $$
 $$
 \inferrule{
 }{
-	\chandlec{s}{\cop{\val_1}{\op}{\val_2}} \;|\; n \rightsquigarrow
-	\chandlec{s}{\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\creturn{x}}} \;|\; n
+	\chandlec{s}{\cop{\val_1}{\op}{\val_2}} \;|\; \Sigma \rightsquigarrow
+	\chandlec{s}{\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\creturn{x}}} \;|\; \Sigma
 }
 $$
 $$
 \inferrule{
 }{
-	\chandlec{s}{\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\comp}} \;|\; n \rightsquigarrow
-	(\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\chandlec{s}{\comp}}) \;|\; n
+	\chandlec{s}{\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\comp}} \;|\; \Sigma \rightsquigarrow
+	(\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\chandlec{s}{\comp}}) \;|\; \Sigma
 }
 $$
 $$
 \inferrule{
 	s \neq s'
 }{
-	\chandlec{s}{\cnew{\eff}{s'}{\handler}{x}{\comp}} \;|\; n \rightsquigarrow
-	\cnew{\eff}{s'}{\handler}{x}{\chandlec{s}{\comp}} \;|\; n
+	\chandlec{s}{\cnew{\eff}{s'}{\handler}{x}{\comp}} \;|\; \Sigma \rightsquigarrow
+	\cnew{\eff}{s'}{\handler}{x}{\chandlec{s}{\comp}} \;|\; \Sigma
+}
+$$
+$$
+\inferrule{
+	\loc \notin \mathsf{Dom}(\Sigma)
+}{
+	\chandlec{s}{\cnew{\eff}{s}{\handler}{x}{\comp}} \;|\; \Sigma \rightsquigarrow \\
+	\chandlei{\vinst{n}}{\handler}{\chandlec{s}{\comp[x := \vinst{\loc}]}} \;|\; \Sigma,\loc := (s, \eff)
+}
+$$
+$$
+\inferrule{
+	\comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma'
+}{
+	\chandlei{\vinst{\loc}}{\handler}{\comp} \;|\; \Sigma \rightsquigarrow \chandlei{\vinst{\loc}}{\handler}{\comp'} \;|\; \Sigma'
 }
 $$
 $$
 \inferrule{
 }{
-	\chandlec{s}{\cnew{\eff}{s}{\handler}{x}{\comp}} \;|\; n \rightsquigarrow
-	\chandlei{\vinst{n}}{\handler}{\chandlec{s}{\comp[x := \vinst{n}]}} \;|\; n + 1
-}
-$$
-$$
-\inferrule{
-	\comp \;|\; n \rightsquigarrow \comp' \;|\; n'
-}{
-	\chandlei{\vinst{n}}{\handler}{\comp} \;|\; n \rightsquigarrow \chandlei{\vinst{n}}{\handler}{\comp'} \;|\; n'
+	\chandlei{\vinst{\loc}}{\handler}{\cnew{\eff}{s}{\handler'}{x}{\comp}} \;|\; \Sigma \rightsquigarrow 
+	\cnew{\eff}{s}{\handler'}{x}{\chandlei{\vinst{\loc}}{\handler}{\comp}} \;|\; \Sigma
 }
 $$
 $$
 \inferrule{
 }{
-	\chandlei{\vinst{n}}{\handler}{\cnew{\eff}{s}{\handler'}{x}{\comp}} \;|\; n \rightsquigarrow
-	\cnew{\eff}{s}{\handler'}{x}{\chandlei{\vinst{n}}{\handler}{\comp}} \;|\; n
+	\chandlei{\vinst{\loc}}{\handler}{\cop{\val_1}{\op}{\val_2}} \;|\; \Sigma \rightsquigarrow
+	\chandlei{\vinst{\loc}}{\handler}{\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\creturn{x}}} \;|\; \Sigma
 }
 $$
 $$
 \inferrule{
+	\loc \neq \loc'
 }{
-	\chandlei{\vinst{n}}{\handler}{\cop{\val_1}{\op}{\val_2}} \;|\; n \rightsquigarrow
-	\chandlei{\vinst{n}}{\handler}{\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\creturn{x}}} \;|\; n
-}
-$$
-$$
-\inferrule{
-	n \neq n'
-}{
-	\chandlei{\vinst{n}}{\handler}{\cdo{x}{\cop{\vinst{n'}}{\op}{\val}}{\comp}} \;|\; n \rightsquigarrow
-	(\cdo{x}{\cop{\vinst{n'}}{\op}{\val}}{\chandlei{\vinst{n}}{\handler}{{\comp}}}) \;|\; n
+	\chandlei{\vinst{\loc}}{\handler}{\cdo{x}{\cop{\vinst{\loc'}}{\op}{\val}}{\comp}} \;|\; \Sigma \rightsquigarrow
+	(\cdo{x}{\cop{\vinst{\loc'}}{\op}{\val}}{\chandlei{\vinst{\loc}}{\handler}{{\comp}}}) \;|\; \Sigma
 }
 $$
 $$
 \inferrule{
 	\handler[\op] = (x, k, \comp_{\op})
 }{
-	\chandlei{\vinst{n}}{\handler}{\cdo{x}{\cop{\vinst{n}}{\op}{\val}}{\comp}} \;|\; n \rightsquigarrow
-	\comp_{\op}[x := \val, k := (\vabs{x}{\chandlei{\vinst{n}}{\handler}{\comp}})] \;|\; n
+	\chandlei{\vinst{\loc}}{\handler}{\cdo{x}{\cop{\vinst{\loc}}{\op}{\val}}{\comp}} \;|\; \Sigma \rightsquigarrow 
+	\comp_{\op}[x := \val, k := (\vabs{x}{\chandlei{\vinst{\loc}}{\handler}{\comp}})] \;|\; \Sigma
 }
 $$
 $$
 \inferrule{
 }{
-	\chandlei{\vinst{n}}{\handler; \hreturn{x_r}{\comp_r}{x_f}{\comp_f}}{\creturn{\val}} \;|\; n \rightsquigarrow
-	(\cdo{x}{\comp_r[x_r := \val]}{\comp_f[x_f := x]}) \;|\; n
+	\chandlei{\vinst{\loc}}{\handler; \hreturn{x_r}{\comp_r}{x_f}{\comp_f}}{\creturn{\val}} \;|\; \Sigma \rightsquigarrow \\
+	(\cdo{x}{\comp_r[x_r := \val]}{\comp_f[x_f := x]}) \;|\; \Sigma
 }
 $$
 \label{fig:semantics-calc}
