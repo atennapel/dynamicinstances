@@ -292,17 +292,22 @@ $$
 $$
 $$
 \inferrule{
-	???
+	s \in \Delta \\
+	\Delta;\Sigma;\Gamma \vdash \val : \cty \\
+	s \notin \cty
 }{
 	\Delta;\Sigma;\Gamma \vdash \chandlec{s}{\comp} : \cty
 }
 $$
 $$
 \inferrule{
-	\Delta;\Sigma\Gamma \vdash \val : \tinst{s}{\eff} \\
-	???
+	\Delta;\Sigma;\Gamma \vdash \val : \tinst{s}{\eff} \\
+	\op \in \Op_\eff \iff \op \in \handler \\
+	\Delta;\Sigma;\Gamma \vdash^{(\ty_1, \aty{\ty_2}{r_2})} \handler : \aty{\ty_3}{r_3} \\
+	\Delta;\Sigma;\Gamma \vdash \comp : \aty{\ty_1}{r_1} \\
+	(\eff@s \notin r_3) \land (r_1 \subseteq r_3)
 }{
-	\Delta;\Sigma;\Gamma \vdash \chandlei{\val}{\handler}{\comp} : \cty
+	\Delta;\Sigma;\Gamma \vdash \chandlei{\val}{\handler}{\comp} : \aty{\ty_3}{r_3}
 }
 $$
 $$
