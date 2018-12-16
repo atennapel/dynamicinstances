@@ -1,4 +1,7 @@
 {
+
+\def\msquare{\mathord{\scalerel*{\Box}{gX}}}
+
 % effects
 \newcommand\Eff[0]{E}
 \newcommand\eff[0]{\varepsilon}
@@ -72,6 +75,11 @@ We have scope variables $s$ modeled by some countable infinite set.
 And we have locations $l$ modeled by some countable infinite set.
 Annotations $r$ are sets of pairs of an effect name with a scope variable: $\{ \Eff_1@s_1, ..., \Eff_n@s_n \}$.
 \\
+\begin{figure}
+\caption{Syntax}
+\centering
+\fbox{
+\begin{minipage}{14 cm}
 \begin{align*}
 	\ty \Coloneqq 	& 																	\tag{value types} \\
 									& \tinst{s}{\eff}										\tag{instance type} \\
@@ -93,11 +101,15 @@ Annotations $r$ are sets of pairs of an effect name with a scope variable: $\{ \
 									& \cnew{\eff}{s}{\handler}{x}{\comp}		\tag{instance creation} \\
 									& \chandle{\val}										\tag{handle scoped computation} \\
 									& \chandlec{s}{\comp}								\tag{handle computation (for semantics)} \\
-									& \chandlei{\val}{\handler}{\comp}	\tag{handle instance (for semantics)} \\
+									& \chandlei{\loc}{\handler}{\comp}	\tag{handle instance (for semantics)} \\
 	\handler \Coloneqq 		&															\tag{handlers} \\
 									& \hop{\op}{x}{k}{\comp}{\handler}	\tag{operation case} \\
 									& \hreturn{x}{\comp}{x}{\comp}			\tag{return/finally case} \\
 \end{align*}
+\label{fig:syntax-calc}
+\end{minipage}
+}
+\end{figure}
 
 \section{Subtyping}
 \begin{figure}
@@ -301,13 +313,13 @@ $$
 $$
 $$
 \inferrule{
-	\Delta;\Sigma;\Gamma \vdash \val : \tinst{s}{\eff} \\
+	\Sigma(\loc) = (s, \eff) \\
 	\op \in \Op_\eff \iff \op \in \handler \\
 	\Delta;\Sigma;\Gamma \vdash^{(\ty_1, \aty{\ty_2}{r_2})} \handler : \aty{\ty_3}{r_3} \\
 	\Delta;\Sigma;\Gamma \vdash \comp : \aty{\ty_1}{r_1} \\
 	(\eff@s \notin r_3) \land (r_1 \subseteq r_3)
 }{
-	\Delta;\Sigma;\Gamma \vdash \chandlei{\val}{\handler}{\comp} : \aty{\ty_3}{r_3}
+	\Delta;\Sigma;\Gamma \vdash \chandlei{\loc}{\handler}{\comp} : \aty{\ty_3}{r_3}
 }
 $$
 $$
@@ -400,8 +412,18 @@ $$
 }{
 	\chandle{\vabst{s}{\comp}} \;|\; \Sigma \rightsquigarrow \chandlec{s'}{\comp[s := s']} \;|\; \Sigma
 }
-\hspace{3em}
-\mprset{vskip=0 ex}
+$$
+\label{fig:semantics1-calc}
+\end{minipage}
+}
+\end{figure}
+
+\begin{figure}
+\caption{Semantics of new handlers}
+\centering
+\fbox{
+\begin{minipage}{17 cm}
+$$
 \inferrule{
 	\comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma'
 }{
@@ -441,55 +463,93 @@ $$
 \inferrule{
 	\loc \notin \mathsf{Dom}(\Sigma)
 }{
-	\chandlec{s}{\cnew{\eff}{s}{\handler}{x}{\comp}} \;|\; \Sigma \rightsquigarrow \\
-	\chandlei{\vinst{n}}{\handler}{\chandlec{s}{\comp[x := \vinst{\loc}]}} \;|\; \Sigma,\loc := (s, \eff)
+	\chandlec{s}{\cnew{\eff}{s}{\handler}{x}{\comp}} \;|\; \Sigma \rightsquigarrow
+	\chandlei{\loc}{\handler}{\chandlec{s}{\comp[x := \vinst{\loc}]}} \;|\; \Sigma,\loc := (s, \eff)
 }
 $$
+\label{fig:semantics2-calc}
+\end{minipage}
+}
+\end{figure}
+
+\begin{figure}
+\caption{Semantics of instance handlers}
+\centering
+\fbox{
+\begin{minipage}{17 cm}
 $$
 \inferrule{
 	\comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma'
 }{
-	\chandlei{\vinst{\loc}}{\handler}{\comp} \;|\; \Sigma \rightsquigarrow \chandlei{\vinst{\loc}}{\handler}{\comp'} \;|\; \Sigma'
+	\chandlei{\loc}{\handler}{\comp} \;|\; \Sigma \rightsquigarrow \chandlei{\loc}{\handler}{\comp'} \;|\; \Sigma'
 }
 $$
 $$
 \inferrule{
 }{
-	\chandlei{\vinst{\loc}}{\handler}{\cnew{\eff}{s}{\handler'}{x}{\comp}} \;|\; \Sigma \rightsquigarrow 
-	\cnew{\eff}{s}{\handler'}{x}{\chandlei{\vinst{\loc}}{\handler}{\comp}} \;|\; \Sigma
+	\chandlei{\loc}{\handler}{\cnew{\eff}{s}{\handler'}{x}{\comp}} \;|\; \Sigma \rightsquigarrow 
+	\cnew{\eff}{s}{\handler'}{x}{\chandlei{\loc}{\handler}{\comp}} \;|\; \Sigma
 }
 $$
 $$
 \inferrule{
 }{
-	\chandlei{\vinst{\loc}}{\handler}{\cop{\val_1}{\op}{\val_2}} \;|\; \Sigma \rightsquigarrow
-	\chandlei{\vinst{\loc}}{\handler}{\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\creturn{x}}} \;|\; \Sigma
+	\chandlei{\loc}{\handler}{\cop{\val_1}{\op}{\val_2}} \;|\; \Sigma \rightsquigarrow
+	\chandlei{\loc}{\handler}{\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\creturn{x}}} \;|\; \Sigma
 }
 $$
 $$
 \inferrule{
 	\loc \neq \loc'
 }{
-	\chandlei{\vinst{\loc}}{\handler}{\cdo{x}{\cop{\vinst{\loc'}}{\op}{\val}}{\comp}} \;|\; \Sigma \rightsquigarrow
-	(\cdo{x}{\cop{\vinst{\loc'}}{\op}{\val}}{\chandlei{\vinst{\loc}}{\handler}{{\comp}}}) \;|\; \Sigma
+	\chandlei{\loc}{\handler}{\cdo{x}{\cop{\vinst{\loc'}}{\op}{\val}}{\comp}} \;|\; \Sigma \rightsquigarrow
+	(\cdo{x}{\cop{\vinst{\loc'}}{\op}{\val}}{\chandlei{\loc}{\handler}{{\comp}}}) \;|\; \Sigma
 }
 $$
 $$
 \inferrule{
 	\handler[\op] = (x, k, \comp_{\op})
 }{
-	\chandlei{\vinst{\loc}}{\handler}{\cdo{x}{\cop{\vinst{\loc}}{\op}{\val}}{\comp}} \;|\; \Sigma \rightsquigarrow 
-	\comp_{\op}[x := \val, k := (\vabs{x}{\chandlei{\vinst{\loc}}{\handler}{\comp}})] \;|\; \Sigma
+	\chandlei{\loc}{\handler}{\cdo{x}{\cop{\vinst{\loc}}{\op}{\val}}{\comp}} \;|\; \Sigma \rightsquigarrow 
+	\comp_{\op}[x := \val, k := (\vabs{x}{\chandlei{\loc}{\handler}{\comp}})] \;|\; \Sigma
 }
 $$
 $$
 \inferrule{
 }{
-	\chandlei{\vinst{\loc}}{\handler; \hreturn{x_r}{\comp_r}{x_f}{\comp_f}}{\creturn{\val}} \;|\; \Sigma \rightsquigarrow \\
+	\chandlei{\loc}{\handler; \hreturn{x_r}{\comp_r}{x_f}{\comp_f}}{\creturn{\val}} \;|\; \Sigma \rightsquigarrow \\
 	(\cdo{x}{\comp_r[x_r := \val]}{\comp_f[x_f := x]}) \;|\; \Sigma
 }
 $$
-\label{fig:semantics-calc}
+\label{fig:semantics3-calc}
+\end{minipage}
+}
+\end{figure}
+
+\section{Evaluation Contexts}
+\begin{figure}
+\caption{Evaluation Contexts}
+\centering
+\fbox{
+\begin{minipage}{14 cm}
+\begin{align*}
+	E \Coloneqq 			& 														\tag{computation contexts} \\
+										& \msquare										\tag{hole} \\
+										& \cdo{x}{E}{\comp}						\tag{sequencing} \\
+										& \chandlec{s}{E}							\tag{computation handler} \\
+										& \chandlei{\loc}{h}{E}				\tag{instance handler} \\
+	H^s \Coloneqq 		& 														\tag{handler contexts} \\
+										& \msquare										\tag{hole} \\
+										& \cdo{x}{H^s}{\comp}					\tag{sequencing} \\
+										& \chandlec{s'}{H^s} \hspace{30pt} (s \neq s') \tag{computation handler} \\
+										& \chandlei{\loc}{h}{H^s}			\tag{instance handler} \\
+	H^{\loc} \Coloneqq 		& 														\tag{instance handler contexts} \\
+										& \msquare										\tag{hole} \\
+										& \cdo{x}{H^{\loc}}{\comp}					\tag{sequencing} \\
+										& \chandlec{s}{H^{\loc}} \tag{computation handler} \\
+										& \chandlei{\loc'}{h}{H^{\loc}} \hspace{30pt} (\loc \neq \loc')			\tag{instance handler} \\
+\end{align*}
+\label{fig:evalcontext-calc}
 \end{minipage}
 }
 \end{figure}
