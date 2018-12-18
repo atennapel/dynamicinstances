@@ -3,15 +3,14 @@ effect State {
   put : Int -> ()
 }
 
-ref : forall s. Int -> (Inst s State -> Int!{State@s}) -> Int!{State@s}
-ref = /\s. \v f.
+ref : forall s. Int -> (Inst s State)!{State@s}
+ref = /\s. \v.
   new State@s with {
-    get () k -> \s -> k s s
-    put s' k -> \s -> k () s'
-    return x -> \s -> x
+    get () k -> return \s -> g <- k s; return s
+    put s' k -> return \s -> g <- k (); return s'
+    return x -> return \s -> return x
     finally sf -> sf v
-  } as r in
-    f r
+  } as r in return r
 
 incRef : forall s. Inst s State -> Int!{State@s}
 incRef = /\s. \r.
@@ -21,11 +20,9 @@ incRef = /\s. \r.
 
 comp : forall s. Int!{State@s}
 comp = /\s.
-  ref [s] 42 \r1 ->
-  ref [s] 43 \r2 ->
-    x <- incRef [s] r1;
-    y <- incRef [s] r2;
-    return (x + y)
+  r <- ref [s] 42;
+  x <- incRef [s] r;
+  return x
 
 main : () -> Int
 main = \().
