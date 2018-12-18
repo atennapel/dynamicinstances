@@ -1,0 +1,32 @@
+effect State {
+	get : () -> Int
+	put : Int -> ()
+}
+
+umbrella effect Heap {
+	h@ref : Int -> Inst h State
+}
+
+new umbrella Heap as (hi, h) (
+	r <- h#ref 10;
+	\() -> r#get ()
+) {
+	return v -> v
+	ref v (k:forall i. Inst i State -> t2!(r2 u i)) ->
+		new State as (ri, r) in
+		f <- handle(r)(k [ri] r) {
+			get () k -> \s -> k s s
+			put s k -> \s' -> k () s
+		};
+		f v
+}
+
+new State as (ri, r) in
+f <- handle(r)(
+	\() -> r#get ()
+) {
+	get () k -> \s -> k s s
+	put s k -> \_ -> k () s
+};
+f 42
+

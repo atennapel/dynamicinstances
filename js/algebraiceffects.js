@@ -126,4 +126,15 @@ const testdelim =
       do_(shifti(j, k => k(z)), x => return_(x + 1))));
   });
 
-console.log(testdelim);
+const r1 = new_(State);
+const testescape =
+  state(r1)(1)(
+    do_((() => {
+      const r2 = new_(State);
+      return perform(r1.put, r2);
+    })(), () =>
+    do_(perform(r1.get), inst =>
+      perform(inst.get)))
+  );
+
+console.log(testescape);

@@ -1,0 +1,99 @@
+======
+Syntax
+======
+
+E ::=         effects
+  Exc, Flip, State, ...
+
+s from countable set of names
+
+t ::=             value types
+  Inst s E        instance type
+  t -> T          function type
+  forall s.T      universally quantified type over scope
+
+r ::=             annotation
+  { E_1@s_1, ..., E_n@s_n }
+
+T ::=         computation types
+  t!r         annotated type
+
+v ::=         values
+  x,y,z,k     variables
+  \x.c        abstractions
+  /\i.c       instance abstractions
+
+h ::=         handlers
+  op x k -> c; h
+  return x -> c; finally x -> c
+
+c ::=                     computations
+  return v                return value
+  v v                     application
+  v [s]                   scope application
+  x <- c; c               sequencing
+  v#op(v)                 operation call
+  new E { h }             new instance
+  handle(v)              handle scoped computation
+
+============
+TYPING RULES
+============
+
+values
+
+G[x] = t
+------------
+D;G |- x : t
+
+D;G,x:t |- c : T
+--------------------
+D;G |- \x.c : t -> T
+
+D,i;G |- c : T
+--------------------------------
+D;G |- /\i.c : forall i.T
+
+D;G |- v : t1
+t1 <: t2
+-------------
+D;G |- v : t2
+
+computations
+
+D;G |- v : t
+----------------------
+D;G |- return v : t!{}
+
+D;G |- v1 : t -> T
+D;G |- v2 : t
+--------------
+D;G |- v1 v2 : T
+
+D;G |- v : forall j. T
+D |- i
+------------------------
+D;G |- v [i] : T[j := i]
+
+D;G |- c1 : t1!r
+D;G,x:t1 |- c2 : t2!r
+-------------------------
+D;G |- x <- c1; c2 : t2!r
+
+D;G |- v1 : Inst i E
+op in E
+D;G |- v2 : paramty(op)
+-----------------------------------
+D;G |- v1#op(v2) : returnty(op)!{E@i}
+
+D;G |- v : newty(E)
+-----------------------------
+D;G |- new E(v) { h } : forall i. (Inst i E)!{ E@i }
+
+D;G |- 
+
+D;G |- c : T1
+T1 <: T2
+-------------
+D;G |- c : T2
+

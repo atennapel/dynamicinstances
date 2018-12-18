@@ -1,9 +1,3 @@
-{--
-TODO:
-  - replace weakening by type ascription/annotation
-  - polymorphic effects
-  - polymorphic operations
---}
 {-# LANGUAGE OverloadedStrings #-}
 
 import GHC.Exts (IsString(..))
@@ -426,10 +420,10 @@ data Comp
   | Weaken Comp Effs
   | Op Val Name Val
   | Handle Comp Handler
-  -- fresh l; c
-  | Fresh Name Comp
-  -- new i@E as x; c
-  | New ValTy Name Name Comp
+  -- new E as x in c
+  | New Name Name Comp
+  -- from v new E as x in c
+  | From Val Name Name Comp
   deriving (Eq)
 
 instance Show Comp where
@@ -441,8 +435,8 @@ instance Show Comp where
   show (Weaken c r) = "(weaken " ++ (show c) ++ " " ++ (show r) ++ ")"
   show (Op i o v) = (show i) ++ "#" ++ (show o) ++ "(" ++ (show v) ++ ")"
   show (Handle c h) = "handle(" ++ (show c) ++ ") { " ++ (show h) ++ " }"
-  show (New i e x c) = "(new " ++ (show i) ++ "@" ++ (show e) ++ " as " ++ (show x) ++ "; " ++ (show c) ++ ")"
-  show (Fresh l c) = "(fresh " ++ (show l) ++ "; " ++ (show c) ++ ")"
+  show (New e x c) = "(new " ++ (show e) ++ " as " ++ (show x) ++ " in " ++ (show c) ++ ")"
+  show (From v e x c) = "(from " ++ (show v) ++ " new " ++ (show e) ++ " as " ++ (show x) ++ " in " ++ (show c) ++ ")"
 
 instance IsString Comp where
   fromString = Return . Var . Free . Name
@@ -455,8 +449,8 @@ instance HasVar Comp where
   openR k u (Weaken c r) = Weaken (openR k u c) r
   openR k u (Op i o b) = Op (openR k u i) o (openR k u b)
   openR k u (Handle c r) = Handle (openR k u c) (openR k u r)
-  openR k u (New i e x c) = New i e x (openR (k + 1) u c)
-  openR k u (Fresh l c) = Fresh l (openR k u c)
+  openR k u (New i e x c) = New e x (openR (k + 1) u c)
+  openR k u (From v e x c) = From (openR k u v) e x (openR (k + 1) u c)
 
   closeR k u (Return v) = Return (closeR k u v)
   closeR k u (App a b) = App (closeR k u a) (closeR k u b)
@@ -465,8 +459,8 @@ instance HasVar Comp where
   closeR k u (Weaken c r) = Weaken (closeR k u c) r
   closeR k u (Op i o b) = Op (closeR k u i) o (closeR k u b)
   closeR k u (Handle c r) = Handle (closeR k u c) (closeR k u r)
-  closeR k u (New i e x c) = New i e x (closeR (k + 1) u c)
-  closeR k u (Fresh l c) = Fresh l (closeR k u c)
+  closeR k u (New e x c) = New e x (closeR (k + 1) u c)
+  closeR k u (From v e x c) = From (closeR k u v) e x (closeR (k + 1) u c)
 
   isLocallyClosedR k (Return v) = isLocallyClosedR k v
   isLocallyClosedR k (App a b) = isLocallyClosedR k a && isLocallyClosedR k b
@@ -475,8 +469,8 @@ instance HasVar Comp where
   isLocallyClosedR k (Weaken c r) = isLocallyClosedR k c
   isLocallyClosedR k (Op i o b) = isLocallyClosedR k i && isLocallyClosedR k b
   isLocallyClosedR k (Handle a b) = isLocallyClosedR k a && isLocallyClosedR k b
-  isLocallyClosedR k (New _ _ _ c) = isLocallyClosedR (k + 1) c
-  isLocallyClosedR k (Fresh _ c) = isLocallyClosedR k c
+  isLocallyClosedR k (New _ _ c) = isLocallyClosedR (k + 1) c
+  isLocallyClosedR k (From v _ _ c) = isLocallyClosedR k v && isLocallyClosedR (k + 1) c
 
   freeVars (Return v) = freeVars v
   freeVars (App a b) = Set.union (freeVars a) (freeVars b)
@@ -485,8 +479,8 @@ instance HasVar Comp where
   freeVars (Weaken c r) = freeVars c
   freeVars (Op i o a) = Set.union (freeVars i) (freeVars a)
   freeVars (Handle a b) = Set.union (freeVars a) (freeVars b)
-  freeVars (New _ _ _ c) = freeVars c
-  freeVars (Fresh _ c) = freeVars c
+  freeVars (New _ _ c) = freeVars c
+  freeVars (From v _ _ c) = Set.union (freeVars v) (freeVars c)
 
 instance HasTVar Comp where
   openTyR k u (Return v) = Return (openTyR k u v)
@@ -496,8 +490,8 @@ instance HasTVar Comp where
   openTyR k u (Weaken c r) = Weaken (openTyR k u c) r
   openTyR k u (Op i o b) = Op (openTyR k u i) o (openTyR k u b)
   openTyR k u (Handle a b) = Handle (openTyR k u a) (openTyR k u b)
-  openTyR k u (New i e x c) = New (openTyR k u i) e x (openTyR k u c)
-  openTyR k u (Fresh l c) = Fresh l (openTyR (k + 1) u c)
+  openTyR k u (New e x c) = New e x (openTyR k u c)
+  openTyR k u (From v x c) = From (openTyR k u v) e x (openTyR k u c)
 
   closeTyR k u (Return v) = Return (closeTyR k u v)
   closeTyR k u (App a b) = App (closeTyR k u a) (closeTyR k u b)
@@ -506,8 +500,8 @@ instance HasTVar Comp where
   closeTyR k u (Weaken c r) = Weaken (closeTyR k u c) r
   closeTyR k u (Op i o b) = Op (closeTyR k u i) o (closeTyR k u b)
   closeTyR k u (Handle a b) = Handle (closeTyR k u a) (closeTyR k u b)
-  closeTyR k u (New i e x b) = New (closeTyR k u i) e x (closeTyR k u b)
-  closeTyR k u (Fresh l c) = Fresh l (closeTyR (k + 1) u c)
+  closeTyR k u (New e x b) = New e x (closeTyR k u b)
+  closeTyR k u (From v e x b) = From (closeTyR k u v) e x (closeTyR k u b)
 
   isLocallyClosedTyR k (Return v) = isLocallyClosedTyR k v
   isLocallyClosedTyR k (App a b) = isLocallyClosedTyR k a && isLocallyClosedTyR k b
@@ -516,8 +510,8 @@ instance HasTVar Comp where
   isLocallyClosedTyR k (Weaken c r) = isLocallyClosedTyR k c
   isLocallyClosedTyR k (Op i o v) = isLocallyClosedTyR k i && isLocallyClosedTyR k v
   isLocallyClosedTyR k (Handle a b) = isLocallyClosedTyR k a && isLocallyClosedTyR k b
-  isLocallyClosedTyR k (New _ _ _ c) = isLocallyClosedTyR k c
-  isLocallyClosedTyR k (Fresh _ c) = isLocallyClosedTyR (k + 1) c
+  isLocallyClosedTyR k (New _ _ c) = isLocallyClosedTyR k c
+  isLocallyClosedTyR k (From v _ _ c) = isLocallyClosedTyR k v && isLocallyClosedTyR k c
 
   freeTVars (Return v) = freeTVars v
   freeTVars (App a b) = Set.union (freeTVars a) (freeTVars b)
@@ -526,8 +520,8 @@ instance HasTVar Comp where
   freeTVars (Weaken c r) = freeTVars c
   freeTVars (Op i o v) = Set.union (freeTVars i) (freeTVars v)
   freeTVars (Handle a b) = Set.union (freeTVars a) (freeTVars b)
-  freeTVars (New _ _ _ c) = freeTVars c
-  freeTVars (Fresh _ c) = freeTVars c
+  freeTVars (New _ _ c) = freeTVars c
+  freeTVars (From v _ _ c) = Set.union (freeTVars v) (freeTVars c)
 
 instance Nameless Comp where
   toNameless (Return e) = Return (toNameless e)
@@ -537,8 +531,8 @@ instance Nameless Comp where
   toNameless (Weaken c r) = Weaken (toNameless c) (toNamelessTy r)
   toNameless (Op i o e) = Op (toNameless i) o (toNameless e)
   toNameless (Handle a b) = Handle (toNameless a) (toNameless b)
-  toNameless (New i e x c) = New (toNamelessTy i) e x (close x $ toNameless c)
-  toNameless (Fresh l c) = Fresh l (closeTy l $ toNameless c)
+  toNameless (New e x c) = New e x (close x $ toNameless c)
+  toNameless (From v e x c) = From (toNameless v) e x (close x $ toNameless c)
 
   toNamed (Return e) = Return (toNamed e)
   toNamed (App a b) = App (toNamed a) (toNamed b)
@@ -547,8 +541,8 @@ instance Nameless Comp where
   toNamed (Weaken c r) = Weaken (toNamed c) (toNamedTy r)
   toNamed (Op i o e) = Op (toNamed i) o (toNamed e)
   toNamed (Handle a b) = Handle (toNamed a) (toNamed b)
-  toNamed (New i e x c) = New (toNamedTy i) e x (openVar x $ toNamed c)
-  toNamed (Fresh l c) = Fresh l (openTVar l $ toNamed c)
+  toNamed (New e x c) = New e x (openVar x $ toNamed c)
+  toNamed (From v e x c) = From (toNamed v) e x (openVar x $ toNamed c)
 
 -- type checking monad
 type TC t = Either String t
@@ -927,21 +921,20 @@ reduceR co =
               reduceR $ openR 1 v $ open (Abs x "_" $ Handle b h) b'
             Nothing -> return $ Do x (Op i o v) $ Handle b h
         c' -> return $ Handle c' h
-    c@(New n e x c') -> do
+    c@(New e x c') -> do
       i <- get
       put (nextInstId i)
       reduceR $ open (Inst i) c'
-    c@(Fresh l c') ->
-      reduceR $ openTVar l c'
+    c@(From _ e x c') -> do
+      i <- get
+      put (nextInstId i)
+      reduceR $ open (Inst i) c'
     c -> return c
 
 reduce :: Comp -> Comp
 reduce c = evalState (reduceR c) initialInstId
 
 -- testing
-freshnew :: Name -> Name -> Name -> Comp -> Comp
-freshnew e l x c = Fresh l $ New (TVar $ Free l) e x c
-
 ctx :: Context
 ctx = adds initialContext
   [

@@ -1,0 +1,40 @@
+effect Flip : () {
+  flip () k -> k True
+  return x -> x
+  new () x -> x
+  returnnew x -> x
+}
+
+x <- new Flip(());
+x#flip ()
+: @{Flip}. Bool!{Flip}
+---->
+handle(inst X)(
+  (inst X)#flip()
+) {
+  flip () k -> k True
+  return x -> x
+}
+
+c : {(i:E)}. T
+cr : 
+-------------------
+handle E(c) {
+  return xr -> cr
+  new xn r -> cn
+  returnnew xrn -> crn
+}
+
+
+x <- new Flip;
+handle Flip(
+  /\(i:Flip)(j:Flip).
+  y <- new Flip;
+  yy <- y [j];
+  xx <- x [i];
+  xx#flip ();
+  yy#flip ()               : forall(i:Flip)(j:Flip). Bool!{i, j}
+) {}
+
+
+new E(v) : forall{i}.(Inst i State)!{i}

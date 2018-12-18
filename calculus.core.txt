@@ -1,0 +1,47 @@
+f : forall(s:State). () -> Int!{s}
+f = /\(s:State) -> \() ->
+  r <- new State(42);  // r : Inst s
+  ref <- r[s];
+  ref#get ()
+
+
+v : forall(i:E). t1!r1
+----------------------
+handle E(v) { h }
+
+
+new E(v) : forall(i:E). (Inst i)!{i}
+
+D;G |- v1 : Inst i
+(i : E) in D
+op in E
+D;G |- v2 : op_paramty
+----------------------
+D;G |- v1#op v2
+
+t ::=
+  i
+  t -> T
+  forall(i:E). T
+T ::= t!{i1...in}
+
+v ::=
+  x
+  \x. c
+  /\(i:E). c
+
+c ::=
+  return v
+  x <- c; c
+  v v
+  v [i]
+  new E(v)
+  v#op(v)
+  handle E(v) { h }
+
+h ::=
+  op x k -> c; h
+  new x y -> c; hEnd
+
+hEnd ::=
+  return x -> c
