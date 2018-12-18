@@ -27,3 +27,9 @@ comp = /\s.
 main : () -> Int
 main = \().
   handle(comp)
+
+-- reduction derivation
+handle(comp)
+~> handle(rf <- ref [s]; r <- rf 42; xf <- incRef [s]; x <- xf r; return x)
+~> 
+ 
