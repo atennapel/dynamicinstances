@@ -52,7 +52,8 @@
 % handlers
 \newcommand\handler[0]{h}
 \newcommand\hop[5]{#1 \; #2 \; #3 \rightarrow #4 ; #5}
-\newcommand\hreturn[4]{\mathsf{return} \; #1 \rightarrow #2 ; \mathsf{finally} \; #3 \rightarrow #4}
+\newcommand\hreturn[2]{\mathsf{return} \; #1 \rightarrow #2}
+\newcommand\hfinally[2]{\mathsf{finally} \; #1 \rightarrow #2}
 
 % misc
 \newcommand\subty[2]{#1 <: #2}
@@ -441,7 +442,7 @@ $$
 \inferrule{
 }{
 	\chandlec{s}{\cop{\val_1}{\op}{\val_2}} \;|\; \Sigma \rightsquigarrow
-	\chandlec{s}{\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\creturn{x}}} \;|\; \Sigma
+	\cop{\val_1}{\op}{\val_2} \;|\; \Sigma
 }
 $$
 $$
@@ -463,8 +464,8 @@ $$
 \inferrule{
 	\loc \notin \mathsf{Dom}(\Sigma)
 }{
-	\chandlec{s}{\cnew{\eff}{s}{\handler}{x}{\comp}} \;|\; \Sigma \rightsquigarrow
-	\chandlei{\loc}{\handler}{\chandlec{s}{\comp[x := \vinst{\loc}]}} \;|\; \Sigma,\loc := (s, \eff)
+	\chandlec{s}{\cnew{\eff}{s}{\handler; \hfinally{x_f}{\comp_f}}{x}{\comp}} \;|\; \Sigma \rightsquigarrow \\
+	\chandlec{s}{\cdo{x_f}{\chandlei{\loc}{\handler}{\comp[x := \vinst{\loc}]}}{\comp_f}} \;|\; \Sigma,\loc := (s, \eff)
 }
 $$
 \label{fig:semantics2-calc}
@@ -510,15 +511,15 @@ $$
 \inferrule{
 	\handler[\op] = (x, k, \comp_{\op})
 }{
-	\chandlei{\loc}{\handler}{\cdo{x}{\cop{\vinst{\loc}}{\op}{\val}}{\comp}} \;|\; \Sigma \rightsquigarrow 
-	\comp_{\op}[x := \val, k := (\vabs{x}{\chandlei{\loc}{\handler}{\comp}})] \;|\; \Sigma
+	\chandlei{\loc}{\handler}{\cdo{y}{\cop{\vinst{\loc}}{\op}{\val}}{\comp}} \;|\; \Sigma \rightsquigarrow 
+	\comp_{\op}[x := \val, k := (\vabs{y}{\chandlei{\loc}{\handler}{\comp}})] \;|\; \Sigma
 }
 $$
 $$
 \inferrule{
 }{
-	\chandlei{\loc}{\handler; \hreturn{x_r}{\comp_r}{x_f}{\comp_f}}{\creturn{\val}} \;|\; \Sigma \rightsquigarrow \\
-	(\cdo{x}{\comp_r[x_r := \val]}{\comp_f[x_f := x]}) \;|\; \Sigma
+	\chandlei{\loc}{\handler; \hreturn{x_r}{\comp_r}}{\creturn{\val}} \;|\; \Sigma \rightsquigarrow
+	\comp_r[x_r := \val] \;|\; \Sigma
 }
 $$
 \label{fig:semantics3-calc}
