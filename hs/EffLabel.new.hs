@@ -191,15 +191,34 @@ instance NamelessTy ValTy where
   toNamedTy (TInst a n) = TInst (toNamedTy a) n
 
 -- computation types
-type Eff = ValTy
+data Eff = Eff Name ValTy
+  deriving (Eq, Ord)
+
+effHasLabel :: ValTy -> Eff -> Bool
+effHasLabel l (Eff _ l') = l == l'
+
+instance Show Eff where
+  show (Eff e s) = (show e) ++ "@" ++ (show s)
+
+instance HasTVar Eff where
+  openTyR k u (Eff e s) = Eff e (openTyR k u s)
+
+  closeTyR k u (Eff e s) = Eff e (closeTyR k u s)
+
+  isLocallyClosedTyR k (Eff e s) = isLocallyClosedTyR k s
+  
+  freeTVars (Eff e s) = freeTVars s
+
+instance NamelessTy Eff where
+  toNamelessTy (Eff e s) = Eff e $ toNamelessTy s
+
+  toNamedTy (Eff e s) = Eff e $ toNamedTy s
+
 newtype Effs = Effs (Set Eff)
   deriving (Eq, Ord)
 
-showEff :: Eff -> String
-showEff i = show i
-
 instance Show Effs where
-  show (Effs r) = "{" ++ (intercalate ", " $ map showEff $ Set.elems r) ++ "}"
+  show (Effs r) = "{" ++ (intercalate ", " $ map show $ Set.elems r) ++ "}"
 
 instance HasTVar Effs where
   openTyR k u (Effs r) = Effs $ Set.map (openTyR k u) r
@@ -238,6 +257,9 @@ isSubsetOfEffs = liftEffs Set.isSubsetOf
 
 differenceEffs :: Effs -> Effs -> Effs
 differenceEffs = liftEffsFull Set.difference
+
+removeEffsWithLabel :: ValTy -> Effs -> Effs
+removeEffsWithLabel l (Effs es) = Effs $ Set.filter (not . effHasLabel l) es
 
 data CompTy
   = TAnnot ValTy Effs
@@ -353,77 +375,81 @@ instance Nameless Val where
 
 -- computations
 data Handler
-  = HReturn Name Comp
-  | HOp Val Name Name Name Comp Handler
+  = HReturn Name Comp Name Comp
+  | HOp Name Name Name Comp Handler
   deriving (Eq)
 
 instance Show Handler where
-  show (HReturn x c) = "return " ++ (show x) ++ " -> " ++ (show c)
-  show (HOp i o x k c r) = (show i) ++ "#" ++ (show o) ++ " " ++ (show x) ++ " " ++ (show k) ++ " -> " ++ (show c) ++ ", " ++ (show r)
+  show (HReturn x c y c') = "return " ++ (show x) ++ " -> " ++ (show c) ++ "; " ++ "finally " ++ (show y) ++ " -> " ++ (show c')
+  show (HOp o x k c r) = (show o) ++ " " ++ (show x) ++ " " ++ (show k) ++ " -> " ++ (show c) ++ ", " ++ (show r)
 
 instance HasVar Handler where
-  openR k u (HReturn x v) = HReturn x (openR (k + 1) u v)
-  openR k u (HOp i o x k' c r) = HOp (openR k u i) o x k' (openR (k + 2) u c) (openR k u r)
+  openR k u (HReturn x v y v') = HReturn x (openR (k + 1) u v) y (openR (k + 1) u v')
+  openR k u (HOp o x k' c r) = HOp o x k' (openR (k + 2) u c) (openR k u r)
 
-  closeR k u (HReturn x v) = HReturn x (closeR (k + 1) u v)
-  closeR k u (HOp i o x k' c r) = HOp (closeR k u i) o x k' (closeR (k + 2) u c) (closeR k u r)
+  closeR k u (HReturn x v y v') = HReturn x (closeR (k + 1) u v) y (closeR (k + 1) u v')
+  closeR k u (HOp o x k' c r) = HOp o x k' (closeR (k + 2) u c) (closeR k u r)
 
-  isLocallyClosedR k (HReturn x v) = isLocallyClosedR (k + 1) v
-  isLocallyClosedR k (HOp i o x k' c r) = isLocallyClosedR k i && isLocallyClosedR (k + 2) c && isLocallyClosedR k r
+  isLocallyClosedR k (HReturn x v y v') = isLocallyClosedR (k + 1) v && isLocallyClosedR (k + 1) v'
+  isLocallyClosedR k (HOp o x k' c r) = isLocallyClosedR (k + 2) c && isLocallyClosedR k r
 
-  freeVars (HReturn x v) = freeVars v
-  freeVars (HOp i o x k c r) = Set.union (freeVars i) $ Set.union (freeVars c) (freeVars r)
+  freeVars (HReturn x v y v') = Set.union (freeVars v) (freeVars v')
+  freeVars (HOp o x k c r) = Set.union (freeVars c) (freeVars r)
 
 instance HasTVar Handler where
-  openTyR k u (HReturn x v) = HReturn x (openTyR k u v)
-  openTyR k u (HOp i o x k' c r) = HOp (openTyR k u i) o x k' (openTyR k u c) (openTyR k u r)
+  openTyR k u (HReturn x v y v') = HReturn x (openTyR k u v) y (openTyR k u v')
+  openTyR k u (HOp o x k' c r) = HOp o x k' (openTyR k u c) (openTyR k u r)
 
-  closeTyR k u (HReturn x v) = HReturn x (closeTyR k u v)
-  closeTyR k u (HOp i o x k' c r) = HOp (closeTyR k u i) o x k' (closeTyR k u c) (closeTyR k u r)
+  closeTyR k u (HReturn x v y v') = HReturn x (closeTyR k u v) y (closeTyR k u v')
+  closeTyR k u (HOp o x k' c r) = HOp o x k' (closeTyR k u c) (closeTyR k u r)
 
-  isLocallyClosedTyR k (HReturn x v) = isLocallyClosedTyR k v
-  isLocallyClosedTyR k (HOp i o x k' c r) = isLocallyClosedTyR k i && isLocallyClosedTyR k c && isLocallyClosedTyR k r
+  isLocallyClosedTyR k (HReturn x v y v') = isLocallyClosedTyR k v && isLocallyClosedTyR k v'
+  isLocallyClosedTyR k (HOp o x k' c r) = isLocallyClosedTyR k c && isLocallyClosedTyR k r
 
-  freeTVars (HReturn x v) = freeTVars v
-  freeTVars (HOp i o x k' c r) = Set.union (freeTVars i) $ Set.union (freeTVars c) (freeTVars r)
+  freeTVars (HReturn x v y v') = Set.union (freeTVars v) (freeTVars v')
+  freeTVars (HOp o x k' c r) = Set.union (freeTVars c) (freeTVars r)
 
 instance Nameless Handler where
-  toNameless (HReturn x v) = HReturn x (close x $ toNameless v)
-  toNameless (HOp i o x k c r) = HOp (toNameless i) o x k (closeR 1 x $ close k $ toNameless c) (toNameless r)
+  toNameless (HReturn x v y v') = HReturn x (close x $ toNameless v) y (close y $ toNameless v')
+  toNameless (HOp o x k c r) = HOp o x k (closeR 1 x $ close k $ toNameless c) (toNameless r)
 
-  toNamed (HReturn x v) = HReturn x (toNamed $ openVar x v)
-  toNamed (HOp i o x k c r) = HOp (toNamed i) o x k (openR 1 (Var $ Free x) $ openVar k $ toNamed c) (toNamed r)
+  toNamed (HReturn x v y v') = HReturn x (toNamed $ openVar x v) y (toNamed $ openVar y v')
+  toNamed (HOp o x k c r) = HOp o x k (openR 1 (Var $ Free x) $ openVar k $ toNamed c) (toNamed r)
 
 opsFromHandler :: Handler -> [Name]
-opsFromHandler (HReturn _ _) = []
-opsFromHandler (HOp _ o _ _ _ r) = o : opsFromHandler r
+opsFromHandler (HReturn _ _ _ _) = []
+opsFromHandler (HOp o _ _ _ r) = o : opsFromHandler r
 
-findOpInHandler :: Name -> Handler -> Maybe (Val, Name, Name, Comp)
-findOpInHandler o (HReturn _ _) = Nothing
-findOpInHandler o (HOp i o' x k c _) | o == o' = Just (i, x, k, c)
-findOpInHandler o (HOp _ _ _ _ _ r) = findOpInHandler o r
+opsFromHandlerSet :: Handler -> Set Name
+opsFromHandlerSet = Set.fromList . opsFromHandler
 
-findEffInHandler :: Val -> Name -> Handler -> Maybe (Name, Name, Comp)
-findEffInHandler i o (HReturn _ _) = Nothing
-findEffInHandler i o (HOp i' o' x k c _) | i == i' && o == o' = Just (x, k, c)
-findEffInHandler i o (HOp _ _ _ _ _ r) = findEffInHandler i o r
+findOpInHandler :: Name -> Handler -> Maybe (Name, Name, Comp)
+findOpInHandler o (HReturn _ _ _ _) = Nothing
+findOpInHandler o (HOp o' x k c _) | o == o' = Just (x, k, c)
+findOpInHandler o (HOp _ _ _ _ r) = findOpInHandler o r
 
 getReturnInHandler :: Handler -> (Name, Comp)
-getReturnInHandler (HReturn x v) = (x, v)
-getReturnInHandler (HOp _ _ _ _ _ r) = getReturnInHandler r
+getReturnInHandler (HReturn x v _ _) = (x, v)
+getReturnInHandler (HOp _ _ _ _ r) = getReturnInHandler r
+
+getFinallyInHandler :: Handler -> (Name, Comp)
+getFinallyInHandler (HReturn _ _ x v) = (x, v)
+getFinallyInHandler (HOp _ _ _ _ r) = getFinallyInHandler r
 
 data Comp
   = Return Val
   | App Val Val
   | AppT Val ValTy
   | Do Name Comp Comp
-  | Weaken Comp Effs
   | Op Val Name Val
-  | Handle Comp Handler
-  -- new E as x in c
-  | New Name Name Comp
-  -- from v new E as x in c
-  | From Val Name Name Comp
+  -- new E@s { h } as x in c
+  | New Name ValTy Handler Name Comp
+  -- handle(v)
+  | Handle Val
+  -- handle^s(c)
+  | HandleS ValTy Comp
+  -- handle^l{h}(c)
+  | HandleI InstId Handler Comp
   deriving (Eq)
 
 instance Show Comp where
@@ -431,13 +457,12 @@ instance Show Comp where
   show (App a b) = "(" ++ (show a) ++ " " ++ (show b) ++ ")"
   show (AppT a t) = "(" ++ (show a) ++ " [" ++ (show t) ++ "])"
   show (Do x a b) = "(" ++ (show x) ++ " <- " ++ (show a) ++ "; " ++ (show b) ++ ")"
-  show (Weaken c (Effs r)) | Set.null r = "(weaken " ++ (show c) ++ " {})"
-  show (Weaken c r) = "(weaken " ++ (show c) ++ " " ++ (show r) ++ ")"
   show (Op i o v) = (show i) ++ "#" ++ (show o) ++ "(" ++ (show v) ++ ")"
-  show (Handle c h) = "handle(" ++ (show c) ++ ") { " ++ (show h) ++ " }"
-  show (New e x c) = "(new " ++ (show e) ++ " as " ++ (show x) ++ " in " ++ (show c) ++ ")"
-  show (From v e x c) = "(from " ++ (show v) ++ " new " ++ (show e) ++ " as " ++ (show x) ++ " in " ++ (show c) ++ ")"
-
+  show (New e s h x c) = "(new " ++ (show e) ++ "@" ++ (show s) ++ "{" ++ (show h) ++ "}" ++ " as " ++ (show x) ++ " in " ++ (show c) ++ ")"
+  show (Handle v) = "handle(" ++ (show v) ++ ")"
+  show (HandleS s v) = "handle^" ++ (show s) ++ "(" ++ (show v) ++ ")"
+  show (HandleI l h v) = "handle^" ++ (show l) ++ "{" ++ (show h) ++ "}(" ++ (show v) ++ ")"
+  
 instance IsString Comp where
   fromString = Return . Var . Free . Name
 
@@ -446,103 +471,103 @@ instance HasVar Comp where
   openR k u (App a b) = App (openR k u a) (openR k u b)
   openR k u (AppT a b) = AppT (openR k u a) b
   openR k u (Do n a b) = Do n (openR k u a) (openR (k + 1) u b)
-  openR k u (Weaken c r) = Weaken (openR k u c) r
   openR k u (Op i o b) = Op (openR k u i) o (openR k u b)
-  openR k u (Handle c r) = Handle (openR k u c) (openR k u r)
-  openR k u (New i e x c) = New e x (openR (k + 1) u c)
-  openR k u (From v e x c) = From (openR k u v) e x (openR (k + 1) u c)
+  openR k u (New e s h x c) = New e s (openR k u h) x (openR (k + 1) u c)
+  openR k u (Handle v) = Handle (openR k u v)
+  openR k u (HandleS s v) = HandleS s (openR k u v)
+  openR k u (HandleI l h v) = HandleI l (openR k u h) (openR k u v)
 
   closeR k u (Return v) = Return (closeR k u v)
   closeR k u (App a b) = App (closeR k u a) (closeR k u b)
   closeR k u (AppT a b) = AppT (closeR k u a) b
   closeR k u (Do n a b) = Do n (closeR k u a) (closeR (k + 1) u b)
-  closeR k u (Weaken c r) = Weaken (closeR k u c) r
   closeR k u (Op i o b) = Op (closeR k u i) o (closeR k u b)
-  closeR k u (Handle c r) = Handle (closeR k u c) (closeR k u r)
-  closeR k u (New e x c) = New e x (closeR (k + 1) u c)
-  closeR k u (From v e x c) = From (closeR k u v) e x (closeR (k + 1) u c)
+  closeR k u (New e s h x c) = New e s (closeR k u h) x (closeR (k + 1) u c)
+  closeR k u (Handle v) = Handle (closeR k u v)
+  closeR k u (HandleS s v) = HandleS s (closeR k u v)
+  closeR k u (HandleI l h v) = HandleI l (closeR k u h) (closeR k u v)
 
   isLocallyClosedR k (Return v) = isLocallyClosedR k v
   isLocallyClosedR k (App a b) = isLocallyClosedR k a && isLocallyClosedR k b
   isLocallyClosedR k (AppT a b) = isLocallyClosedR k a
   isLocallyClosedR k (Do n a b) = isLocallyClosedR k a && isLocallyClosedR (k + 1) b
-  isLocallyClosedR k (Weaken c r) = isLocallyClosedR k c
   isLocallyClosedR k (Op i o b) = isLocallyClosedR k i && isLocallyClosedR k b
-  isLocallyClosedR k (Handle a b) = isLocallyClosedR k a && isLocallyClosedR k b
-  isLocallyClosedR k (New _ _ c) = isLocallyClosedR (k + 1) c
-  isLocallyClosedR k (From v _ _ c) = isLocallyClosedR k v && isLocallyClosedR (k + 1) c
+  isLocallyClosedR k (New e s h x c) = isLocallyClosedR k h && isLocallyClosedR (k + 1) c
+  isLocallyClosedR k (Handle v) = isLocallyClosedR k v
+  isLocallyClosedR k (HandleS s v) = isLocallyClosedR k v
+  isLocallyClosedR k (HandleI l h v) = isLocallyClosedR k h && isLocallyClosedR k v
 
   freeVars (Return v) = freeVars v
   freeVars (App a b) = Set.union (freeVars a) (freeVars b)
   freeVars (AppT a b) = freeVars a
   freeVars (Do n a b) = Set.union (freeVars a) (freeVars b)
-  freeVars (Weaken c r) = freeVars c
   freeVars (Op i o a) = Set.union (freeVars i) (freeVars a)
-  freeVars (Handle a b) = Set.union (freeVars a) (freeVars b)
-  freeVars (New _ _ c) = freeVars c
-  freeVars (From v _ _ c) = Set.union (freeVars v) (freeVars c)
+  freeVars (New e s h x c) = Set.union (freeVars h) (freeVars c)
+  freeVars (Handle v) = freeVars v
+  freeVars (HandleS s v) = freeVars v
+  freeVars (HandleI l h v) = Set.union (freeVars h) (freeVars v)
 
 instance HasTVar Comp where
   openTyR k u (Return v) = Return (openTyR k u v)
   openTyR k u (App a b) = App (openTyR k u a) (openTyR k u b)
   openTyR k u (AppT a b) = AppT (openTyR k u a) (openTyR k u b)
   openTyR k u (Do n a b) = Do n (openTyR k u a) (openTyR k u b)
-  openTyR k u (Weaken c r) = Weaken (openTyR k u c) r
   openTyR k u (Op i o b) = Op (openTyR k u i) o (openTyR k u b)
-  openTyR k u (Handle a b) = Handle (openTyR k u a) (openTyR k u b)
-  openTyR k u (New e x c) = New e x (openTyR k u c)
-  openTyR k u (From v x c) = From (openTyR k u v) e x (openTyR k u c)
+  openTyR k u (New e s h x c) = New e (openTyR k u s) (openTyR k u h) x (openTyR k u c)
+  openTyR k u (Handle a) = Handle (openTyR k u a)
+  openTyR k u (HandleS s a) = HandleS (openTyR k u s) (openTyR k u a)
+  openTyR k u (HandleI l s a) = HandleI l (openTyR k u s) (openTyR k u a)
 
   closeTyR k u (Return v) = Return (closeTyR k u v)
   closeTyR k u (App a b) = App (closeTyR k u a) (closeTyR k u b)
   closeTyR k u (AppT a b) = AppT (closeTyR k u a) (closeTyR k u b)
   closeTyR k u (Do n a b) = Do n (closeTyR k u a) (closeTyR k u b)
-  closeTyR k u (Weaken c r) = Weaken (closeTyR k u c) r
   closeTyR k u (Op i o b) = Op (closeTyR k u i) o (closeTyR k u b)
-  closeTyR k u (Handle a b) = Handle (closeTyR k u a) (closeTyR k u b)
-  closeTyR k u (New e x b) = New e x (closeTyR k u b)
-  closeTyR k u (From v e x b) = From (closeTyR k u v) e x (closeTyR k u b)
+  closeTyR k u (New e s h x c) = New e (closeTyR k u s) (closeTyR k u h) x (closeTyR k u c)
+  closeTyR k u (Handle a) = Handle (closeTyR k u a)
+  closeTyR k u (HandleS s a) = HandleS (closeTyR k u s) (closeTyR k u a)
+  closeTyR k u (HandleI l s a) = HandleI l (closeTyR k u s) (closeTyR k u a)
 
   isLocallyClosedTyR k (Return v) = isLocallyClosedTyR k v
   isLocallyClosedTyR k (App a b) = isLocallyClosedTyR k a && isLocallyClosedTyR k b
   isLocallyClosedTyR k (AppT a b) = isLocallyClosedTyR k a && isLocallyClosedTyR k b
   isLocallyClosedTyR k (Do n a b) = isLocallyClosedTyR k a && isLocallyClosedTyR k b
-  isLocallyClosedTyR k (Weaken c r) = isLocallyClosedTyR k c
   isLocallyClosedTyR k (Op i o v) = isLocallyClosedTyR k i && isLocallyClosedTyR k v
-  isLocallyClosedTyR k (Handle a b) = isLocallyClosedTyR k a && isLocallyClosedTyR k b
-  isLocallyClosedTyR k (New _ _ c) = isLocallyClosedTyR k c
-  isLocallyClosedTyR k (From v _ _ c) = isLocallyClosedTyR k v && isLocallyClosedTyR k c
+  isLocallyClosedTyR k (New e s h x c) = isLocallyClosedTyR k s && isLocallyClosedTyR k h && isLocallyClosedTyR k c
+  isLocallyClosedTyR k (Handle a) = isLocallyClosedTyR k a
+  isLocallyClosedTyR k (HandleS s a) = isLocallyClosedTyR k s && isLocallyClosedTyR k a
+  isLocallyClosedTyR k (HandleI l s a) = isLocallyClosedTyR k s && isLocallyClosedTyR k a
 
   freeTVars (Return v) = freeTVars v
   freeTVars (App a b) = Set.union (freeTVars a) (freeTVars b)
   freeTVars (AppT a b) = Set.union (freeTVars a) (freeTVars b)
   freeTVars (Do n a b) = Set.union (freeTVars a) (freeTVars b)
-  freeTVars (Weaken c r) = freeTVars c
   freeTVars (Op i o v) = Set.union (freeTVars i) (freeTVars v)
-  freeTVars (Handle a b) = Set.union (freeTVars a) (freeTVars b)
-  freeTVars (New _ _ c) = freeTVars c
-  freeTVars (From v _ _ c) = Set.union (freeTVars v) (freeTVars c)
+  freeTVars (New e s h x c) = Set.union (freeTVars s) $ Set.union (freeTVars h) (freeTVars c)
+  freeTVars (Handle a) = freeTVars a
+  freeTVars (HandleS s a) = Set.union (freeTVars s) (freeTVars a)
+  freeTVars (HandleI l s a) = Set.union (freeTVars s) (freeTVars a)
 
 instance Nameless Comp where
   toNameless (Return e) = Return (toNameless e)
   toNameless (App a b) = App (toNameless a) (toNameless b)
   toNameless (AppT e t) = AppT (toNameless e) (toNamelessTy t)
   toNameless (Do n a b) = Do n (toNameless a) (close n $ toNameless b)
-  toNameless (Weaken c r) = Weaken (toNameless c) (toNamelessTy r)
   toNameless (Op i o e) = Op (toNameless i) o (toNameless e)
-  toNameless (Handle a b) = Handle (toNameless a) (toNameless b)
-  toNameless (New e x c) = New e x (close x $ toNameless c)
-  toNameless (From v e x c) = From (toNameless v) e x (close x $ toNameless c)
+  toNameless (New e s h x c) = New e (toNamelessTy s) (toNameless h) x (close x $ toNameless c)
+  toNameless (Handle a) = Handle (toNameless a)
+  toNameless (HandleS s a) = HandleS (toNamelessTy s) (toNameless a)
+  toNameless (HandleI l s a) = HandleI l (toNameless s) (toNameless a)
 
   toNamed (Return e) = Return (toNamed e)
   toNamed (App a b) = App (toNamed a) (toNamed b)
   toNamed (AppT e t) = AppT (toNamed e) (toNamedTy t)
   toNamed (Do n a b) = Do n (toNamed a) (openVar n $ toNamed b)
-  toNamed (Weaken c r) = Weaken (toNamed c) (toNamedTy r)
   toNamed (Op i o e) = Op (toNamed i) o (toNamed e)
-  toNamed (Handle a b) = Handle (toNamed a) (toNamed b)
-  toNamed (New e x c) = New e x (openVar x $ toNamed c)
-  toNamed (From v e x c) = From (toNamed v) e x (openVar x $ toNamed c)
+  toNamed (New e s h x c) = New e (toNamedTy s) (toNamed h) x (openVar x $ toNamed c)
+  toNamed (Handle a) = Handle (toNamed a)
+  toNamed (HandleS s a) = HandleS (toNamedTy s) (toNamed a)
+  toNamed (HandleI l s a) = HandleI l (toNamed s) (toNamed a)
 
 -- type checking monad
 type TC t = Either String t
@@ -729,7 +754,8 @@ wfValTy ctx t@(TInst n e) = do
   return kType
 
 wfEff :: Context -> Eff -> TC ()
-wfEff ctx v = do
+wfEff ctx (Eff e v) = do
+  findEff ctx e
   k <- wfValTy ctx v
   checkKind kLabel k $ "instance type in annotation: " ++ (show v)
 
@@ -788,8 +814,8 @@ typecheckVal ctx v = do
       let x = freshTVarInContext ctx e n
       tr <- typecheckComp (add ctx $ CTVar x k) $ openTVar x e
       return $ TForall n k $ closeTy x tr
-    Inst _ ->
-      err $ "cannot type instance " ++ (show v)
+    _ ->
+      err $ "cannot type value: " ++ (show v)
 
 typecheckInst :: Context -> Val -> TC (ValTy, Name)
 typecheckInst ctx v = do
@@ -806,18 +832,23 @@ typecheckLabel ctx t = do
     TVar (Free x) -> return x
     _ -> err $ "expected label but got " ++ (show t)
 
-typecheckHandler :: Context -> ValTy -> Handler -> TC (Effs, CompTy)
-typecheckHandler ctx rt (HReturn x c) = do
-  t <- typecheckComp (add ctx $ CVar x rt) $ openVar x c
-  return (emptyEffs, t)
-typecheckHandler ctx rt (HOp i o x k c r) = do
-  (n, e) <- typecheckInst ctx i
+typecheckHandler :: Context -> ValTy -> ValTy -> Handler -> TC (CompTy, CompTy)
+typecheckHandler ctx s t1 (HReturn xr cr xf cf) = do
+  let xr' = freshVarInContext ctx cr xr
+  TAnnot t2 r2 <- typecheckComp (add ctx $ CVar xr' t1) $ openVar xr' cr
+  let xf' = freshVarInContext ctx cf xf
+  --trace (show $ cf) $ return ()
+  t3 <- typecheckComp (add ctx $ CVar xf' t2) $ openVar xf' cf
+  return (TAnnot t2 r2, t3)
+typecheckHandler ctx s t1 (HOp o x' k' c r) = do
   (e', a, b) <- findOp ctx o
-  tcBool ("effect mismatch in handler case: " ++ (show i) ++ "#" ++ (show o)) $ e == e'
-  (es, tr1@(TAnnot t1 r1)) <- typecheckHandler ctx rt r
-  TAnnot t2 r2 <- typecheckComp (adds ctx [CVar x (openTy n a), CVar k (TFun (openTy n b) tr1)]) $ openR 1 (Var $ Free x) $ openVar k c
-  eqValTy t1 t2 $ "handler case: " ++ (show i) ++ "#" ++ (show o) ++ " " ++ (show x) ++ " " ++ (show k) ++ " -> " ++ (show c)
-  return (insertEffs n es, TAnnot t1 (unionEffs r1 r2))
+  (TAnnot t2 r2, t3) <- typecheckHandler ctx s t1 r
+  let x = freshVarInContext ctx c x'
+  let k = freshVarInContext (add ctx $ CVar x t2) c k'
+  TAnnot t2' r2' <- typecheckComp (adds ctx [CVar x (openTy s a), CVar k (TFun (openTy s b) (TAnnot t2 r2))]) $ openR 1 (Var $ Free x) $ openVar k c
+  eqValTy t2 t2' $ "handler case: " ++ (show o)
+  tcBool ("effect mismatch in handler case: " ++ (show o) ++ ", " ++ (show r2) ++ " and " ++ (show r2')) $ r2 == r2'
+  return (TAnnot t2 r2, t3)
 
 typecheckComp :: Context -> Comp -> TC CompTy
 typecheckComp ctx c = do
@@ -850,35 +881,35 @@ typecheckComp ctx c = do
       -- tcBool ("effect mismatch, do expression second computation: " ++ (show c)) $ r == r'
       -- return tb
       return $ TAnnot t' (unionEffs r r')
-    Weaken c' r -> do
-      wfEffs ctx r
-      tr@(TAnnot t r') <- typecheckComp ctx c'
-      tcBool ("cannot weaken from " ++ (show tr) ++ " in " ++ (show c)) $ isSubsetOfEffs r' r
-      return $ TAnnot t r
     Op i o v -> do
       (n, e) <- typecheckInst ctx i
       (e', a, b) <- findOp ctx o
       tcBool ("effect mismatch in operation call: " ++ (show c)) $ e == e'
       t <- typecheckVal ctx v
       subValTy (openTy n a) t $ "operation call " ++ (show c)
-      return $ TAnnot (openTy n b) $ singletonEffs n
-    Handle c' h -> do
-      TAnnot t r <- typecheckComp ctx c'
-      (es, rt@(TAnnot t' r')) <- typecheckHandler ctx t h
-      --trace (show (r, r', es, unionEffs r' $ differenceEffs r es, rt)) $ return ()
-      return $ TAnnot t' (unionEffs r' $ differenceEffs r es)
-    New i e x c' -> do
+      return $ TAnnot (openTy n b) $ singletonEffs (Eff e n)
+    Handle v -> do
+      ta <- typecheckVal ctx v
+      case ta of
+        TForall n k (TAnnot t r) -> do
+          checkKind kLabel k $ "handle: " ++ (show c)
+          tcBool ((show n) ++ " escapes its scope in " ++ (show ta) ++ " in " ++ (show c)) $ isLocallyClosedTy t
+          return $ TAnnot t (removeEffsWithLabel (TVar $ Bound 0) r)
+        _ -> err $ "not a forall type in handle: " ++ (show ta) ++ " in " ++ (show c)
+    New e s h x c' -> do
       findEff ctx e
-      i' <- typecheckLabel ctx i
-      let x' = freshVarInContext ctx c' x
-      tr <- typecheckComp (add ctx $ CVar x' (TInst i e)) (openVar x' c')
-      tcBool ("instance " ++ (show i) ++ " escaped its scope in " ++ (show tr) ++ " in " ++ (show c)) $ not $ Set.member i' (freeTVars tr)
-      return tr
-    Fresh l c' -> do
-      let l' = freshTVarInContext ctx c' l
-      tr <- typecheckComp (add ctx $ CTVar l' kLabel) (openTVar l' c')
-      tcBool ("instance " ++ (show l') ++ " escaped its scope in " ++ (show tr) ++ " in " ++ (show c)) $ not $ Set.member l' (freeTVars tr)
-      return tr
+      l <- typecheckLabel ctx s
+      let os = ops ctx e
+      tcBool ("ops do not match in " ++ (show c)) $ os == opsFromHandlerSet h
+      let x' = freshVarInContext ctx c x
+      TAnnot t1 r1 <- typecheckComp (add ctx $ CVar x' (TInst s e)) (openVar x' c')
+      tra@(TAnnot t2 r2, TAnnot t3 r3) <- typecheckHandler ctx s t1 h
+      let r3' = insertEffs (Eff e s) r3
+      -- trace (show (r1, r3')) $ return ()
+      -- tcBool ("not a subset in new: " ++ (show c) ++ ", " ++ (show r1) ++ " and " ++ (show r3')) $ isSubsetOfEffs r1 r3'
+      return $ TAnnot t3 (unionEffs r3' r1)
+    _ ->
+      err $ "cannot type comp: " ++ (show c)
 
 infer :: Context -> Comp -> TC CompTy
 infer ctx e = do
@@ -896,39 +927,51 @@ reduceR co =
   case co of
     c@(Return _) -> return c
     c@(Op _ _ _) -> return c
-    Weaken c _ -> reduceR c
+
     App (Abs x _ a) b -> reduceR $ open b a
     AppT (AbsT x _ a) t -> reduceR $ openTy t a
+
     Do x a b -> do
       c <- reduceR a
       case c of
         Return v -> reduceR $ open v b
         Do x' a' b' -> reduceR $ Do x' a' $ Do x b' b
+        New e s h y c' -> return $ New e s h y (Do x c' b)
         a' -> return $ Do x a' b
-    Handle c h -> do
-      c' <- reduceR c
-      case c' of
-        Return v ->
-          let (x, b) = getReturnInHandler h in reduceR $ open v b
-        c'@(Op i o v) ->
-          case findEffInHandler i o h of
-            Just (x, _, b) ->
-              reduceR $ openR 1 v $ open (Abs x "_" $ Handle (Return $ Var $ Bound 0) h) b
-            Nothing -> return $ Do "x" c' $ Handle (Return $ Var $ Bound 0) h
-        c'@(Do x (Op i o v) b) ->
-          case findEffInHandler i o h of
-            Just (x, _, b') ->
-              reduceR $ openR 1 v $ open (Abs x "_" $ Handle b h) b'
-            Nothing -> return $ Do x (Op i o v) $ Handle b h
-        c' -> return $ Handle c' h
-    c@(New e x c') -> do
-      i <- get
-      put (nextInstId i)
-      reduceR $ open (Inst i) c'
-    c@(From _ e x c') -> do
-      i <- get
-      put (nextInstId i)
-      reduceR $ open (Inst i) c'
+
+    Handle (AbsT x _ a) -> reduceR $ HandleS (TVar $ Free x) (openTVar x a)
+
+    HandleS s a -> do
+      c <- reduceR a
+      case c of
+        Return v -> return c
+        Op i o v -> return c
+        Do x a' b -> return $ Do x a' (HandleS s b)
+        New e s' h x c' ->
+          if s == s' then do
+            let (xf, cf) = getFinallyInHandler h
+            i <- get
+            put (nextInstId i)
+            reduceR $ HandleS s (Do xf (HandleI i h (open (Inst i) c')) cf)
+          else
+            return $ New e s' h x (HandleS s c')
+
+    HandleI i h a -> do
+      c <- reduceR a
+      case c of
+        New e s h' x c' -> reduceR $ New e s h' x (HandleI i h c')
+        Return v -> do
+          let (xr, cr) = getReturnInHandler h
+          reduceR $ open v cr
+        Op i' o v -> reduceR $ HandleI i h (Do "x" c (Return $ Var $ Bound 0))
+        Do x (Op (Inst i') o v) c' ->
+          if i == i' then
+            case findOpInHandler o h of
+              Just (x', _, b) ->
+                reduceR $ openR 1 v $ open (Abs x' "_" $ HandleI i h c') b
+          else
+            return $ Do x (Op (Inst i') o v) (HandleI i h c')
+
     c -> return c
 
 reduce :: Comp -> Comp
@@ -960,77 +1003,34 @@ ctx = adds initialContext
     COp "ref" "Heap" "Bool" (TInst (TVar $ Bound 0) "State")
   ]
 
-eid :: Val
 eid = AbsT "t" kType $ Return $ Abs "x" "t" "x"
 
-flipH :: Val -> Comp -> Comp
-flipH i c = Handle c $
-  HOp i "flip" "x" "k" (App "k" "True") $
-  HReturn "x" "x"
+newFlip s x b c =
+  New "Flip" s (
+    HOp "flip" "x" "k" (App "k" b) $
+    HReturn "x" "x"
+    {- finally -}  "y" "y"
+  ) x c
 
-stateH :: Val -> Comp -> Comp
-stateH i c = Handle c $
-  HOp i "get" "x" "k" (Return $ Abs "s" "Bool" $ Do "f" (App "k" "s") $ App "f" "s") $
-  HOp i "put" "s" "k" (Return $ Abs "_" "Bool" $ Do "f" (App "k" "Unit") $ App "f" "s") $
-  HReturn "x" (Return $ Abs "s" "Bool" "x")
-
-stateF :: Val -> Val -> Comp -> Comp
-stateF i v c = Do "f" (stateH i c) $ App "f" v
-
-heapH :: ValTy -> Val -> Comp -> Comp
-heapH l h c = Handle c $
-  HOp h "ref" "v" "k" (
-    New l "State" "r" $
-    stateF "r" "v" (App "k" "r")
-  ) $
-  HReturn "x" "x"
-
-getO :: Val -> Comp
-getO r = Op r "get" "Unit"
-
-putO :: Val -> Val -> Comp
-putO r v = Op r "put" v
-
-{-
-  /\(l:Label).\(r:Inst l State). x <- r#get (); r#put True; return x
--}
-incO :: Val
-incO = AbsT "l" kLabel $ Return $ Abs "r" (TInst "l" "State") $
-  Do "x" (getO "r") $
-  Do "_" (putO "r" "True") $
-  Return "x"
-
-{-
-  fresh l;
-  new l@Heap as h;
-  r1 <- h#ref True;
-  r2 <- h#ref False;
-  x <- r1#get ();
-  r2#put x;
-  f <- inc [l];
-  f r2
--}
-test :: Comp
-test =
-  freshnew "Heap" "l" "h" $
-  heapH "l" "h" $
-  Do "r1" (Op "h" "ref" "True") $
-  Do "r2" (Op "h" "ref" "False") $
-  Do "x" (getO "r1") $
-  Do "f" (AppT incO "l") $
-  App "f" "r2"
+newState s x v c =
+  New "State" s (
+    HOp "get" "_" "k" (Return $ Abs "st" "Bool" $ Do "f" (App "k" "st") $ App "f" "st") $
+    HOp "put" "st'" "k" (Return $ Abs "st" "Bool" $ Do "f" (App "k" "Unit") $ App "f" "st'") $
+    HReturn "x" (Return $ Abs "st" "Bool" "x")
+    {- finally -}  "y" (App "y" v)
+  ) x c
 
 term :: Comp
 term =
-  Fresh "l" $
-  New "l" "Flip" "f1" $
-  New "l" "Flip" "f2" $
-  Handle (
-    Do "_" (Op "f1" "flip" "Unit") $
-    Op "f2" "flip" "Unit"
-  ) $
-    HOp "f1" "flip" "x" "k" (App "k" "True") $
-    HReturn "x" "x"
+  Handle $
+    AbsT "s" "Label" $
+      newFlip "s" "f" "True" $
+      newState "s" "r" "False" $
+      Do "_" (Op "r" "put" "True") $
+      newState "s" "r2" "False" $
+      Do "b" (Op "f" "flip" "Unit") $
+      Do "_" (Op "r2" "put" "b") $
+      Return (Abs "_" "Bool" $ Op "r" "get" "Unit")
 
 main :: IO ()
 main = do
