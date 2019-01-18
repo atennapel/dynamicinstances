@@ -466,7 +466,7 @@ $$
 \inferrule{
 	\loc \notin \mathsf{Dom}(\Sigma)
 }{
-	\chandlec{s}{\cnew{\eff}{s}{\handler; \hfinally{x_f}{\comp_f}}{x}{\comp}} \;|\; \Sigma \rightsquigarrow \\
+	\chandlec{s}{\cnew{\eff}{s}{\handler; \hreturn{x_r}{\comp_r}{x_f}{\comp_f}}{x}{\comp}} \;|\; \Sigma \rightsquigarrow \\
 	\chandlec{s}{\cdo{x_f}{\chandlei{\loc}{\handler}{\comp[x := \vinst{\loc}]}}{\comp_f}} \;|\; \Sigma,\loc := (s, \eff)
 }
 $$
@@ -520,7 +520,7 @@ $$
 $$
 \inferrule{
 }{
-	\chandlei{\loc}{\handler; \hreturn{x_r}{\comp_r}}{\creturn{\val}} \;|\; \Sigma \rightsquigarrow
+	\chandlei{\loc}{\handler; \hreturn{x_r}{\comp_r}{x_f}{\comp_f}}{\creturn{\val}} \;|\; \Sigma \rightsquigarrow
 	\comp_r[x_r := \val] \;|\; \Sigma
 }
 $$
