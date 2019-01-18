@@ -1020,6 +1020,14 @@ newState s x v c =
     {- finally -}  "y" (App "y" v)
   ) x c
 
+newStateBroken s x v c =
+  New "State" s (
+    HOp "get" "_" "k" (Return $ Abs "st" "Bool" $ newState s x v $ Op (Var $ Free x) "get" "Unit") $
+    HOp "put" "st'" "k" (Return $ Abs "st" "Bool" $ newState s x v $ Op (Var $ Free x) "get" "Unit") $
+    HReturn "x" (Return $ Abs "st" "Bool" $ newState s x v $ Op (Var $ Free x) "get" "Unit")
+    {- finally -}  "y" (App "y" v)
+  ) x c
+
 term :: Comp
 term =
   Handle $
@@ -1027,10 +1035,10 @@ term =
       newFlip "s" "f" "True" $
       newState "s" "r" "False" $
       Do "_" (Op "r" "put" "True") $
-      newState "s" "r2" "False" $
+      newStateBroken "s" "r2" "False" $
       Do "b" (Op "f" "flip" "Unit") $
       Do "_" (Op "r2" "put" "b") $
-      Return (Abs "_" "Bool" $ Op "r" "get" "Unit")
+      Op "r2" "get" "Unit"
 
 main :: IO ()
 main = do

@@ -203,3 +203,22 @@ handle(/\s. new State@s {h1} as r1 in (x <- r1#get (); new State@s as r2 in (y <
 ~> handle^s[l1&h1](g <- handle^s[l1&h1, l2&h2]((\s -> return (1 + 2)) 2); g 1)
 ~> handle^s[l1&h1](g <- handle^s[l1&h1, l2&h2](return (1 + 2)); g 1) -- PROBLEM: which handler to use to handle (return (1 + 2))
 -- semantically we want to use h1 but above we used the right-most handler h2.
+
+-- testing the type system
+handle(/\s. return 5) : Int!{}
+~> handle^s'(return 5) : Int!{}
+~> return 5 : Int!{}
+
+f:Inst s Flip |- f#flip() : Bool!{Flip@s}
+
+h = flip () k -> k True, return x -> return x, finally x -> return x
+
+|-(Bool,Bool,{Flip@s}) h : Bool!{Flip@s}
+
+new Flip@s h as f in f#flip() : Bool!{Flip@s}
+
+handle(/\s. new Flip@s { h } as f in f@flip ()) : Bool!{}
+~> handle^s(new Flip@s { h } as f in f@flip ()) : Bool!{}
+~> handle^s(handle^l { h }(inst(l)@flip())) | l := (s, Flip) : Bool!{}
+~> handle^s(return True) : Bool!{}
+~> return True : Bool!{}

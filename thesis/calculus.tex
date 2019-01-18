@@ -52,7 +52,7 @@
 % handlers
 \newcommand\handler[0]{h}
 \newcommand\hop[5]{#1 \; #2 \; #3 \rightarrow #4 ; #5}
-\newcommand\hreturn[2]{\mathsf{return} \; #1 \rightarrow #2}
+\newcommand\hreturn[4]{\mathsf{return} \; #1 \rightarrow #2 ; \mathsf{finally} \; #3 \rightarrow #4}
 \newcommand\hfinally[2]{\mathsf{finally} \; #1 \rightarrow #2}
 
 % misc
@@ -288,39 +288,41 @@ $$
 \inferrule{
 	s \in \Delta \\
 	\op \in \Op_\eff \iff \op \in \handler \\
-	\Delta;\Sigma;\Gamma \vdash^{(\ty_1, \aty{\ty_2}{r_2})} \handler : \aty{\ty_3}{r_3} \\
-	\Delta;\Sigma;\Gamma,x:\tinst{s}{\eff} \vdash \comp : \aty{\ty_1}{r_1} \\
-	(\eff@s \notin r_3) \land (r_1 \subseteq r_3)
+	\Delta;\Sigma;\Gamma \vdash^{(\ty_1, \ty_2, r)} \handler : \aty{\ty_3}{r} \\
+	\Delta;\Sigma;\Gamma,x:\tinst{s}{\eff} \vdash \comp : \aty{\ty_1}{r} \\
+	\eff@s \in r
 }{
-	\Delta;\Sigma;\Gamma \vdash \cnew{\eff}{s}{\handler}{x}{\comp} : \aty{\ty_3}{r_3}
+	\Delta;\Sigma;\Gamma \vdash \cnew{\eff}{s}{\handler}{x}{\comp} : \aty{\ty_3}{r}
 }
 $$
 $$
 \inferrule{
-	\Delta;\Sigma;\Gamma \vdash \val : \tforall{s}{\cty} \\
-	s \notin \cty
+	\Delta;\Sigma;\Gamma \vdash \val : \tforall{s}{\aty{\ty}{r}} \\
+	s \notin \ty \\
+	r' = \{ \eff@s' \;|\; \eff@s' \in r \wedge s' \neq s \}
 }{
-	\Delta;\Sigma;\Gamma \vdash \chandle{\val} : \cty
+	\Delta;\Sigma;\Gamma \vdash \chandle{\val} : \aty{\ty}{r'}
 }
 $$
 $$
 \inferrule{
 	s \in \Delta \\
-	\Delta;\Sigma;\Gamma \vdash \val : \cty \\
-	s \notin \cty
+	\Delta;\Sigma;\Gamma \vdash \comp : \aty{\ty}{r} \\
+	s \notin \ty \\
+	r' = \{ \eff@s' \;|\; \eff@s' \in r \wedge s' \neq s \}
 }{
-	\Delta;\Sigma;\Gamma \vdash \chandlec{s}{\comp} : \cty
+	\Delta;\Sigma;\Gamma \vdash \chandlec{s}{\comp} : \aty{\ty}{r'}
 }
 $$
 $$
 \inferrule{
 	\Sigma(\loc) = (s, \eff) \\
 	\op \in \Op_\eff \iff \op \in \handler \\
-	\Delta;\Sigma;\Gamma \vdash^{(\ty_1, \aty{\ty_2}{r_2})} \handler : \aty{\ty_3}{r_3} \\
-	\Delta;\Sigma;\Gamma \vdash \comp : \aty{\ty_1}{r_1} \\
-	(\eff@s \notin r_3) \land (r_1 \subseteq r_3)
+	\Delta;\Sigma;\Gamma \vdash^{(\ty_1, \ty_2, r)} \handler : \aty{\ty_3}{r} \\
+	\Delta;\Sigma;\Gamma \vdash \comp : \aty{\ty_1}{r} \\
+	\eff@s \in r
 }{
-	\Delta;\Sigma;\Gamma \vdash \chandlei{\loc}{\handler}{\comp} : \aty{\ty_3}{r_3}
+	\Delta;\Sigma;\Gamma \vdash \chandlei{\loc}{\handler}{\comp} : \aty{\ty_3}{r}
 }
 $$
 $$
@@ -344,18 +346,18 @@ $$
 \begin{minipage}{14 cm}
 $$
 \inferrule{
-	\Delta;\Sigma;\Gamma,x:\pty{\op},k:\tarr{\rty{\op}}{\aty{\ty_2}{r_2}} \vdash \comp : \aty{\ty_2}{r_2} \\
-	\Delta;\Sigma;\Gamma \vdash^{(\ty_1, \aty{\ty_2}{r_2})} \handler : \aty{\ty_3}{r_3} \\
+	\Delta;\Sigma;\Gamma,x:\pty{\op},k:\tarr{\rty{\op}}{\aty{\ty_2}{r}} \vdash \comp : \aty{\ty_2}{r} \\
+	\Delta;\Sigma;\Gamma \vdash^{(\ty_1, \ty_2, r)} \handler : \aty{\ty_3}{r} \\
 }{
-	\Delta;\Sigma;\Gamma \vdash^{(\ty_1, \aty{\ty_2}{r_2})} (\hop{\op}{x}{k}{\comp}{\handler}) : \aty{\ty_3}{r_3}
+	\Delta;\Sigma;\Gamma \vdash^{(\ty_1, \ty_2, r)} (\hop{\op}{x}{k}{\comp}{\handler}) : \aty{\ty_3}{r}
 }
 $$
 $$
 \inferrule{
-	\Delta;\Sigma;\Gamma,x_r : \ty_1  \vdash \comp_r : \aty{\ty_2}{r_2} \\
-	\Delta;\Sigma;\Gamma,x_f : \ty_2  \vdash \comp_f : \aty{\ty_3}{r_3} \\
+	\Delta;\Sigma;\Gamma,x_r : \ty_1 \vdash \comp_r : \aty{\ty_2}{r} \\
+	\Delta;\Sigma;\Gamma,x_f : \ty_2 \vdash \comp_f : \aty{\ty_3}{r} \\
 }{
-	\Delta;\Sigma;\Gamma \vdash^{(\ty_1, \aty{\ty_2}{r_2})} (\hreturn{x_r}{\comp_r}{x_f}{\comp_f}) : \aty{\ty_3}{r_3}
+	\Delta;\Sigma;\Gamma \vdash^{(\ty_1, \ty_2, r)} (\hreturn{x_r}{\comp_r}{x_f}{\comp_f}) : \aty{\ty_3}{r}
 }
 $$
 \label{fig:handler-typing-calc}
