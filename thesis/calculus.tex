@@ -52,7 +52,7 @@
 % handlers
 \newcommand\handler[0]{h}
 \newcommand\hop[5]{#1 \; #2 \; #3 \rightarrow #4 ; #5}
-\newcommand\hreturn[4]{\mathsf{return} \; #1 \rightarrow #2 ; \mathsf{finally} \; #3 \rightarrow #4}
+\newcommand\hreturn[2]{\mathsf{return} \; #1 \rightarrow #2}
 \newcommand\hfinally[2]{\mathsf{finally} \; #1 \rightarrow #2}
 
 % misc
@@ -99,13 +99,13 @@ Annotations $r$ are sets of pairs of an effect name with a scope variable: $\{ \
 									& \cappt{\val}{s}										\tag{scope application} \\
 									& \cdo{x}{\comp}{\comp}							\tag{sequencing} \\
 									& \cop{\val}{\op}{\val}							\tag{operation call} \\
-									& \cnew{\eff}{s}{\handler}{x}{\comp}		\tag{instance creation} \\
+									& \cnew{\eff}{s}{\handler ; \hfinally{x}{\comp}}{x}{\comp}		\tag{instance creation} \\
 									& \chandle{\val}										\tag{handle scoped computation} \\
 									& \chandlec{s}{\comp}								\tag{handle computation (for semantics)} \\
 									& \chandlei{\loc}{\handler}{\comp}	\tag{handle instance (for semantics)} \\
 	\handler \Coloneqq 		&															\tag{handlers} \\
 									& \hop{\op}{x}{k}{\comp}{\handler}	\tag{operation case} \\
-									& \hreturn{x}{\comp}{x}{\comp}			\tag{return/finally case} \\
+									& \hreturn{x}{\comp}								\tag{return/finally case} \\
 \end{align*}
 \label{fig:syntax-calc}
 \end{minipage}
@@ -406,7 +406,8 @@ $$
 $$
 \inferrule{
 }{
-	(\cdo{x}{(\cnew{\eff}{s}{\handler}{y}{\comp_1})}{\comp_2}) \;|\; \Sigma \rightsquigarrow \cnew{\eff}{s}{\handler}{y}{(\cdo{x}{\comp_1}{\comp_2})} \;|\; \Sigma
+	(\cdo{x}{(\cnew{\eff}{s}{\handler ; \hfinally{z}{\comp_3}}{y}{\comp_1})}{\comp_2}) \;|\; \Sigma \rightsquigarrow \\
+	 \cnew{\eff}{s}{\handler ; \hfinally{z}{\comp_3}}{y}{(\cdo{x}{\comp_1}{\comp_2})} \;|\; \Sigma
 }
 $$
 $$
@@ -458,16 +459,16 @@ $$
 \inferrule{
 	s \neq s'
 }{
-	\chandlec{s}{\cnew{\eff}{s'}{\handler}{x}{\comp}} \;|\; \Sigma \rightsquigarrow
-	\cnew{\eff}{s'}{\handler}{x}{\chandlec{s}{\comp}} \;|\; \Sigma
+	\chandlec{s}{\cnew{\eff}{s'}{\handler ; \hfinally{y}{\comp'}}{x}{\comp}} \;|\; \Sigma \rightsquigarrow \\
+	\cnew{\eff}{s'}{\handler ; \hfinally{y}{\comp'}}{x}{\chandlec{s}{\comp}} \;|\; \Sigma
 }
 $$
 $$
 \inferrule{
 	\loc \notin \mathsf{Dom}(\Sigma)
 }{
-	\chandlec{s}{\cnew{\eff}{s}{\handler; \hreturn{x_r}{\comp_r}{x_f}{\comp_f}}{x}{\comp}} \;|\; \Sigma \rightsquigarrow \\
-	\chandlec{s}{\cdo{x_f}{\chandlei{\loc}{\handler}{\comp[x := \vinst{\loc}]}}{\comp_f}} \;|\; \Sigma,\loc := (s, \eff)
+	\chandlec{s}{\cnew{\eff}{s}{\handler; \hfinally{y}{\comp'}}{x}{\comp}} \;|\; \Sigma \rightsquigarrow \\
+	\chandlec{s}{\cdo{y}{\chandlei{\loc}{\handler}{\comp[x := \vinst{\loc}]}}{\comp'}} \;|\; \Sigma,\loc := (s, \eff)
 }
 $$
 \label{fig:semantics2-calc}
@@ -490,8 +491,8 @@ $$
 $$
 \inferrule{
 }{
-	\chandlei{\loc}{\handler}{\cnew{\eff}{s}{\handler'}{x}{\comp}} \;|\; \Sigma \rightsquigarrow 
-	\cnew{\eff}{s}{\handler'}{x}{\chandlei{\loc}{\handler}{\comp}} \;|\; \Sigma
+	\chandlei{\loc}{\handler}{\cnew{\eff}{s}{\handler' ; \hfinally{y}{\comp'}}{x}{\comp}} \;|\; \Sigma \rightsquigarrow \\
+	\cnew{\eff}{s}{\handler' ; \hfinally{y}{\comp'}}{x}{\chandlei{\loc}{\handler}{\comp}} \;|\; \Sigma
 }
 $$
 $$
@@ -520,7 +521,7 @@ $$
 $$
 \inferrule{
 }{
-	\chandlei{\loc}{\handler; \hreturn{x_r}{\comp_r}{x_f}{\comp_f}}{\creturn{\val}} \;|\; \Sigma \rightsquigarrow
+	\chandlei{\loc}{\handler; \hreturn{x_r}{\comp_r}}{\creturn{\val}} \;|\; \Sigma \rightsquigarrow
 	\comp_r[x_r := \val] \;|\; \Sigma
 }
 $$

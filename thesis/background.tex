@@ -45,27 +45,28 @@
 \newcommand\cnew[1]{\textit{new} \; #1}
 \newcommand\cunpack[4]{(#1, #2) \leftarrow #3 ; #4}
 
-In this chapter we will show the basics of algebraic effects and handlers. We will start with the simply-typed lambda calculus and add algebraic effects and instances to it. We end with dynamic instances and show why a type system for them is difficult to implement.
+In this chapter we will show the basics of algebraic effects and handlers. We will start with the simply-typed lambda calculus (\cref{section:stlc}) and add algebraic effects and instances to it. We end with dynamic instances and show why a type system for them is difficult to implement.
 
-\section{Fine-grained simply-typed lambda calculus}
+\section{Simply-typed lambda calculus} \label{section:stlc}
 
-As our base language we will take the fine-grained (call-by-value) simply-typed lambda calculus \cite{fg-stlc}.
-This system is a version of the simply-typed lambda calculus where the order of evaluation is made explicit in the syntax.
-Furthermore there is a syntactic distinction between values and computation.
-In an effect-full system such as effect handlers it is useful to have a clear order of evaluation since different orderings of effects can have different results.
+As our base language we will take the fine-grained call-by-value simply-typed lambda calculus (FG-STLC) \cite{fg-stlc}.
+This system is a version of the simply-typed lambda calculus with a syntactic distinction between values and computations.
+Because of this distinction there is exactly one evaluation order.
+In a system with side effects the evaluation order is very important since a different order could have a different result.
+Having the evaluation order be apparent from the syntax is thus a good choice for a system with algebraic effects.
 
 %\subsection{Syntax}
 
 \begin{figure}
-\caption{Syntax of the fine-grained simply-typed lambda calculus}
+\caption{Syntax of the fine-grained lambda calculus}
 \centering
 \fbox{
 \begin{minipage}{10 cm}
 \begin{align*}
 	\val \Coloneqq	&													\tag{values} \\
 									& x, y, z, k							\tag{variables} \\
-									& \vunit									\tag{unit value} \\
 									& \vabs{x}{\comp}					\tag{abstraction} \\
+									& \vunit									\tag{unit value} \\
 	\comp \Coloneqq&													\tag{computations} \\
 									& \creturn{\val}					\tag{return value as computation} \\
 									& \capp{\val}{\val}				\tag{application} \\
@@ -78,46 +79,51 @@ In an effect-full system such as effect handlers it is useful to have a clear or
 
 The terms are shown in Figure \ref{fig:syntax-stlc}.
 The terms are split in to values and computations.
-Values denote data which does not do any computation, while the computations are terms that may perform effects.
+Values are pieces of data that have no effects, while computations are terms that may have effects.
 
-\textbf{Values} We have $x$, $y$, $z$, $k$ ranging over variables, where we will use $k$ to denote continuations later on.
-We also have $\vunit$ as our only base value. Lastly $\vabs{x}{\comp}$ is an lambda abstraction, where the body of the function is a computation.
+\textbf{Values} We have $x$, $y$, $z$, $k$ ranging over variables, where we will use $k$ for variables that denote continuations later on.
+We also have the usual abstractions though note that the body is a computation.
+To keep things simple we take unit as our only base value, this because adding more base values will not complicate the theory.
+Using the unit value we can also delay computations by wrapping them in an abstraction that takes a unit value.
 \\\\
-\textbf{Computations} For computations we have $\creturn{\val}$ for the computation that simply returns a value without performing any effects. We have function application $\capp{\val}{\val}$, where both the function and argument have to be values. Sequencing computations is done with $\cdo{x}{\comp}{\comp}$.
+\textbf{Computations} For any value $\val$ we have $\creturn{\val}$ for the computation that simply returns a value without performing any effects. We have function application $(\capp{\val}{\val})$, where both the function and argument have to be values. Sequencing computations is done with $(\cdo{x}{\comp}{\comp})$. Normally in the lambda calculus the function and the argument in an application could be any term and so a choice would have to be made in what order these have to be evaluated or whether to evaluate the argument at all before substitution. In the fine-grained calculus both the function and argument in $(\capp{\val}{\val})$ are values so there's no choice of evaluation order. The order is made explicit by the sequencing syntax $(\cdo{x}{\comp}{\comp})$.
 
 %\subsection{Semantics}
 
 \begin{figure}
-\caption{Semantics of the fine-grained simply-typed lambda calculus}
+\caption{Semantics of the fine-grained lambda calculus}
 \centering
 \fbox{
 \begin{minipage}{11 cm}
 \[\inferrule{
 }{
 	\capp{(\vabs{x}{\comp})}{\val} \rightsquigarrow \comp[x := \val]
-}\quad(\textsc{STLC-S-App})\]
+}\quad(\footnotesize\textsc{STLC-S-App})\]
 
 \[\inferrule{
 }{
 	(\cdo{x}{\creturn{\val}}{\comp}) \rightsquigarrow \comp[x := \val]
-}\quad(\textsc{STLC-S-SeqReturn})\]
+}\quad(\footnotesize\textsc{STLC-S-SeqReturn})\]
 
 \[\inferrule{
 	\comp_1 \rightsquigarrow \comp_1'
 }{
 	(\cdo{x}{\comp_1}{\comp_2}) \rightsquigarrow (\cdo{x}{\comp_1'}{\comp_2})
-}\quad(\textsc{STLC-S-Seq})\]
+}\quad(\footnotesize\textsc{STLC-S-Seq})\]
 \label{fig:semantics-stlc}
 \end{minipage}
 }
 \end{figure}
 
-The small-step operation semantics are shown in Figure \ref{fig:semantics-stlc}.
+\textbf{Semantics}
+The small-step operational semantics is shown in Figure \ref{fig:semantics-stlc}.
 The relation $\rightsquigarrow$ is defined on computations, where the $\comp \rightsquigarrow \comp'$ means $\comp$ reduces to $\comp'$ in one step.
 These rules are a fine-grained approach to the standard reduction rules of the simply-typed lambda calculus.
-In \textsc{STLC-S-App} we apply a lambda abstraction to a value argument, by substituting the value for the variable $x$ in the body of the abstraction.
-In \textsc{STLC-S-SeqReturn} we sequence a computation that just returns a value in another computation by substituting the value for the variable $x$ in the computation.
-Lastly, in \textsc{STLC-S-Seq} we can reduce a sequence of two computations, $\comp_1$ and $\comp_2$ by reducing the first, $\comp_1$.
+In {\footnotesize\textsc{STLC-S-App}} we apply a lambda abstraction to a value argument, by substituting the value for the variable $x$ in the body of the abstraction.
+In {\footnotesize\textsc{STLC-S-SeqReturn}} we sequence a computation that just returns a value in another computation by substituting the value for the variable $x$ in the computation.
+Lastly, in {\footnotesize\textsc{STLC-S-Seq}} we can reduce a sequence of two computations, $\comp_1$ and $\comp_2$ by reducing the first, $\comp_1$.
+
+% say something about transitive reflexive closure
 
 %\subsection{Type system}
 
@@ -138,74 +144,72 @@ Lastly, in \textsc{STLC-S-Seq} we can reduce a sequence of two computations, $\c
 }
 \end{figure}
 
-Next we give the types in Figure \ref{fig:types-stlc}.
-Similar to the terms we split the types in to value and computation types.
-Values are typed by value types and computation are typed by computation types.
-A value type is either the unit type or a function type with a value type as argument type and a computation type as return type.\\
-For the simply-typed lambda calculus a computation type is simply a value type, when we add algebraic effects computation types will become more meaningful by recording the effects a computation may use.
+\textbf{Types}
+Next we give the \emph{types} in Figure \ref{fig:types-stlc}.
+Similar to the terms we split the syntax into value and computation types.
+Values are typed by value types and computations are typed by computation types.
+A value type is either the unit type $\tunit$ or a function type with a value type $\ty$ as argument type and a computation type  $\cty$ as return type.\\
+For the simply-typed lambda calculus a computation type is simply a value type, but when we add algebraic effects computation types will become more meaningful by recording the effects a computation may use.
 
 \begin{figure}
 \caption{Typing rules of the fine-grained simply-typed lambda calculus}
 \centering
 \fbox{
 \begin{minipage}{14 cm}
-$$\inferrule{
+\[\inferrule{
 	\Gamma[x] = \ty
 }{
 	\Gamma \vdash x : \ty
-}
-\hspace{3em}
-\mprset{vskip=0 ex}
-\inferrule{
+}\quad(\footnotesize\textsc{STLC-T-Var})\]
+
+\[\inferrule{
 }{
 	\Gamma \vdash \vunit : \tunit
-}
-\hspace{3em}
-\mprset{vskip=0 ex}
-\inferrule{
-	\Gamma, x : \ty_1 \vdash \comp : \ty_2
+}\quad(\footnotesize\textsc{STLC-T-Unit})\]
+
+\[\inferrule{
+	\Gamma, x : \ty_1 \vdash \comp : \cty_2
 }{
-	\Gamma \vdash \vabs{x}{\comp} : \tarr{\ty_1}{\ty_2}
-}
-\hspace{3em}
-\mprset{vskip=0 ex}
-\inferrule{
+	\Gamma \vdash \vabs{x}{\comp} : \tarr{\ty_1}{\cty_2}
+}\quad(\footnotesize\textsc{STLC-T-Abs})\]
+
+\[\inferrule{
 	\Gamma \vdash \val : \ty
 }{
-	\Gamma \vdash \creturn{\val} : \ty
-}$$
+	\Gamma \vdash \creturn{\val} : \cty
+}\quad(\footnotesize\textsc{STLC-T-Return})\]
 
-$$\inferrule{
-	\Gamma \vdash \val_1 : \tarr{\ty_1}{\ty_2}\\
+\[\inferrule{
+	\Gamma \vdash \val_1 : \tarr{\ty_1}{\cty_2}\\
 	\Gamma \vdash \val_2 : \ty_1
 }{
-	\Gamma \vdash \capp{\val_1}{\val_2} : \ty_2
-}
-\hspace{3em}
-\mprset{vskip=0 ex}
-\inferrule{
-	\Gamma \vdash \comp_1 : \ty_1\\
-	\Gamma, x : \ty_1 \vdash \comp_2 : \ty_2
+	\Gamma \vdash \capp{\val_1}{\val_2} : \cty_2
+}\quad(\footnotesize\textsc{STLC-T-App})\]
+
+\[\inferrule{
+	\Gamma \vdash \comp_1 : \cty_1\\
+	\Gamma, x : \ty_1 \vdash \comp_2 : \cty_2
 }{
-	\Gamma \vdash (\cdo{x}{\comp_1}{\comp_2}) : \ty_2
-}$$
+	\Gamma \vdash (\cdo{x}{\comp_1}{\comp_2}) : \cty_2
+}\quad(\footnotesize\textsc{STLC-T-Seq})\]
 \label{fig:typing-stlc}
 \end{minipage}
 }
 \end{figure}
 
+\textbf{Typing rules}
 Finally we give the typing rules in Figure \ref{fig:typing-stlc}.
-We have a typing judgments for values $\Gamma \vdash \val : \ty$ and a typing judgment for computations $\Gamma \vdash \comp : \cty$.
-In both these judgments the context $\Gamma$ assign (value types) to variables.\\
-The rules for variables, unit, abstractions and applications are the standard typing rules of the simply-typed lambda calculus.
-For $\creturn{\val}$ we simply check the type of $\val$.
-For the sequencing of two computations $\comp_1$ and $\comp_2$ we first check the type of $\comp_1$ and then check $\comp_2$ with the type of $\comp_1$ added to the context.
+We have a typing judgment for values $\Gamma \vdash \val : \ty$ and a typing judgment for computations $\Gamma \vdash \comp : \cty$.
+In both these judgments the context $\Gamma$ assigns value types to variables.\\
+The rules for variables ({\footnotesize\textsc{STLC-T-Var}}), unit ({\footnotesize\textsc{STLC-T-Unit}}), abstractions ({\footnotesize\textsc{STLC-T-Abs}}) and applications ({\footnotesize\textsc{STLC-T-App}}) are the standard typing rules of the simply-typed lambda calculus.
+For $\creturn{\val}$ ({\footnotesize\textsc{STLC-T-Return}}) we simply check the type of $\val$.
+For the sequencing of two computations $(\cdo{x}{\comp_1}{\comp_2})$ ({\footnotesize\textsc{STLC-T-Seq}}) we first check the type of $\comp_1$ and then check $\comp_2$ with the type of $\comp_1$ added to the context for $x$.
 
 % \subsection{Examples}
 
-To show the explicit order of evaluation we will translate the following program from the simply-typed lambda calculus to its fine-grained version:\\
-$\capp{\capp{f}{x}}{y}$\\
-Here we have a choice of whether to first evaluate $x$ of $y$ and whether to evaluate $(\capp{f}{x})$ before evaluating $y$.
+To show the explicit order of evaluation we will translate the following program from the simply-typed lambda calculus into its fine-grained version:\\
+\[\capp{\capp{f}{x}}{y}\]\\
+Here we have a choice of whether to first evaluate $x$ or $y$ and whether to evaluate $(\capp{f}{x})$ before evaluating $y$.
 In the fine-grained system this choice is made explicit by the sequencing of computations.
 As such we can write down three variants for the above program, each having a different evaluation order.
 In the presence of effects all three may have different results.
@@ -216,6 +220,16 @@ $y$ before $x$, $y$ before $(\capp{f}{x})$:\\\indent
 $\cdo{y'}{y}{\cdo{x'}{x}{\cdo{g}{(\capp{f}{x'})}{(\capp{g}{y'})}}} $\\
 $x$ before $y$, $y$ before $(\capp{f}{x})$:\\\indent
 $\cdo{x'}{x}{\cdo{g}{(\capp{f}{x'})}{\cdo{y'}{y}{(\capp{g}{y'})}}} $\\
+
+% \subsection{Theorems}
+\textbf{Type safety}
+\[
+	\mathsf{if}\;
+	\cdot \vdash \comp : \cty \;\mathsf{and}\;
+	\comp \rightsquigarrow_* \comp' \;\mathsf{then}\;
+	\comp' = \creturn{\val} \;\mathsf{and}\;
+	\cdot \vdash \val : \ty
+\]
 
 \newpage
 \section{Algebraic effects}
