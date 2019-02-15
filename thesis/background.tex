@@ -51,9 +51,10 @@ In this chapter we will show the basics of algebraic effects and handlers. We wi
 
 As our base language we will take the fine-grained call-by-value simply-typed lambda calculus (FG-STLC) \cite{fg-stlc}.
 This system is a version of the simply-typed lambda calculus with a syntactic distinction between values and computations.
-Because of this distinction there is exactly one evaluation order.
+Because of this distinction there is exactly one evaluation order: call-by-value.
 In a system with side effects the evaluation order is very important since a different order could have a different result.
 Having the evaluation order be apparent from the syntax is thus a good choice for a system with algebraic effects.
+Another way to look at FG-STLC is to see it as a syntax for the lambda calculus that constrains the program to always be in A-normal form \cite{anormalform}.
 
 %\subsection{Syntax}
 
@@ -122,8 +123,8 @@ These rules are a fine-grained approach to the standard reduction rules of the s
 In {\footnotesize\textsc{STLC-S-App}} we apply a lambda abstraction to a value argument, by substituting the value for the variable $x$ in the body of the abstraction.
 In {\footnotesize\textsc{STLC-S-SeqReturn}} we sequence a computation that just returns a value in another computation by substituting the value for the variable $x$ in the computation.
 Lastly, in {\footnotesize\textsc{STLC-S-Seq}} we can reduce a sequence of two computations, $\comp_1$ and $\comp_2$ by reducing the first, $\comp_1$.
-
-% say something about transitive reflexive closure
+\\
+We define $\rightsquigarrow^*$ as the transitive-reflexive closure of $\rightsquigarrow$. 
 
 %\subsection{Type system}
 
@@ -206,30 +207,111 @@ For $\creturn{\val}$ ({\footnotesize\textsc{STLC-T-Return}}) we simply check the
 For the sequencing of two computations $(\cdo{x}{\comp_1}{\comp_2})$ ({\footnotesize\textsc{STLC-T-Seq}}) we first check the type of $\comp_1$ and then check $\comp_2$ with the type of $\comp_1$ added to the context for $x$.
 
 % \subsection{Examples}
-
+\textbf{Examples}
 To show the explicit order of evaluation we will translate the following program from the simply-typed lambda calculus into its fine-grained version:\\
-\[\capp{\capp{f}{x}}{y}\]\\
-Here we have a choice of whether to first evaluate $x$ or $y$ and whether to evaluate $(\capp{f}{x})$ before evaluating $y$.
-In the fine-grained system this choice is made explicit by the sequencing of computations.
-As such we can write down three variants for the above program, each having a different evaluation order.
+\[\capp{\capp{f}{c_1}}{c_2}\]\\
+Here we have a choice of whether to first evaluate $c_1$ or $c_2$ and whether to evaluate $(\capp{f}{c_2})$ before evaluating $c_2$.
+In the fine-grained system the choice of evaluation order is made explicit by the syntax.
+This means we can write down three variants for the above program, each having a different evaluation order.
 In the presence of effects all three may have different results.
 
-$x$ before $y$, $y$ before $(\capp{f}{x})$: \\\indent
-$\cdo{x'}{x}{\cdo{y'}{y}{\cdo{g}{(\capp{f}{x'})}{(\capp{g}{y'})}}} $\\
-$y$ before $x$, $y$ before $(\capp{f}{x})$:\\\indent
-$\cdo{y'}{y}{\cdo{x'}{x}{\cdo{g}{(\capp{f}{x'})}{(\capp{g}{y'})}}} $\\
-$x$ before $y$, $y$ before $(\capp{f}{x})$:\\\indent
-$\cdo{x'}{x}{\cdo{g}{(\capp{f}{x'})}{\cdo{y'}{y}{(\capp{g}{y'})}}} $\\
+\begin{enumerate}
+\item $c_1$ before $c_2$, $c_2$ before $(\capp{f}{c_1})$ \\\indent
+\[\cdo{x'}{c_1}{\cdo{y'}{c_2}{\cdo{g}{(\capp{f}{x'})}{(\capp{g}{y'})}}}\]\\
+\item $c_2$ before $c_1$, $c_2$ before $(\capp{f}{c_1})$\\\indent
+\[\cdo{y'}{c_2}{\cdo{x'}{c_1}{\cdo{g}{(\capp{f}{x'})}{(\capp{g}{y'})}}}\]\\
+\item $c_1$ before $c_2$, $c_2$ before $(\capp{f}{c_1})$\\\indent
+\[\cdo{x'}{c_1}{\cdo{g}{(\capp{f}{x'})}{\cdo{y'}{c_2}{(\capp{g}{y'})}}}\]\\
+\end{enumerate}
+
+To give a more concrete example, let's say we're working in a programming language based on the call-by-value lambda calculus that has arbitrary side-effects. Given a function $\mathsf{print}$ that takes an integer and prints it to the screen, we can define the following function $\mathsf{printRange}$ that prints a range of integers:
+\begin{minted}[tabsize=2]{haskell}
+-- given print : Int -> ()
+printRange : Int -> Int -> ()
+printRange a b =
+	if a > b then
+		()
+	else
+		(\a b -> ()) (print a) (printRange (a + 1) b)
+\end{minted}
+
+Knowing the evaluation order is very important when evaluating the call \mintinline{haskell}{(printRange 1 10)}.
+\\
+In the expression \mintinline{haskell}{(\a b -> ()) (print a) (printRange (a + 1) b)} the arguments can be either evaluated left-to-right or right-to-left.
+This makes a big difference in the output of the program, in left-to-right order the numbers 1 to 10 will be printed in increasing order while using a right-to-left evaluation strategy will print the numbers 10 to 1 in decreasing order.
+\\
+From the syntax of the language we are not able to deduce with evaluation order will be used, even worse it may be left undefined in the language definition.
+\\
+Translating this to a language that uses a fine-grain style syntax results in:
+\begin{minted}[tabsize=2]{haskell}
+-- given print : Int -> ()
+printRange : Int -> Int -> ()
+printRange a b =
+	if a > b then
+		()
+	else
+		_ <- print a;
+		printRange (a + 1) b
+\end{minted}
+Here from the syntax it is made clear that \mintinline{haskell}{print a} should be evaluated before \mintinline{haskell}{printRange (a + 1) b}, meaning a left-to-right evaluation order.
+\\
+Alternatively we could translate the first program as:
+\begin{minted}[tabsize=2]{haskell}
+-- given print : Int -> ()
+printRange : Int -> Int -> ()
+printRange a b =
+	if a > b then
+		()
+	else
+		_ <- printRange (a + 1) b;
+		print a
+\end{minted}
+Making clear we want a right-to-left evaluation order, printing the numbers in decreasing order.
 
 % \subsection{Theorems}
-\textbf{Type safety}
+\textbf{Theorems}
+We define a computation $\comp$ to be a value if $\comp$ is of the form $\creturn{\val}$ for some value $\val$.
+	\[ \mathsf{value}(\comp) \;\mathsf{if}\; \exists \val. \comp = \creturn{\val} \]
+We can prove the following type soundness theorem for the fine-grained simply typed lambda calculus.
+
+\begin{theorem}[Type soundness]
 \[
 	\mathsf{if}\;
-	\cdot \vdash \comp : \cty \;\mathsf{and}\;
-	\comp \rightsquigarrow_* \comp' \;\mathsf{then}\;
-	\comp' = \creturn{\val} \;\mathsf{and}\;
-	\cdot \vdash \val : \ty
+		\cdot \vdash \comp : \cty
+		\land
+		\comp \rightsquigarrow^* \comp'
+	\;\mathsf{then}\;
+		\mathsf{value}(\comp')
 \]
+\end{theorem}
+
+This states that given a well-typed computation $\comp$ and taking as many steps as possible then the resulting computation $\comp'$ will be of the form
+$\creturn{\val}$ for some value $\val$. In other words the term will not get ``stuck''.
+We can proof this theorem by the usual progress and preservation lemmas:
+
+\begin{lemma}[Progress]
+\[
+	\mathsf{if}\;
+		\cdot \vdash \comp : \cty
+	\;\mathsf{then}\;
+		\mathsf{value}(\comp)
+		\lor
+		(\exists \comp'. \comp \rightsquigarrow \comp')
+\]
+\end{lemma}
+
+\begin{lemma}[Preservation]
+\[
+	\mathsf{if}\;
+		\cdot \vdash \comp : \cty
+		\land
+		\comp \rightsquigarrow \comp'
+	\;\mathsf{then}\;
+		\cdot \vdash \comp' : \cty
+\]
+\end{lemma}
+
+Where the progress lemma states that given a well-typed computation $\comp$ then either $\comp$ is a value or $\comp$ can take a  step. The preservation lemma states that given a well-type computation $\comp$ and if $\comp$ can take a step to $\comp'$ then $\comp'$ is also well-typed. We can prove both these by induction on the typing derivations.
 
 \newpage
 \section{Algebraic effects}
@@ -248,14 +330,14 @@ Explain:
 	\end{itemize}
 \end{itemize}
 
+\subsection{Examples}
+Show flip (non-determinism) and state examples.
+
 \subsection{Syntax}
 
 \subsection{Semantics}
 
 \subsection{Type system}
-
-\subsection{Examples}
-Show flip (non-determinism) and state examples.
 
 \newpage
 \section{Static instances}
