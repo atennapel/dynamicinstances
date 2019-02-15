@@ -330,14 +330,74 @@ Explain:
 	\end{itemize}
 \end{itemize}
 
-\subsection{Examples}
-Show flip (non-determinism) and state examples.
+Algebraic effects and handlers are a way of treating computational effects that is modular and compositional.
+
+With algebraic effects impure behavior is modeled using operations.
+For example a mutable store has get and put operations, exceptions have a throw operation and console input/output has read and print operations.
+Handlers of algebraic effects generalize handlers of exceptions by not only catching called operations but also adding the ability to resume where the operation was called.
+While not all monads can be written in terms of algebraic effects, for example the continuation monad, in practice most useful computation effects can be modeled this way.
+\\
+For example we can model stateful computations that mutate an integer by defining the following algebraic effect signature:
+
+\[ \textbf{State} := \{ \textbf{get} : () \rightarrow \textbf{Int}, \textbf{put} : \textbf{Int} \rightarrow () \} \]
+
+\textbf{State} is an effect that has two operations \textbf{get} and \textbf{put}. \textbf{get} takes unit has its parameter type and returns an integer value, \textbf{put} takes an integer value and returns unit.
+\\
+We can then use the \textbf{State} operations in a program:
+
+\[ \textit{inc} \; () := x \leftarrow \textbf{get} \; () ;\; \textbf{put} \; (x + 1) \]
+
+The program \textbf{inc} uses the \textbf{get} and \textbf{put}, but these operations are abstract.
+Handlers are used to give the abstract effects in a computation semantics.
+
+\textbf{Handlers}
+Algebraic effect handlers can be seen as a generalization of exception handlers where the programmer also has access
+to a continuation that continues from the point of where a operation was called.
+
+For example the following handler gives the \textbf{get} and \textbf{put} the usual function-passing style state semantics:
+
+\[ \textit{state} \; := \textbf{handler} \; \{ \;
+  \textbf{return} \; v \rightarrow \lambda s \rightarrow v,
+  \textbf{get} \; () \; k \rightarrow \lambda s \rightarrow k \; s \; s,
+  \textbf{put} \; s \; k \rightarrow \lambda s' \rightarrow k \; () \; s,
+\} \]
+
+We are able to give different interpretations of a computation by using different handlers.
+We could for example think of a transaction state interpretation where changed to the state are only applied at the end if the computation succeeds.
+
+\textbf{Examples}
+\begin{minted}[tabsize=2]{haskell}
+effect Flip {
+	flip : () -> Bool
+}
+
+program = \() ->
+	b <- flip ();
+	if b then
+		flip ()
+	else
+		false
+\end{minted}
+
+\begin{minted}[tabsize=2]{haskell}
+effect State {
+	get : () -> Int
+	put : Int -> ()
+}
+
+postInc = \() ->
+	n <- get ();
+	put (n + 1);
+	return n
+\end{minted}
 
 \subsection{Syntax}
 
 \subsection{Semantics}
 
 \subsection{Type system}
+
+\subsection{Discussion/limitations}
 
 \newpage
 \section{Static instances}
