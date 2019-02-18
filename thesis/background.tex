@@ -45,7 +45,7 @@
 \newcommand\cnew[1]{\textit{new} \; #1}
 \newcommand\cunpack[4]{(#1, #2) \leftarrow #3 ; #4}
 
-In this chapter we will show the basics of algebraic effects and handlers. We will start with the simply-typed lambda calculus (\cref{section:stlc}) and add algebraic effects and instances to it. We end with dynamic instances and show why a type system for them is difficult to implement.
+In this chapter we will show the basics of algebraic effects and handlers. We will start with the simply-typed lambda calculus (\cref{section:stlc}) and add algebraic effects (\cref{section:algeff}) and instances (\cref{section:staticinst}, \cref{section:dynamicinst}) to it. We end with dynamic instances and show why a type system for them is difficult to implement.
 
 \section{Simply-typed lambda calculus} \label{section:stlc}
 
@@ -83,8 +83,8 @@ The terms are split in to values and computations.
 Values are pieces of data that have no effects, while computations are terms that may have effects.
 
 \textbf{Values} We have $x$, $y$, $z$, $k$ ranging over variables, where we will use $k$ for variables that denote continuations later on.
-We also have the usual abstractions though note that the body is a computation.
-To keep things simple we take unit as our only base value, this because adding more base values will not complicate the theory.
+Lambda abstractions are denoted as $\vabs{x}{\comp}$, note that the body $\comp$ of the abstraction is restricted to be a computation as opposed to the ordinary lambda calculus where the body can be any expression.
+To keep things simple we take unit $\vunit$ as our only base value, this because adding more base values will not complicate the theory.
 Using the unit value we can also delay computations by wrapping them in an abstraction that takes a unit value.
 \\\\
 \textbf{Computations} For any value $\val$ we have $\creturn{\val}$ for the computation that simply returns a value without performing any effects. We have function application $(\capp{\val}{\val})$, where both the function and argument have to be values. Sequencing computations is done with $(\cdo{x}{\comp}{\comp})$. Normally in the lambda calculus the function and the argument in an application could be any term and so a choice would have to be made in what order these have to be evaluated or whether to evaluate the argument at all before substitution. In the fine-grained calculus both the function and argument in $(\capp{\val}{\val})$ are values so there's no choice of evaluation order. The order is made explicit by the sequencing syntax $(\cdo{x}{\comp}{\comp})$.
@@ -123,8 +123,9 @@ These rules are a fine-grained approach to the standard reduction rules of the s
 In {\footnotesize\textsc{STLC-S-App}} we apply a lambda abstraction to a value argument, by substituting the value for the variable $x$ in the body of the abstraction.
 In {\footnotesize\textsc{STLC-S-SeqReturn}} we sequence a computation that just returns a value in another computation by substituting the value for the variable $x$ in the computation.
 Lastly, in {\footnotesize\textsc{STLC-S-Seq}} we can reduce a sequence of two computations, $\comp_1$ and $\comp_2$ by reducing the first, $\comp_1$.
-\\
-We define $\rightsquigarrow^*$ as the transitive-reflexive closure of $\rightsquigarrow$. 
+\\\\
+We define $\rightsquigarrow^*$ as the transitive-reflexive closure of $\rightsquigarrow$.
+Meaning that $\comp$ in $\comp \rightsquigarrow^* \comp$ can reach $\comp'$ in zero or more steps, while $\comp$ in $\comp \rightsquigarrow \comp'$ reaches $\comp'$ in exactly on step.
 
 %\subsection{Type system}
 
@@ -149,7 +150,8 @@ We define $\rightsquigarrow^*$ as the transitive-reflexive closure of $\rightsqu
 Next we give the \emph{types} in Figure \ref{fig:types-stlc}.
 Similar to the terms we split the syntax into value and computation types.
 Values are typed by value types and computations are typed by computation types.
-A value type is either the unit type $\tunit$ or a function type with a value type $\ty$ as argument type and a computation type  $\cty$ as return type.\\
+A value type is either the unit type $\tunit$ or a function type with a value type $\ty$ as argument type and a computation type  $\cty$ as return type.
+\\\\
 For the simply-typed lambda calculus a computation type is simply a value type, but when we add algebraic effects computation types will become more meaningful by recording the effects a computation may use.
 
 \begin{figure}
@@ -201,7 +203,8 @@ For the simply-typed lambda calculus a computation type is simply a value type, 
 \textbf{Typing rules}
 Finally we give the typing rules in Figure \ref{fig:typing-stlc}.
 We have a typing judgment for values $\Gamma \vdash \val : \ty$ and a typing judgment for computations $\Gamma \vdash \comp : \cty$.
-In both these judgments the context $\Gamma$ assigns value types to variables.\\
+In both these judgments the context $\Gamma$ assigns value types to variables.
+\\\\
 The rules for variables ({\footnotesize\textsc{STLC-T-Var}}), unit ({\footnotesize\textsc{STLC-T-Unit}}), abstractions ({\footnotesize\textsc{STLC-T-Abs}}) and applications ({\footnotesize\textsc{STLC-T-App}}) are the standard typing rules of the simply-typed lambda calculus.
 For $\creturn{\val}$ ({\footnotesize\textsc{STLC-T-Return}}) we simply check the type of $\val$.
 For the sequencing of two computations $(\cdo{x}{\comp_1}{\comp_2})$ ({\footnotesize\textsc{STLC-T-Seq}}) we first check the type of $\comp_1$ and then check $\comp_2$ with the type of $\comp_1$ added to the context for $x$.
@@ -216,15 +219,16 @@ This means we can write down three variants for the above program, each having a
 In the presence of effects all three may have different results.
 
 \begin{enumerate}
-\item $c_1$ before $c_2$, $c_2$ before $(\capp{f}{c_1})$ \\\indent
-\[\cdo{x'}{c_1}{\cdo{y'}{c_2}{\cdo{g}{(\capp{f}{x'})}{(\capp{g}{y'})}}}\]\\
-\item $c_2$ before $c_1$, $c_2$ before $(\capp{f}{c_1})$\\\indent
-\[\cdo{y'}{c_2}{\cdo{x'}{c_1}{\cdo{g}{(\capp{f}{x'})}{(\capp{g}{y'})}}}\]\\
-\item $c_1$ before $c_2$, $c_2$ before $(\capp{f}{c_1})$\\\indent
-\[\cdo{x'}{c_1}{\cdo{g}{(\capp{f}{x'})}{\cdo{y'}{c_2}{(\capp{g}{y'})}}}\]\\
+\itemsep0em 
+\item $c_1$ before $c_2$, $c_2$ before $(\capp{f}{c_1})$ 
+\[\cdo{x'}{c_1}{\cdo{y'}{c_2}{\cdo{g}{(\capp{f}{x'})}{(\capp{g}{y'})}}}\]
+\item $c_2$ before $c_1$, $c_2$ before $(\capp{f}{c_1})$
+\[\cdo{y'}{c_2}{\cdo{x'}{c_1}{\cdo{g}{(\capp{f}{x'})}{(\capp{g}{y'})}}}\]
+\item $c_1$ before $c_2$, $(\capp{f}{c_1})$ before $c_2$
+\[\cdo{x'}{c_1}{\cdo{g}{(\capp{f}{x'})}{\cdo{y'}{c_2}{(\capp{g}{y'})}}}\]
 \end{enumerate}
 
-To give a more concrete example, let's say we're working in a programming language based on the call-by-value lambda calculus that has arbitrary side-effects. Given a function $\mathsf{print}$ that takes an integer and prints it to the screen, we can define the following function $\mathsf{printRange}$ that prints a range of integers:
+To give a more concrete example, take a programming language based on the call-by-value lambda calculus that has arbitrary side-effects. Given a function $\mathsf{print}$ that takes an integer and prints it to the screen, we can define the following function $\mathsf{printRange}$ that prints a range of integers:
 \begin{minted}[tabsize=2]{haskell}
 -- given print : Int -> ()
 printRange : Int -> Int -> ()
@@ -234,15 +238,14 @@ printRange a b =
 	else
 		(\a b -> ()) (print a) (printRange (a + 1) b)
 \end{minted}
-
+Here we use a lambda abstraction (\mintinline{haskell}{(\a b -> ())}) in order to simulate sequencing.
 Knowing the evaluation order is very important when evaluating the call \mintinline{haskell}{(printRange 1 10)}.
-\\
-In the expression \mintinline{haskell}{(\a b -> ()) (print a) (printRange (a + 1) b)} the arguments can be either evaluated left-to-right or right-to-left.
+In the expression \mintinline{haskell}{(\a b -> ()) (print a) (printRange (a + 1) b)} the arguments can be either evaluated left-to-right or right-to-left, corresponding to (1) and (2) in the list above respectively.
 This makes a big difference in the output of the program, in left-to-right order the numbers 1 to 10 will be printed in increasing order while using a right-to-left evaluation strategy will print the numbers 10 to 1 in decreasing order.
-\\
-From the syntax of the language we are not able to deduce with evaluation order will be used, even worse it may be left undefined in the language definition.
-\\
-Translating this to a language that uses a fine-grain style syntax results in:
+A third option is to first evaluation \mintinline{haskell}{(print a)} then the call \mintinline{haskell}{(\a b -> ()) (print a)}, resulting in \mintinline{haskell}{(\b -> ()) (printRange (a + 1) b)}, after which this application is reduced. This corresponds to (3) in the list above, but has the same result as (1) in this example.
+From the syntax of the language we are not able to deduce which evaluation order will be used, even worse it may be left undefined in the language definition.
+\\\\
+Translating the evaluation order corresponding to (1) to a language that uses a fine-grain style syntax results in:
 \begin{minted}[tabsize=2]{haskell}
 -- given print : Int -> ()
 printRange : Int -> Int -> ()
@@ -253,9 +256,9 @@ printRange a b =
 		_ <- print a;
 		printRange (a + 1) b
 \end{minted}
-Here from the syntax it is made clear that \mintinline{haskell}{print a} should be evaluated before \mintinline{haskell}{printRange (a + 1) b}, meaning a left-to-right evaluation order.
-\\
-Alternatively we could translate the first program as:
+Here from the syntax it is made clear that \mintinline{haskell}{print a} should be evaluated before \mintinline{haskell}{printRange (a + 1) b}, meaning a left-to-right evaluation order. Because the fine-grained lambda calculus has explicit sequencing syntax we do not have to use lambda abstraction (\mintinline{haskell}{(\a b -> ())}) for this purpose.
+\\\\
+Alternatively a translation that corresponds to evaluation order (2) results in:
 \begin{minted}[tabsize=2]{haskell}
 -- given print : Int -> ()
 printRange : Int -> Int -> ()
@@ -267,27 +270,35 @@ printRange a b =
 		print a
 \end{minted}
 Making clear we want a right-to-left evaluation order, printing the numbers in decreasing order.
+\\\\
+Because we have eliminated the lambda abstraction there is no translation corresponding to (3), but semantically it would be identical to the first (left-to-right) translation.
 
 % \subsection{Theorems}
-\textbf{Theorems}
+\textbf{Type soundness}
+In order to prove type soundness for the previously defined calculus we first have define what it means for a computation to be a value.
 We define a computation $\comp$ to be a value if $\comp$ is of the form $\creturn{\val}$ for some value $\val$.
 	\[ \mathsf{value}(\comp) \;\mathsf{if}\; \exists \val. \comp = \creturn{\val} \]
-We can prove the following type soundness theorem for the fine-grained simply typed lambda calculus.
+Using this definition we can state the following type soundness theorem for the fine-grained simply typed lambda calculus.
 
 \begin{theorem}[Type soundness]
 \[
 	\mathsf{if}\;
 		\cdot \vdash \comp : \cty
-		\land
+		\;\land\;
 		\comp \rightsquigarrow^* \comp'
 	\;\mathsf{then}\;
 		\mathsf{value}(\comp')
+		\lor
+		(\exists \comp''.\; \comp' \rightsquigarrow \comp'')
 \]
 \end{theorem}
 
-This states that given a well-typed computation $\comp$ and taking as many steps as possible then the resulting computation $\comp'$ will be of the form
-$\creturn{\val}$ for some value $\val$. In other words the term will not get ``stuck''.
-We can proof this theorem by the usual progress and preservation lemmas:
+This states that given a well-typed computation $\comp$ and taking some amount of steps then the resulting computation $\comp'$ will be of either a value or another step can be taken.
+In other words the term will not get ``stuck''.
+Note that this is only true if the computation $\comp$ is typed in the empty context.
+If the context is not empty then the computation could get stuck on free variables.
+\\\\
+We can prove this theorem using the following lemmas:
 
 \begin{lemma}[Progress]
 \[
@@ -296,25 +307,25 @@ We can proof this theorem by the usual progress and preservation lemmas:
 	\;\mathsf{then}\;
 		\mathsf{value}(\comp)
 		\lor
-		(\exists \comp'. \comp \rightsquigarrow \comp')
+		(\exists \comp'.\; \comp \rightsquigarrow \comp')
 \]
 \end{lemma}
 
 \begin{lemma}[Preservation]
 \[
 	\mathsf{if}\;
-		\cdot \vdash \comp : \cty
-		\land
+		\Gamma \vdash \comp : \cty
+		\;\land\;
 		\comp \rightsquigarrow \comp'
 	\;\mathsf{then}\;
-		\cdot \vdash \comp' : \cty
+		\Gamma \vdash \comp' : \cty
 \]
 \end{lemma}
 
-Where the progress lemma states that given a well-typed computation $\comp$ then either $\comp$ is a value or $\comp$ can take a  step. The preservation lemma states that given a well-type computation $\comp$ and if $\comp$ can take a step to $\comp'$ then $\comp'$ is also well-typed. We can prove both these by induction on the typing derivations.
+Where the progress lemma states that given a well-typed computation $\comp$ then either $\comp$ is a value or $\comp$ can take a  step. The preservation lemma states that given a well-typed computation $\comp$ and if $\comp$ can take a step to $\comp'$ then $\comp'$ is also well-typed. We can prove both these by induction on the typing derivations. Note again that the context has to be empty for the Progress lemma, again because the computation could get stuck on free variables. For the Preservation lemma the context can be anything however, since the operational semantics will not introduce any new free variables that are not already in the context.
 
 \newpage
-\section{Algebraic effects}
+\section{Algebraic effects} \label{section:algeff}
 
 \subsection{Intro}
 Explain:
@@ -400,9 +411,7 @@ postInc = \() ->
 \subsection{Discussion/limitations}
 
 \newpage
-\section{Static instances}
-
-\textit{Should I even mention static instances?}
+\section{Static instances} \label{section:staticinst}
 
 \subsection{Intro}
 Explain:
@@ -422,7 +431,7 @@ Explain:
 Show state with multiple static instances (references).
 
 \newpage
-\section{Dynamic instances (untyped)}
+\section{Dynamic instances (untyped)} \label{section:dynamicinst}
 
 \subsection{Intro}
 Explain:
