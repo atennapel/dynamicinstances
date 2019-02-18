@@ -1,0 +1,13 @@
+explain
+- enviroments
+- judgements
+judgement for scopes (WF)
+
+Fix 2.1
+Write 2.2
+
+Informal background
+Formal background
+
+better introduction to formal background
+
