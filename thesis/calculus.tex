@@ -46,6 +46,7 @@
 \newcommand\cfresh[2]{\mathsf{fresh} \; #1 ;\; #2}
 \newcommand\cnew[5]{\mathsf{new} \; #1 @ #2 \; \{ #3 \} \; \mathsf{as} \; #4 \;\mathsf{in}\; #5}
 \newcommand\chandle[1]{\mathsf{handle} ( #1 )}
+\newcommand\chandlen[2]{\mathsf{handle} ( #1 \rightarrow #2 )}
 \newcommand\chandlec[2]{\mathsf{handle}^{#1} ( #2 )}
 \newcommand\chandlei[3]{\mathsf{handle}^{#1} \{ #2 \} ( #3 )}
 
@@ -103,7 +104,7 @@ Annotations $r$ are sets of pairs of an effect name with a scope variable: $\{ \
 									& \cdo{x}{\comp}{\comp}							\tag{sequencing} \\
 									& \cop{\val}{\op}{\val}							\tag{operation call} \\
 									& \cnew{\eff}{s}{\handler ; \hfinally{x}{\comp}}{x}{\comp}		\tag{instance creation} \\
-									& \chandle{\val}										\tag{handle scoped computation} \\
+									& \chandlen{s_{var}}{\comp}										\tag{handle scoped computation} \\
 									& \chandlec{s_{loc}}{\comp}								\tag{handle computation (for semantics)} \\
 									& \chandlei{\loc}{\handler}{\comp}	\tag{handle instance (for semantics)} \\
 	\handler \Coloneqq 		&															\tag{handlers} \\
@@ -161,8 +162,22 @@ $$
 \centering
 \fbox{
 \begin{minipage}{14 cm}
+$$
+\inferrule{
+	s_{var} \in \Delta
+}{
+	\Delta;\Sigma \vdash s_{var}
+}
+\hspace{3em}
+\mprset{vskip=0 ex}
+\inferrule{
+	s_{loc} \in \Sigma
+}{
+	\Delta;\Sigma \vdash s_{loc}
+}
+$$
 $$\inferrule{
-	s \in \Delta \lor s \in \Sigma \\
+	\Delta;\Sigma \vdash s \\
 }{
 	\Delta;\Sigma \vdash \tinst{s}{\eff}
 }
@@ -179,15 +194,15 @@ $$\inferrule{
 $$
 $$
 \inferrule{
-	\Delta,s;\Sigma \vdash \cty 
+	\Delta,s_{var};\Sigma \vdash \cty 
 }{
-	\Delta;\Sigma \vdash \tforall{s}{\cty}
+	\Delta;\Sigma \vdash \tforall{s_{var}}{\cty}
 }
 \hspace{3em}
 \mprset{vskip=0 ex}
 \inferrule{
 	\Delta;\Sigma \vdash \ty \\
-	\forall (\eff@s \in r) \Rightarrow s \in \Delta \lor s \in \Sigma \\
+	\forall (\eff@s \in r) \Rightarrow \Delta;\Sigma \vdash s \\
 }{
 	\Delta;\Sigma \vdash \aty{\ty}{r}
 }$$
@@ -264,7 +279,7 @@ $$\inferrule{
 $$
 $$
 \inferrule{
-	s \in \Delta \lor s \in \Sigma \\
+	\Delta;\Sigma \vdash s \\
 	\Delta;\Sigma;\Gamma \vdash \val : \tforall{s'_{var}}{\cty}
 }{
 	\Delta;\Sigma;\Gamma \vdash \cappt{\val}{s} : \cty[s'_{var} := s]
@@ -289,7 +304,7 @@ $$
 $$
 $$
 \inferrule{
-	s \in \Delta \lor s \in \Sigma \\
+	\Delta;\Sigma \vdash s \\
 	\op \in \Op_\eff \iff \op \in \handler \\
 	\Delta;\Sigma;\Gamma,x:\tinst{s}{\eff} \vdash \comp : \aty{\ty_1}{r} \\
 	\Delta;\Sigma;\Gamma \vdash^{\ty_1} \handler : \aty{\ty_2}{r} \\
@@ -301,11 +316,11 @@ $$
 $$
 $$
 \inferrule{
-	\Delta;\Sigma;\Gamma \vdash \val : \tforall{s_{var}}{\aty{\ty}{r}} \\
+	\Delta,s_{var};\Sigma;\Gamma \vdash \comp : \aty{\ty}{r} \\
 	s_{var} \notin \ty \\
 	r' = \{ \eff@s' \;|\; \eff@s' \in r \wedge s' \neq s_{var} \}
 }{
-	\Delta;\Sigma;\Gamma \vdash \chandle{\val} : \aty{\ty}{r'}
+	\Delta;\Sigma;\Gamma \vdash \chandlen{s_{var}}{\comp} : \aty{\ty}{r'}
 }
 $$
 $$
@@ -417,7 +432,7 @@ $$
 \inferrule{
 	s_{loc} \notin \Sigma
 }{
-	\chandle{\vabst{s_{var}}{\comp}} \;|\; \Sigma \rightsquigarrow \chandlec{s_{loc}}{\comp[s_{var} := s_{loc}]} \;|\; \Sigma,s_{loc}
+	\chandlen{s_{var}}{\comp} \;|\; \Sigma \rightsquigarrow \chandlec{s_{loc}}{\comp[s_{var} := s_{loc}]} \;|\; \Sigma,s_{loc}
 }
 $$
 \label{fig:semantics1-calc}
