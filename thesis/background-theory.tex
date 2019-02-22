@@ -1,0 +1,459 @@
+{
+% types
+\newcommand\ty[0]{\tau}
+\newcommand\tunit[0]{()}
+\newcommand\tarr[2]{#1 \rightarrow #2}
+\newcommand\thandler[2]{#1 \Rightarrow #2}
+\newcommand\tforall[3]{\forall(#1:#2) . #3}
+
+% computation type
+\newcommand\cty[0]{\underline{\ty}}
+\newcommand\aty[2]{#1 \; ! \; #2}
+\newcommand\texists[3]{\exists(#1:#2) . #3}
+\newcommand\texistss[2]{\exists \overrightarrow{#1} . #2}
+
+% values
+\newcommand\val[0]{\nu}
+\newcommand\vunit[0]{()}
+\newcommand\vinst[1]{\mathsf{inst}(#1)}
+\newcommand\vabst[3]{\Lambda(#1:#2) . #3}
+\newcommand\vabs[2]{\lambda #1 . #2}
+\newcommand\vappt[2]{#1 \; [ #2 ]}
+\newcommand\vhandler[1]{\textit{handler} \; \{#1\}}
+\newcommand\vhandleri[2]{\textit{handler} ( #1 ) \; \{#2\}}
+\newcommand\vhandlerc[0]{\vhandler{
+	\textit{return} \; x \rightarrow \comp,
+	\op_1(x ; k) \rightarrow \comp,
+	...,
+	\op_n(x ; k) \rightarrow \comp
+}}
+\newcommand\vhandlerci[1]{\vhandleri{#1}{
+	\textit{return} \; x \rightarrow \comp,
+	\op_1(x ; k) \rightarrow \comp,
+	...,
+	\op_n(x ; k) \rightarrow \comp
+}}
+
+% computations
+\newcommand\comp[0]{c}
+\newcommand\creturn[1]{\mathsf{return} \; #1}
+\newcommand\capp[2]{#1 \; #2}
+\newcommand\cdo[3]{#1 \leftarrow #2 ; #3}
+\newcommand\cop[4]{#1(#2 ; #3 . #4)}
+\newcommand\copi[5]{#1 \# #2(#3 ; #4 . #5)}
+\newcommand\chandle[2]{\textit{with} \; #1 \; \textit{handle} \; #2}
+\newcommand\cnew[1]{\textit{new} \; #1}
+\newcommand\cunpack[4]{(#1, #2) \leftarrow #3 ; #4}
+
+In this chapter we will show the basics of algebraic effects and handlers. We will start with the simply-typed lambda calculus (\cref{section:stlc}) and add algebraic effects (\cref{section:algeff}) and instances (\cref{section:staticinst}, \cref{section:dynamicinst}) to it. We end with dynamic instances and show why a type system for them is difficult to implement.
+
+\section{Simply-typed lambda calculus} \label{section:stlc}
+
+As our base language we will take the fine-grained call-by-value simply-typed lambda calculus (FG-STLC) \cite{fg-stlc}.
+This system is a version of the simply-typed lambda calculus with a syntactic distinction between values and computations.
+Because of this distinction there is exactly one evaluation order: call-by-value.
+In a system with side effects the evaluation order is very important since a different order could have a different result.
+Having the evaluation order be apparent from the syntax is thus a good choice for a system with algebraic effects.
+Another way to look at FG-STLC is to see it as a syntax for the lambda calculus that constrains the program to always be in A-normal form \cite{anormalform}.
+
+%\subsection{Syntax}
+
+\begin{figure}
+\caption{Syntax of the fine-grained lambda calculus}
+\centering
+\fbox{
+\begin{minipage}{10 cm}
+\begin{align*}
+	\val \Coloneqq	&													\tag{values} \\
+									& x, y, z, k							\tag{variables} \\
+									& \vabs{x}{\comp}					\tag{abstraction} \\
+									& \vunit									\tag{unit value} \\
+	\comp \Coloneqq&													\tag{computations} \\
+									& \creturn{\val}					\tag{return value as computation} \\
+									& \capp{\val}{\val}				\tag{application} \\
+									& \cdo{x}{\comp}{\comp}		\tag{sequencing} \\
+\end{align*}
+\label{fig:syntax-stlc}
+\end{minipage}
+}
+\end{figure}
+
+The terms are shown in Figure \ref{fig:syntax-stlc}.
+The terms are split in to values and computations.
+Values are pieces of data that have no effects, while computations are terms that may have effects.
+
+\textbf{Values} We have $x$, $y$, $z$, $k$ ranging over variables, where we will use $k$ for variables that denote continuations later on.
+Lambda abstractions are denoted as $\vabs{x}{\comp}$, note that the body $\comp$ of the abstraction is restricted to be a computation as opposed to the ordinary lambda calculus where the body can be any expression.
+To keep things simple we take unit $\vunit$ as our only base value, this because adding more base values will not complicate the theory.
+Using the unit value we can also delay computations by wrapping them in an abstraction that takes a unit value.
+\\\\
+\textbf{Computations} For any value $\val$ we have $\creturn{\val}$ for the computation that simply returns a value without performing any effects. We have function application $(\capp{\val}{\val})$, where both the function and argument have to be values. Sequencing computations is done with $(\cdo{x}{\comp}{\comp})$. Normally in the lambda calculus the function and the argument in an application could be any term and so a choice would have to be made in what order these have to be evaluated or whether to evaluate the argument at all before substitution. In the fine-grained calculus both the function and argument in $(\capp{\val}{\val})$ are values so there's no choice of evaluation order. The order is made explicit by the sequencing syntax $(\cdo{x}{\comp}{\comp})$.
+
+%\subsection{Semantics}
+
+\begin{figure}
+\caption{Semantics of the fine-grained lambda calculus}
+\centering
+\fbox{
+\begin{minipage}{11 cm}
+\[\inferrule{
+}{
+	\capp{(\vabs{x}{\comp})}{\val} \rightsquigarrow \comp[x := \val]
+}\quad(\footnotesize\textsc{STLC-S-App})\]
+
+\[\inferrule{
+}{
+	(\cdo{x}{\creturn{\val}}{\comp}) \rightsquigarrow \comp[x := \val]
+}\quad(\footnotesize\textsc{STLC-S-SeqReturn})\]
+
+\[\inferrule{
+	\comp_1 \rightsquigarrow \comp_1'
+}{
+	(\cdo{x}{\comp_1}{\comp_2}) \rightsquigarrow (\cdo{x}{\comp_1'}{\comp_2})
+}\quad(\footnotesize\textsc{STLC-S-Seq})\]
+\label{fig:semantics-stlc}
+\end{minipage}
+}
+\end{figure}
+
+\textbf{Semantics}
+The small-step operational semantics is shown in Figure \ref{fig:semantics-stlc}.
+The relation $\rightsquigarrow$ is defined on computations, where the $\comp \rightsquigarrow \comp'$ means $\comp$ reduces to $\comp'$ in one step.
+These rules are a fine-grained approach to the standard reduction rules of the simply-typed lambda calculus.
+In {\footnotesize\textsc{STLC-S-App}} we apply a lambda abstraction to a value argument, by substituting the value for the variable $x$ in the body of the abstraction.
+In {\footnotesize\textsc{STLC-S-SeqReturn}} we sequence a computation that just returns a value in another computation by substituting the value for the variable $x$ in the computation.
+Lastly, in {\footnotesize\textsc{STLC-S-Seq}} we can reduce a sequence of two computations, $\comp_1$ and $\comp_2$ by reducing the first, $\comp_1$.
+\\\\
+We define $\rightsquigarrow^*$ as the transitive-reflexive closure of $\rightsquigarrow$.
+Meaning that $\comp$ in $\comp \rightsquigarrow^* \comp$ can reach $\comp'$ in zero or more steps, while $\comp$ in $\comp \rightsquigarrow \comp'$ reaches $\comp'$ in exactly on step.
+
+%\subsection{Type system}
+
+\begin{figure}
+\caption{Types of the fine-grained simply-typed lambda calculus}
+\centering
+\fbox{
+\begin{minipage}{8 cm}
+\begin{align*}
+	\ty \Coloneqq 	& 												\tag{value types} \\
+									& \tunit									\tag{unit type} \\
+									& \tarr{\ty}{\cty}				\tag{type of functions} \\
+	\cty \Coloneqq 	& 												\tag{computation types} \\
+									& \ty											\tag{value type} \\
+\end{align*}
+\label{fig:types-stlc}
+\end{minipage}
+}
+\end{figure}
+
+\textbf{Types}
+Next we give the \emph{types} in Figure \ref{fig:types-stlc}.
+Similar to the terms we split the syntax into value and computation types.
+Values are typed by value types and computations are typed by computation types.
+A value type is either the unit type $\tunit$ or a function type with a value type $\ty$ as argument type and a computation type  $\cty$ as return type.
+\\\\
+For the simply-typed lambda calculus a computation type is simply a value type, but when we add algebraic effects computation types will become more meaningful by recording the effects a computation may use.
+
+\begin{figure}
+\caption{Typing rules of the fine-grained simply-typed lambda calculus}
+\centering
+\fbox{
+\begin{minipage}{14 cm}
+\[\inferrule{
+	\Gamma[x] = \ty
+}{
+	\Gamma \vdash x : \ty
+}\quad(\footnotesize\textsc{STLC-T-Var})\]
+
+\[\inferrule{
+}{
+	\Gamma \vdash \vunit : \tunit
+}\quad(\footnotesize\textsc{STLC-T-Unit})\]
+
+\[\inferrule{
+	\Gamma, x : \ty_1 \vdash \comp : \cty_2
+}{
+	\Gamma \vdash \vabs{x}{\comp} : \tarr{\ty_1}{\cty_2}
+}\quad(\footnotesize\textsc{STLC-T-Abs})\]
+
+\[\inferrule{
+	\Gamma \vdash \val : \ty
+}{
+	\Gamma \vdash \creturn{\val} : \cty
+}\quad(\footnotesize\textsc{STLC-T-Return})\]
+
+\[\inferrule{
+	\Gamma \vdash \val_1 : \tarr{\ty_1}{\cty_2}\\
+	\Gamma \vdash \val_2 : \ty_1
+}{
+	\Gamma \vdash \capp{\val_1}{\val_2} : \cty_2
+}\quad(\footnotesize\textsc{STLC-T-App})\]
+
+\[\inferrule{
+	\Gamma \vdash \comp_1 : \cty_1\\
+	\Gamma, x : \ty_1 \vdash \comp_2 : \cty_2
+}{
+	\Gamma \vdash (\cdo{x}{\comp_1}{\comp_2}) : \cty_2
+}\quad(\footnotesize\textsc{STLC-T-Seq})\]
+\label{fig:typing-stlc}
+\end{minipage}
+}
+\end{figure}
+
+\textbf{Typing rules}
+Finally we give the typing rules in Figure \ref{fig:typing-stlc}.
+We have a typing judgment for values $\Gamma \vdash \val : \ty$ and a typing judgment for computations $\Gamma \vdash \comp : \cty$.
+In both these judgments the context $\Gamma$ assigns value types to variables.
+\\\\
+The rules for variables ({\footnotesize\textsc{STLC-T-Var}}), unit ({\footnotesize\textsc{STLC-T-Unit}}), abstractions ({\footnotesize\textsc{STLC-T-Abs}}) and applications ({\footnotesize\textsc{STLC-T-App}}) are the standard typing rules of the simply-typed lambda calculus.
+For $\creturn{\val}$ ({\footnotesize\textsc{STLC-T-Return}}) we simply check the type of $\val$.
+For the sequencing of two computations $(\cdo{x}{\comp_1}{\comp_2})$ ({\footnotesize\textsc{STLC-T-Seq}}) we first check the type of $\comp_1$ and then check $\comp_2$ with the type of $\comp_1$ added to the context for $x$.
+
+% \subsection{Examples}
+\textbf{Examples}
+To show the explicit order of evaluation we will translate the following program from the simply-typed lambda calculus into its fine-grained version:\\
+\[\capp{\capp{f}{c_1}}{c_2}\]\\
+Here we have a choice of whether to first evaluate $c_1$ or $c_2$ and whether to evaluate $(\capp{f}{c_2})$ before evaluating $c_2$.
+In the fine-grained system the choice of evaluation order is made explicit by the syntax.
+This means we can write down three variants for the above program, each having a different evaluation order.
+In the presence of effects all three may have different results.
+
+\begin{enumerate}
+\itemsep0em 
+\item $c_1$ before $c_2$, $c_2$ before $(\capp{f}{c_1})$ 
+\[\cdo{x'}{c_1}{\cdo{y'}{c_2}{\cdo{g}{(\capp{f}{x'})}{(\capp{g}{y'})}}}\]
+\item $c_2$ before $c_1$, $c_2$ before $(\capp{f}{c_1})$
+\[\cdo{y'}{c_2}{\cdo{x'}{c_1}{\cdo{g}{(\capp{f}{x'})}{(\capp{g}{y'})}}}\]
+\item $c_1$ before $c_2$, $(\capp{f}{c_1})$ before $c_2$
+\[\cdo{x'}{c_1}{\cdo{g}{(\capp{f}{x'})}{\cdo{y'}{c_2}{(\capp{g}{y'})}}}\]
+\end{enumerate}
+
+To give a more concrete example, take a programming language based on the call-by-value lambda calculus that has arbitrary side-effects. Given a function $\mathsf{print}$ that takes an integer and prints it to the screen, we can define the following function $\mathsf{printRange}$ that prints a range of integers:
+\begin{minted}[tabsize=2]{haskell}
+-- given print : Int -> ()
+printRange : Int -> Int -> ()
+printRange a b =
+	if a > b then
+		()
+	else
+		(\a b -> ()) (print a) (printRange (a + 1) b)
+\end{minted}
+Here we use a lambda abstraction (\mintinline{haskell}{(\a b -> ())}) in order to simulate sequencing.
+Knowing the evaluation order is very important when evaluating the call \mintinline{haskell}{(printRange 1 10)}.
+In the expression \mintinline{haskell}{(\a b -> ()) (print a) (printRange (a + 1) b)} the arguments can be either evaluated left-to-right or right-to-left, corresponding to (1) and (2) in the list above respectively.
+This makes a big difference in the output of the program, in left-to-right order the numbers 1 to 10 will be printed in increasing order while using a right-to-left evaluation strategy will print the numbers 10 to 1 in decreasing order.
+A third option is to first evaluation \mintinline{haskell}{(print a)} then the call \mintinline{haskell}{(\a b -> ()) (print a)}, resulting in \mintinline{haskell}{(\b -> ()) (printRange (a + 1) b)}, after which this application is reduced. This corresponds to (3) in the list above, but has the same result as (1) in this example.
+From the syntax of the language we are not able to deduce which evaluation order will be used, even worse it may be left undefined in the language definition.
+\\\\
+Translating the evaluation order corresponding to (1) to a language that uses a fine-grain style syntax results in:
+\begin{minted}[tabsize=2]{haskell}
+-- given print : Int -> ()
+printRange : Int -> Int -> ()
+printRange a b =
+	if a > b then
+		()
+	else
+		_ <- print a;
+		printRange (a + 1) b
+\end{minted}
+Here from the syntax it is made clear that \mintinline{haskell}{print a} should be evaluated before \mintinline{haskell}{printRange (a + 1) b}, meaning a left-to-right evaluation order. Because the fine-grained lambda calculus has explicit sequencing syntax we do not have to use lambda abstraction (\mintinline{haskell}{(\a b -> ())}) for this purpose.
+\\\\
+Alternatively a translation that corresponds to evaluation order (2) results in:
+\begin{minted}[tabsize=2]{haskell}
+-- given print : Int -> ()
+printRange : Int -> Int -> ()
+printRange a b =
+	if a > b then
+		()
+	else
+		_ <- printRange (a + 1) b;
+		print a
+\end{minted}
+Making clear we want a right-to-left evaluation order, printing the numbers in decreasing order.
+\\\\
+Because we have eliminated the lambda abstraction there is no translation corresponding to (3), but semantically it would be identical to the first (left-to-right) translation.
+
+% \subsection{Theorems}
+\textbf{Type soundness}
+In order to prove type soundness for the previously defined calculus we first have define what it means for a computation to be a value.
+We define a computation $\comp$ to be a value if $\comp$ is of the form $\creturn{\val}$ for some value $\val$.
+	\[ \mathsf{value}(\comp) \;\mathsf{if}\; \exists \val. \comp = \creturn{\val} \]
+Using this definition we can state the following type soundness theorem for the fine-grained simply typed lambda calculus.
+
+\begin{theorem}[Type soundness]
+\[
+	\mathsf{if}\;
+		\cdot \vdash \comp : \cty
+		\;\land\;
+		\comp \rightsquigarrow^* \comp'
+	\;\mathsf{then}\;
+		\mathsf{value}(\comp')
+		\lor
+		(\exists \comp''.\; \comp' \rightsquigarrow \comp'')
+\]
+\end{theorem}
+
+This states that given a well-typed computation $\comp$ and taking some amount of steps then the resulting computation $\comp'$ will be of either a value or another step can be taken.
+In other words the term will not get ``stuck''.
+Note that this is only true if the computation $\comp$ is typed in the empty context.
+If the context is not empty then the computation could get stuck on free variables.
+\\\\
+We can prove this theorem using the following lemmas:
+
+\begin{lemma}[Progress]
+\[
+	\mathsf{if}\;
+		\cdot \vdash \comp : \cty
+	\;\mathsf{then}\;
+		\mathsf{value}(\comp)
+		\lor
+		(\exists \comp'.\; \comp \rightsquigarrow \comp')
+\]
+\end{lemma}
+
+\begin{lemma}[Preservation]
+\[
+	\mathsf{if}\;
+		\Gamma \vdash \comp : \cty
+		\;\land\;
+		\comp \rightsquigarrow \comp'
+	\;\mathsf{then}\;
+		\Gamma \vdash \comp' : \cty
+\]
+\end{lemma}
+
+Where the progress lemma states that given a well-typed computation $\comp$ then either $\comp$ is a value or $\comp$ can take a  step. The preservation lemma states that given a well-typed computation $\comp$ and if $\comp$ can take a step to $\comp'$ then $\comp'$ is also well-typed. We can prove both these by induction on the typing derivations. Note again that the context has to be empty for the Progress lemma, again because the computation could get stuck on free variables. For the Preservation lemma the context can be anything however, since the operational semantics will not introduce any new free variables that are not already in the context.
+
+\newpage
+\section{Algebraic effects} \label{section:algeff}
+
+\subsection{Intro}
+Explain:
+\begin{itemize}
+	\item What are algebraic effects and handlers
+	\item Why algebraic effects
+	\begin{itemize}
+		\item easy to use
+		\item can express often used monads
+		\item composable
+		\item always commuting
+		\item modular (split between computations and handlers)
+	\end{itemize}
+\end{itemize}
+
+Algebraic effects and handlers are a way of treating computational effects that is modular and compositional.
+
+With algebraic effects impure behavior is modeled using operations.
+For example a mutable store has get and put operations, exceptions have a throw operation and console input/output has read and print operations.
+Handlers of algebraic effects generalize handlers of exceptions by not only catching called operations but also adding the ability to resume where the operation was called.
+While not all monads can be written in terms of algebraic effects, for example the continuation monad, in practice most useful computation effects can be modeled this way.
+\\
+For example we can model stateful computations that mutate an integer by defining the following algebraic effect signature:
+
+\[ \textbf{State} := \{ \textbf{get} : () \rightarrow \textbf{Int}, \textbf{put} : \textbf{Int} \rightarrow () \} \]
+
+\textbf{State} is an effect that has two operations \textbf{get} and \textbf{put}. \textbf{get} takes unit has its parameter type and returns an integer value, \textbf{put} takes an integer value and returns unit.
+\\
+We can then use the \textbf{State} operations in a program:
+
+\[ \textit{inc} \; () := x \leftarrow \textbf{get} \; () ;\; \textbf{put} \; (x + 1) \]
+
+The program \textbf{inc} uses the \textbf{get} and \textbf{put}, but these operations are abstract.
+Handlers are used to give the abstract effects in a computation semantics.
+
+\textbf{Handlers}
+Algebraic effect handlers can be seen as a generalization of exception handlers where the programmer also has access
+to a continuation that continues from the point of where a operation was called.
+
+For example the following handler gives the \textbf{get} and \textbf{put} the usual function-passing style state semantics:
+
+\[ \textit{state} \; := \textbf{handler} \; \{ \;
+  \textbf{return} \; v \rightarrow \lambda s \rightarrow v,
+  \textbf{get} \; () \; k \rightarrow \lambda s \rightarrow k \; s \; s,
+  \textbf{put} \; s \; k \rightarrow \lambda s' \rightarrow k \; () \; s,
+\} \]
+
+We are able to give different interpretations of a computation by using different handlers.
+We could for example think of a transaction state interpretation where changed to the state are only applied at the end if the computation succeeds.
+
+\textbf{Examples}
+\begin{minted}[tabsize=2]{haskell}
+effect Flip {
+	flip : () -> Bool
+}
+
+program = \() ->
+	b <- flip ();
+	if b then
+		flip ()
+	else
+		false
+\end{minted}
+
+\begin{minted}[tabsize=2]{haskell}
+effect State {
+	get : () -> Int
+	put : Int -> ()
+}
+
+postInc = \() ->
+	n <- get ();
+	put (n + 1);
+	return n
+\end{minted}
+
+\subsection{Syntax}
+
+\subsection{Semantics}
+
+\subsection{Type system}
+
+\subsection{Discussion/limitations}
+
+\newpage
+\section{Static instances} \label{section:staticinst}
+
+\subsection{Intro}
+Explain:
+\begin{itemize}
+	\item Show problems with wanting to use multiple state instances
+	\item What are static instances
+	\item Show that static instances partially solve the problem
+\end{itemize}
+
+\subsection{Syntax}
+
+\subsection{Semantics}
+
+\subsection{Type system}
+
+\subsection{Examples}
+Show state with multiple static instances (references).
+
+\newpage
+\section{Dynamic instances (untyped)} \label{section:dynamicinst}
+
+\subsection{Intro}
+Explain:
+\begin{itemize}
+	\item Show that static instances require pre-defining all instances on the top-level.
+	\item Static instances not sufficient to implement references.
+	\item Show that dynamic instances are required to truly implement references.
+	\item Show more uses of dynamic instances (file system stuff, local exceptions)
+	\item No type system yet.
+\end{itemize}
+
+\subsection{Syntax}
+
+\subsection{Semantics}
+
+\subsection{Examples}
+Show untyped examples.
+\begin{itemize}
+	\item Local exceptions
+	\item ML-style references
+\end{itemize}
+
+\subsection{Type system (discussion, problems)}
+Show difficulty of implementing a type system for this.
+}

@@ -116,6 +116,20 @@ Annotations $r$ are sets of pairs of an effect name with a scope variable: $\{ \
 }
 \end{figure}
 
+\textbf{Judgments}
+There are three kinds of judgments: subtyping, well-formedness and typing.
+The subtyping judgments:
+\[\subty{\ty}{\ty}\]
+\[\subty{\cty}{\cty}\]
+well-formedness judgments:
+\[\Delta;\Sigma \vdash s\]
+\[\Delta;\Sigma \vdash \ty\]
+\[\Delta;\Sigma \vdash \cty\]
+typing judgments:
+\[\Delta;\Sigma;\Gamma \vdash \val : \ty\]
+\[\Delta;\Sigma;\Gamma \vdash \comp : \cty\]
+\[\Delta;\Sigma;\Gamma \vdash^{\ty} h : \cty\]
+
 \section{Subtyping}
 \begin{figure}
 \caption{Subtyping}
