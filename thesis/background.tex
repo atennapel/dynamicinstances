@@ -2,7 +2,7 @@
 \newcommand\ident[1]{\mintinline{haskell}{#1}}
 
 Algebraic effects and handlers is a structured way to introduce side-effects to a programming language.
-The basic idea is that side-effects can be described by sets of operations.
+The basic idea is that side-effects can be described by sets of operations, called the interface of the effect.
 Similar to exceptions, where exceptions can be thrown and caught.
 Operations can be called and ``caught'' by handlers.
 Different from exceptions however the handler also has access to a continuation which can be used to continue the computation at the point where the operation was called.
@@ -11,7 +11,7 @@ In this chapter we will introduce Algebraic effects and handlers through example
 Starting with simple algebraic effects and handlers (\cref{section:background-algeff}). After we will continue with static instances (\cref{section:background-staticinst}) and ending with dynamic instances (\cref{section:background-dynamicinst}). The examples are written in an hypothetical functional programming language with algebraic effects and handlers with syntax similar to the Haskell programming language.
 
 \section{Algebraic effects and handlers} \label{section:background-algeff}
-We will start with the familiar exceptions. We define an \ident{Exc} effect with a single operation \ident{throw}.
+We will start with the familiar exceptions. We define an \ident{Exc} effect interface with a single operation \ident{throw}.
 
 \begin{minted}[tabsize=2]{haskell}
 effect Exc {
@@ -73,7 +73,7 @@ result = handle {
 Here we return early with \ident{Left err} if an error is thrown, otherwise we wrap the resulting value using the \ident{Right} constructor.
 \\\\
 Another effect we might be interested in is non-determinism.
-To model this we define the \ident{Flip} effect which has a single operation \ident{flip}, which returns a boolean when called with the unit value.
+To model this we define the \ident{Flip} effect interface which has a single operation \ident{flip}, which returns a boolean when called with the unit value.
 
 \begin{minted}[tabsize=2]{haskell}
 effect Flip {
@@ -171,7 +171,7 @@ backtrack () = handle {
 } (evensums123 ()) -- returns [2, 4, 4, 6]
 \end{minted}
 
-We can also handle the effects independently of each other. For example we could implement a partial version of \ident{backtrack} that only handles the \ident{Flip} effect.
+We can also handle the effects independently of each other. For example we could implement a partial version of \ident{backtrack} that only handles the \ident{Flip} effect. Any operation that is not in the handler is just passed through.
 
 \begin{minted}[tabsize=2]{haskell}
 partlybacktrack : (List Int)!{Exc}
@@ -196,8 +196,9 @@ fullbacktrack () = handle {
 
 Algebraic effects always commute, meaning the effects can be handled in any order.
 In the backtracking example the order of the handlers does not actually matter, but in general different orders could have different results.
-To show this first we introduce the \ident{State} effect, which allows us to implement local mutable state.
-We restrict ourselves to a state that consists of a single integer value, but in a language with polymorphism a more general state effect could be written.
+\\\\
+Lastly we introduce the \ident{State} effect, which allows us to implement local mutable state.
+We restrict ourselves to a state that consists of a single integer value, but in a language with parametric polymorphism a more general state effect could be written.
 
 \begin{minted}[tabsize=2]{haskell}
 effect State {
@@ -220,20 +221,53 @@ postInc () =
 	return x
 \end{minted}
 
-To implement the semantics of the \ident{State} effect we use parameter-passing similar to how the State monad is implement in Haskell.
+To implement the semantics of the \ident{State} effect we use parameter-passing similar to how the State monad is implemented in Haskell. We will abstract the implementation of the state handler in a function \ident{runState}.
 
 \begin{minted}[tabsize=2]{haskell}
-runState : (() -> Int!{State}) -> (Int -> Int)
-runState initial comp = handle {
-	get () k -> \s -> (f <- k s; return f s)
-	put v k -> \s -> (f <- k (); return f v)
-	return v -> \s -> return v
+runState : (() -> Int!{State}) -> (Int -> (Int, Int))
+runState comp = handle {
+	get () k -> return (\s -> (f <- k s; return f s))
+	put v k -> return (\s -> (f <- k (); return f v))
+	return v -> return (\s -> return (s, v))
 } (comp ())
 \end{minted}
 
-% explain state handler
+\ident{runState} takes as it's only argument a computation that returns an integer and may use the \ident{State} effect.
+To delay the computation we take it as a function from unit.
+\ident{runState} returns a function that takes the initial value of the state and returns a tuple of the final state and the return value of the computation.
+Let us take a look at the \ident{return} case first, here we return a function that takes a state value and returns a tuple of this state and the return value.
+For the \ident{get} case we return a function that takes a state value and runs the continuation \ident{k} with this value, giving access to the state at the point where the \ident{get} operation was called. From this continuation we get back another function, which we call with the current state, continuing the computation without changing the state.
+The \ident{put} case is similar to the \ident{get} but we call the continuation with the unit value and we continue the computation by calling \ident{f} with the value giving with the \ident{put} operation call.
+\\\\
+Using state now is as simple as calling \ident{runState}.
 
-% handle order matters
+\begin{minted}[tabsize=2]{haskell}
+stateResult : () -> (Int, Int)
+stateResult () =
+	f <- runState postInc; -- returns a function taking the initial state
+	f 42 -- post-increments 42 returning (43, 42)
+\end{minted}
+
+Using the state effect we can implement imperative algorithms such as summing a range of numbers.
+We first implement a recursive function \ident{sumRangeRec} which uses \ident{State} to keep a running sum.
+After we define \ident{sumRange} which calls \ident{sumRangeRec} and runs the \ident{State} effect with $0$ as the initial value.
+
+\begin{minted}[tabsize=2]{haskell}
+sumRangeRec : Int -> Int -> Int!{State}
+sumRangeRec a b =
+	if a > b then
+		(_, result) <- get ();
+		return result
+	else
+		x <- get ();
+		put (x + a);
+		sumRangeRec (a + 1) b
+		
+sumRange : Int -> Int -> Int
+sumRange a b =
+	f <- runState (\() -> sumRangeRec a b);
+	f 0 -- initial sum value is 0
+\end{minted}
 
 \section{Static instances} \label{section:background-staticinst}
 
