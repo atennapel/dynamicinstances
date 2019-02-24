@@ -116,6 +116,37 @@ Annotations $r$ are sets of pairs of an effect name with a scope variable: $\{ \
 }
 \end{figure}
 
+\begin{figure}
+\caption{Environments}
+\centering
+\fbox{
+\begin{minipage}{14 cm}
+\begin{align*}
+	\Gamma 	\Coloneqq		&																\tag{typing environment} \\
+									& \cdot															\tag{empty} \\
+									& \Gamma, x : \ty										\tag{extended with variable} \\
+	\Delta \Coloneqq 	& 																\tag{scope variable environment} \\
+									& \cdot															\tag{empty} \\
+									& \Delta, s_{var}										\tag{extended with scope variable} \\
+	\Sigma \Coloneqq 	& 																\tag{dynamic environment} \\
+									& \cdot															\tag{empty} \\
+									& \Sigma, s_{loc}										\tag{extended with scope location} \\
+									& \Sigma, l := (s_{loc}, \eff)			\tag{extended with instance location} \\
+\end{align*}
+\label{fig:contexts}
+\end{minipage}
+}
+\end{figure}
+
+\textbf{Environments}
+Before the different judgments, let us first look at the three environments used.
+The syntax for the environment are shown in figure \ref{fig:context}.
+\begin{itemize}
+\item \Gamma typing environment
+\item \Delta scope variable environment
+\item \Sigma dynamic environment
+\end{itemize}
+
 \textbf{Judgments}
 There are three kinds of judgments: subtyping, well-formedness and typing.
 The subtyping judgments:
