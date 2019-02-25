@@ -139,27 +139,43 @@ Annotations $r$ are sets of pairs of an effect name with a scope variable: $\{ \
 \end{figure}
 
 \textbf{Environments}
-Before the different judgments, let us first look at the three environments used.
-The syntax for the environment are shown in figure \ref{fig:context}.
+Before looking at the different judgments, we will introduce the three environments used.
+The syntax for the environment are shown in figure \ref{fig:contexts}.
 \begin{itemize}
-\item \Gamma typing environment
-\item \Delta scope variable environment
-\item \Sigma dynamic environment
+\item $\Gamma$ is the typing enviroment which assigns variables $x$ to value types $\ty$.
+\item $\Delta$ is the scope variable environment which keeps track of the scope variables $s_{var}$ that are in use.
+\item $\Sigma$ is the dynamic environment which keeps track of scope location $s_{loc}$ and instance locations $l$. Instance locations are assigned a tuple of a scope location and an effect $(s_{loc}, \eff)$. $\Sigma$ is used in both the typing rules and the operational semantics.
 \end{itemize}
 
 \textbf{Judgments}
 There are three kinds of judgments: subtyping, well-formedness and typing.
-The subtyping judgments:
-\[\subty{\ty}{\ty}\]
-\[\subty{\cty}{\cty}\]
-well-formedness judgments:
-\[\Delta;\Sigma \vdash s\]
-\[\Delta;\Sigma \vdash \ty\]
-\[\Delta;\Sigma \vdash \cty\]
-typing judgments:
-\[\Delta;\Sigma;\Gamma \vdash \val : \ty\]
-\[\Delta;\Sigma;\Gamma \vdash \comp : \cty\]
-\[\Delta;\Sigma;\Gamma \vdash^{\ty} h : \cty\]
+\\\\
+The subtyping judgments are used to weaken the effect annotation of a computation type.
+Weakening the effect annotation is sometimes necessary in order to type a program.
+For example when typing the sequencing of two computations $\cdo{x}{\comp_1}{\comp_2}$, if the two computations do not agree on the effects then subtyping can be used to weaken both the computations such that the effect annotations agree.
+There is a subtyping judgment for both the value types $\ty$ and the computation types $\cty$ these mutually depend on one another:
+\begin{itemize}
+\setlength\itemsep{0.5em}
+\item $\subty{\ty}{\ty'}$ holds when the value type $\ty$ is a subtype of $\ty'$.
+\item $\subty{\cty}{\cty'}$ holds when the computation type $\cty$ is a subtype of $\cty'$.
+\end{itemize}
+
+The well-formedness judgments check that scopes used in the types are valid under the scope variable and dynamic environments.
+There are three judgments of this kind:
+\begin{itemize}
+\setlength\itemsep{0.5em}
+\item $\Delta;\Sigma \vdash s$ checks that the scope $s$ is either in $\Delta$ if it is a scope variable or else in $\Sigma$ if it is a scope location.
+\item $\Delta;\Sigma \vdash \ty$ checks that all the scopes in the value type $\ty$ are valid under the environments $\Delta$ and $\Sigma$.
+\item $\Delta;\Sigma \vdash \cty$ checks that all the scopes in the computation type $\cty$ are valid under the environments $\Delta$ and $\Sigma$.
+\end{itemize}
+
+Lastly there are three typing judgments:
+\begin{itemize}
+\setlength\itemsep{0.5em}
+\item $\Delta;\Sigma;\Gamma \vdash \val : \ty$ checks that the value $\val$ has the value type $\ty$ under the $\Delta$, $\Sigma$ and $\Gamma$ environments.
+\item $\Delta;\Sigma;\Gamma \vdash \comp : \cty$ checks that the computation $\comp$ has the computation type $\cty$ under the $\Delta$, $\Sigma$ and $\Gamma$ environments.
+\item $\Delta;\Sigma;\Gamma \vdash^{\ty} h : \cty$ checks that the handler $h$ transform a return value of type $\ty$ to the computation type $\cty$.
+\end{itemize}
 
 \section{Subtyping}
 \begin{figure}
