@@ -1,12 +1,39 @@
-explain
-- enviroments
-- judgements
-judgement for scopes (WF)
-
-Write 2.2
-
 Informal background
 Formal background
 
 better introduction to formal background
+
+breder
+list of effects
+compare with imperative language
+- cons
+compare with pure functional programming
+- cons
+
+note cons of effects
+- programmer understanding
+- testing
+- compiler optimization
+
+control flow explanation of Void
+
+explain deep handlers
+
+seperate handlers
+
+name handlers to not repeat yourself
+
+more on commuting effect, explain commute, more examples there
+
+uitleg hoe intro bijdraagt aan verhaal
+
+more on static and dynamic instances in intro background
+
+write chapter 1 introduction stuff
+
+add examples our system before theory background
+
+half mei document gevuld, draft
+
+
 
