@@ -1,5 +1,76 @@
 In this thesis we will devise a type and effect systems that can type some programs that use dynamic instances for algebraic effects and handlers.
 
 \section{Problem statement}
+% oxford comma before and (,and)
+
+% what are effects and what problems occur
+% first state problem in wider sense and state examples
+% define before use, examples before use
+% first: why algebraic effects
+
+% current state of the art
+% why is not enough
+% what we have done
+
+
+% people that know SOME functional programming
+% no theoretical background
+
+% why keep track of effects
+% mention guarantees given by type system (safety guarantees)
+
+% standard algebraic effects?
+% effect handlers
+
+% dynamically allocated cells
+% explain ``state threads''
+In the real world programs are effectful. They have to interact with the outside world, manage state, throw exceptions, and more.
+Purely functional programming is often said to be easier to reason about than imperative programming.
+This is partly because in purely functional programming effects are usually explicit.
+Many functional languages use monads to encapsulate effects.
+Monads make explicit what effects functions use and aid in reasoning.
+Unfortunately monads are hard to compose, requiring monad transformer stacks that are hard to understand and manage.
+\\
+Algebraic effects and handlers is an alternative approach to effectful programming.
+Using algebraic effects effects one can easily implement effects such as non-determinism, mutable state, exceptions, backtracking, and cooperative multi-threading.
+These effects can be composed and ordered in any way without any extra effort required from the user.
+\\
+Not all effectful programs can be easily expressed using algebraic effects.
+Handlers will handle all operations of a certain effects making effects such as state threads using multiple mutable references impossible to define.
+These so-called dynamic effects can be implemented by adding dynamic instances to the system.
+In such a system we can dynamically create instances of effects, distinct from other instances.
+Handlers then only handle a specific instance, giving fine-grained control over effects.
+\\
+There have been multiple type-and-effect systems proposed for algebraic effects and handler but none of them account for dynamic instances. Programming with them can still result in runtime crashes because of unhandled operations.
+\\
+We define a type-and-effect system for algebraic effects and handlers in the presence of dynamic instances.
+The system is sound with respect to progress and preservation and will ensure that a typed program with an empty effect set will have no unhandled operations.
+We show that functional state threads can be expressed in this system.
+We also formalize the system in Coq and prove type soundness.
+
 \section{Proposed solution}
+\begin{itemize}
+
+% type-safe preferred, type-sound
+\item \textbf{We define a type-safe type-and-effect system for algebraic effects and handlers in the presence of dynamic instances.}
+% The system is sound with respect to progress and preservation and will ensure that a typed program with an empty effect set will have no unhandled operations.
+
+% instead, core system is a principled extension, so easy to proof results and compose with other features
+% and easy for users to understand. 
+Furthermore the system is a simple extension of a system with algebraic effects without instances.
+
+\item \textbf{We show how to implement state threads in this system.}
+Using our sytem we implement state threads similar to a monomorphic version Haskell's ST-monad.
+We show that references cannot escape their scope and that we cannot use a variable from one state thread in another state thread.
+
+\item \textbf{We formally prove type-soundness of the system.}
+We prove that typed programs with empty effects sets will not have unhandled operations and so do not get stuck.
+We explain what techniques we used to implement the proofs.
+
+%\item \textbf{We formalize the system in Coq.}
+% explain why mechanization.
+% mechanized, lists parts (typing rules, semantics, proofs)
+
+\end{itemize}
+
 \section{Thesis structure}

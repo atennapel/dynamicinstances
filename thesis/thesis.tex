@@ -24,15 +24,23 @@
 \Crefname{section}{§}{§§}
 \crefformat{section}{§#2#1#3}
 
+\setminted{
+	breaklines=false,
+	breakanywhere=false,
+	breakbytoken=false,
+}
+
 \newtheorem{lemma}{Lemma}
 \newtheorem{sublemma}{Lemma}[lemma]
 
 \newtheorem{theorem}{Theorem}
 
+\newcommand\ident[1]{\mintinline{haskell}{#1}}
+
 \lstset{
 	frame = single,
 	basicstyle=\ttfamily\footnotesize,
-	breaklines=true
+	breaklines=false
 }
 
 \title{A type system for algebraic effects and handlers with dynamic instances}
@@ -50,6 +58,9 @@
 
 \chapter{Background}
 \input{background.tex}
+
+\chapter{Introduction to our system}
+\input{examples.tex}
 
 \chapter{Background (Theory)}
 \input{background-theory.tex}
@@ -80,6 +91,8 @@ Bauer, Andrej, and Matija Pretnar. "An effect system for algebraic effects and h
 Hillerstr\"{o}m, Daniel, and Sam Lindley. "Liberating effects with rows and handlers." Proceedings of the 1st International Workshop on Type-Driven Development. ACM, 2016.
 \bibitem{koka}
 Leijen, Daan. "Type directed compilation of row-typed algebraic effects." POPL. 2017.
+\bibitem{koka2}
+Leijen, Daan. Algebraic Effects for Functional Programming. Technical Report. 15 pages. https://www. microsoft. com/en-us/research/publication/algebraic-effects-for-functional-programming, 2016.
 \bibitem{frank}
 Lindley, Sam, Conor McBride, and Craig McLaughlin. "Do Be Do. In: POPL'2017. ACM, New York, pp. 500-514. ISBN 9781450346603, http://dx. doi. org/10.1145/3009837.3009897."
 \bibitem{idris}
@@ -88,6 +101,8 @@ Brady, Edwin. "Programming and Reasoning with Side-Effects in IDRIS." (2014).
 Levy, PaulBlain, John Power, and Hayo Thielecke. "Modelling environments in call-by-value programming languages." Information and computation 185.2 (2003): 182-210.
 \bibitem{anormalform}
 Flanagan, Cormac, et al. "The essence of compiling with continuations." ACM Sigplan Notices. Vol. 28. No. 6. ACM, 1993.
+\bibitem{handlewithcare}
+Biernacki, Dariusz, et al. "Handle with care: relational interpretation of algebraic effects and handlers." Proceedings of the ACM on Programming Languages 2.POPL (2017): 8.
 \end{thebibliography}
 
 \end{document}

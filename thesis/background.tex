@@ -1,14 +1,16 @@
-{
-\newcommand\ident[1]{\mintinline{haskell}{#1}}
-
-Algebraic effects and handlers is a structured way to introduce side-effects to a programming language.
+Side-effects are an essential part of a programming language. Without side-effects the program would have no way to print a result to the screen, ask for user input or change global state. We consider a function pure if it does not perform any side-effects and unpure if it does. A pure function always gives the same result for the same inputs. A pure function can be much easier to reason about than an unpure one because you know that it won't do anything else but compute, it won't have any hidden inputs or outputs. Because of this property testing pure functions is also easier, we can just give dummy inputs to the functions and observe the output. As already said programs without side-effects are useless, we would not be able to actually observe the result of a function call without side-effects such as printing to the screen. So we would the benefits of pure functions but still have side-effects. We could give up and simply add some form of side-effects to our language but that would immediately make our function impure, since any function might perform side-effects. This would make us lose the benefits of pure functions.
+\\\\
+Algebraic effects and handlers are a structured way to introduce side-effects to a programming language.
 The basic idea is that side-effects can be described by sets of operations, called the interface of the effect.
-Similar to exceptions, where exceptions can be thrown and caught.
-Operations can be called and ``caught'' by handlers.
+Operations from different effects can then be called in a program.
+These operations will stay abstract though, they will not actually do anything.
+Instead, similar to exceptions where exceptions can be thrown and caught, operations can be ``caught'' by handlers.
 Different from exceptions however the handler also has access to a continuation which can be used to continue the computation at the point where the operation was called.
 \\\\
-In this chapter we will introduce Algebraic effects and handlers through examples.
-Starting with simple algebraic effects and handlers (\cref{section:background-algeff}). After we will continue with static instances (\cref{section:background-staticinst}) and ending with dynamic instances (\cref{section:background-dynamicinst}). The examples are written in an hypothetical functional programming language with algebraic effects and handlers with syntax similar to the Haskell programming language.
+In this chapter we will introduce algebraic effects and handlers through examples.
+Starting with simple algebraic effects and handlers (\cref{section:background-algeff}).
+After we will continue with static instances (\cref{section:background-staticinst}) which allows for multiple static instances of the same effect to be used in a program.
+We end with dynamic instances (\cref{section:background-dynamicinst}) which allows for the dynamic creation of effect instances. The examples are written in a statically typed functional programming language with algebraic effects and handlers with syntax reminiscent to Haskell but semantically more similar to Koka\cite{koka2}.
 
 \section{Algebraic effects and handlers} \label{section:background-algeff}
 We will start with the familiar exceptions. We define an \ident{Exc} effect interface with a single operation \ident{throw}.
@@ -19,7 +21,16 @@ effect Exc {
 }
 \end{minted}
 
-For each operation in an effect definition we specify a parameter type (on the left of the arrow) and a return type (on the right of the arrow). In the case of \ident{throw} the parameter type is a \ident{String} (an error message) and the return type is \ident{Void}, a type without any inhabitants.
+For each operation in an effect interface we specify a parameter type (on the left of the arrow) and a return type (on the right of the arrow).
+The parameter type is the type of a value that is given when the operation is called and that the handler also has access too.
+The return type is the type of a value that has to be given to the continuation in the handler, this will be shown later.
+This return value is received at the point where the operation was called.
+In the case of \ident{Exc} we take \ident{String} as the parameter type, this is the error message of the exception.
+An exception indicates that something went wrong and that we cannot continue in the program.
+This means we do not want the program to continue at the point where the exception was thrown, which is the point where the \ident{throw} operation was called.
+So we do not want to be able to call the continuation with any value.
+To achieve this we specify \ident{Void} as the return type of \ident{throw}.
+This is a type with no values at all, which means that the programmer will never be able to conjure up a suitable value when a value of type \ident{Void} is requested. By using \ident{Void} as the return type we can ensure that the continuation cannot be called and so that the program will not continue at the point where \ident{throw} was called. To make the code more readable we assume \ident{Void} implicitly coerces to any other type.
 \\\\
 We can now write functions that use the \ident{Exc} effect.
 For example the following function \ident{safeDiv} which will throw an error if the right argument is $0$.
@@ -39,7 +50,7 @@ The effect will remain abstract, we still need to give them a semantics.
 
 \begin{minted}[tabsize=2]{haskell}
 result : Int!{Exc}
-result = 10 / 0
+result = safeDiv 10 2
 \end{minted}
 
 In order to actually ``run'' the effect we will need to handle the operations of that effect.
@@ -47,10 +58,10 @@ For example, for \ident{Exc} we can write a handler that returns $0$ as a defaul
 
 \begin{minted}[tabsize=2]{haskell}
 result : Int
-result = handle {
+result = handle (safeDiv 10 0) {
 	throw err k -> return 0
 	return v -> return v
-} (10 / 0) -- results in 0
+} -- results in 0
 \end{minted}
 
 For each operation we write a corresponding case in the handler, where we have access to the argument given at operation call and a continuation, which expects a value of the return type of the operation.
@@ -64,16 +75,17 @@ For example we can also handle the \ident{Exc} effect by capturing the failure o
 data Either a b = Left a | Right b
 
 result : Either String Int
-result = handle {
+result = handle (safeDiv 10 0) {
 	throw err k -> return (Left err)
 	return v -> return (Right v)
-} (10 / 0) -- results in (Left "division by zero!")
+} -- results in (Left "division by zero!")
 \end{minted}
 
 Here we return early with \ident{Left err} if an error is thrown, otherwise we wrap the resulting value using the \ident{Right} constructor.
 \\\\
 Another effect we might be interested in is non-determinism.
-To model this we define the \ident{Flip} effect interface which has a single operation \ident{flip}, which returns a boolean when called with the unit value.
+To model this we define the \ident{Flip} effect interface which has a single operation \ident{flip}, which returns a boolean when called with the unit 
+value.
 
 \begin{minted}[tabsize=2]{haskell}
 effect Flip {
@@ -81,12 +93,12 @@ effect Flip {
 }
 \end{minted}
 
-Using the \ident{flip} operation and if-expression we can write non-deterministic computations that can be seen as computation trees where \ident{flip} branches the tree off in to two subtrees.
+Using the \ident{flip} operation and if-expression we can write non-deterministic computations that can be seen as computation trees where \ident{flip} branches the tree off into two subtrees.
 The following program \ident{choose123} non-deterministically returns either a $1$, $2$ or $3$.
 
 \begin{minted}[tabsize=2]{haskell}
-choose123 : () -> Bool!{Flip}
-choose123 () =
+choose123 : Bool!{Flip}
+choose123 =
 	b1 <- flip ();
 	if b1 then
 		return 1
@@ -105,51 +117,52 @@ We could always return \ident{True} when a \ident{flip} operation is called, in 
 
 \begin{minted}[tabsize=2]{haskell}
 result : Int
-result = handle {
+result = handle (choose123) {
 	flip () k -> k True
 	return v -> return v
-} (choose123 ()) -- returns 1
+} -- returns 1
 \end{minted}
 
 Another handler could try all branches returning the greatest integer of all possibilities.
 
 \begin{minted}[tabsize=2]{haskell}
 maxresult : Int
-maxresult = handle {
+maxresult = handle (choose123) {
 	flip () k ->
 		vtrue <- k True;
 		vfalse <- k False;
 		return (max vtrue vfalse)
 	return v -> return v
-} (choose123 ()) -- returns 3
+} -- returns 3
 \end{minted}
 
 Here we first call the continuation \ident{k} with \ident{True} and then with \ident{False}.
 The we return the maximum between those results.
 \\\\
 We could even collect the values from all branches by returning a list.
+
 \begin{minted}[tabsize=2]{haskell}
 allvalues : List Int
-allvalues = handle {
+allvalues = handle (choose123) {
 	flip () k ->
 		vtrue <- k True;
 		vfalse <- k False;
 		return vtrue ++ vfalse
 	return v -> return [v]
-} (choose123 ()) -- returns [1, 2, 3]
+} -- returns [1, 2, 3]
 \end{minted}
 
 Again we call the continuation \ident{k} twice, but we append the two results instead.
 For the \ident{return} base case we simply wrap the value in a singleton list.
 \\\\
 Algebraic effects have the nice property that they combine easily.
-For example by combining the \ident{Exc} and \ident{Flip} we can implement backtracking, where the choose the first non-failing branch from a computation. For example we can write a function which returns all even sums of the numbers $1$ to $3$ by reusing \ident{choose123}.
+For example by combining the \ident{Exc} and \ident{Flip} we can implement backtracking, where we choose the first non-failing branch from a computation. For example we can write a function which returns all even sums of the numbers $1$ to $3$ by reusing \ident{choose123}.
 
 \begin{minted}[tabsize=2]{haskell}
 evensums123 : Int!{Flip, Exc}
-evensums123 () =
-	n1 <- choose123 ();
-	n2 <- choose123 ();
+evensums123 =
+	n1 <- choose123;
+	n2 <- choose123;
 	sum <- return (n1 + n2);
 	if sum % 2 == 0 then
 		return sum
@@ -161,37 +174,39 @@ We implement backtracking in \ident{backtrack} by handling both the \ident{flip}
 
 \begin{minted}[tabsize=2]{haskell}
 backtrack : List Int
-backtrack () = handle {
+backtrack () = handle (handle (evensums123) {
 	flip () k ->
 		vtrue <- k True;
 		vfalse <- k False;
 		return vtrue ++ vfalse
-	throw msg k -> return []
 	return v -> return [v]
-} (evensums123 ()) -- returns [2, 4, 4, 6]
+}) {
+	throw msg k -> return []
+	return v -> return v
+} -- returns [2, 4, 4, 6]
 \end{minted}
 
 We can also handle the effects independently of each other. For example we could implement a partial version of \ident{backtrack} that only handles the \ident{Flip} effect. Any operation that is not in the handler is just passed through.
 
 \begin{minted}[tabsize=2]{haskell}
 partlybacktrack : (List Int)!{Exc}
-partlybacktrack () = handle {
+partlybacktrack = handle (evensums123) {
 	flip () k ->
 		vtrue <- k True;
 		vfalse <- k False;
 		return vtrue ++ vfalse
 	return v -> return [v]
-} (evensums123 ())
+}
 \end{minted}
 
 Now we can factor out the \ident{throw} handler into its own function.
 
 \begin{minted}[tabsize=2]{haskell}
 fullbacktrack : List Int
-fullbacktrack () = handle {
+fullbacktrack = handle (partlybacktrack) {
 	throw msg k -> return []
 	return v -> return v
-} (partlybacktrack ()) -- returns [2, 4, 4, 6]
+} -- returns [2, 4, 4, 6]
 \end{minted}
 
 Algebraic effects always commute, meaning the effects can be handled in any order.
@@ -214,8 +229,8 @@ We can now implement the familiar ``post increment'' operation as seen in the C 
 This function retrieves the current value of the state, increments it by $1$ and returns the previously retrieved value.
 
 \begin{minted}[tabsize=2]{haskell}
-postInc : () -> Int!{State}
-postInc () =
+postInc : Int!{State}
+postInc =
 	x <- get ();
 	put (x + 1);
 	return x
@@ -224,17 +239,15 @@ postInc () =
 To implement the semantics of the \ident{State} effect we use parameter-passing similar to how the State monad is implemented in Haskell. We will abstract the implementation of the state handler in a function \ident{runState}.
 
 \begin{minted}[tabsize=2]{haskell}
-runState : (() -> Int!{State}) -> (Int -> (Int, Int))
-runState comp = handle {
+runState : Int!{State} -> (Int -> (Int, Int))
+runState comp = handle (comp) {
 	get () k -> return (\s -> (f <- k s; return f s))
 	put v k -> return (\s -> (f <- k (); return f v))
 	return v -> return (\s -> return (s, v))
-} (comp ())
+}
 \end{minted}
 
-\ident{runState} takes as it's only argument a computation that returns an integer and may use the \ident{State} effect.
-To delay the computation we take it as a function from unit.
-\ident{runState} returns a function that takes the initial value of the state and returns a tuple of the final state and the return value of the computation.
+\ident{runState} takes a computation that returns an integer and may use the \ident{State} effect, and returns a function that takes the initial value of the state and returns a tuple of the final state and the return value of the computation.
 Let us take a look at the \ident{return} case first, here we return a function that takes a state value and returns a tuple of this state and the return value.
 For the \ident{get} case we return a function that takes a state value and runs the continuation \ident{k} with this value, giving access to the state at the point where the \ident{get} operation was called. From this continuation we get back another function, which we call with the current state, continuing the computation without changing the state.
 The \ident{put} case is similar to the \ident{get} but we call the continuation with the unit value and we continue the computation by calling \ident{f} with the value giving with the \ident{put} operation call.
@@ -242,8 +255,8 @@ The \ident{put} case is similar to the \ident{get} but we call the continuation 
 Using state now is as simple as calling \ident{runState}.
 
 \begin{minted}[tabsize=2]{haskell}
-stateResult : () -> (Int, Int)
-stateResult () =
+stateResult : (Int, Int)
+stateResult =
 	f <- runState postInc; -- returns a function taking the initial state
 	f 42 -- post-increments 42 returning (43, 42)
 \end{minted}
@@ -265,18 +278,166 @@ sumRangeRec a b =
 		
 sumRange : Int -> Int -> Int
 sumRange a b =
-	f <- runState (\() -> sumRangeRec a b);
+	f <- runState (sumRangeRec a b);
 	f 0 -- initial sum value is 0
 \end{minted}
 
 \section{Static instances} \label{section:background-staticinst}
 
-% global state references
+In order to explain the use of static instances we will use an example similar to one shown in \cite{handlewithcare}.
+Consider an higher-order function \ident{count} which, given two functions \ident{f} and \ident{g}, calls \ident{f} with \ident{g} and counts how many times \ident{f} uses \ident{g}. To implement \ident{count} we can use the \ident{State} effect. We will use \ident{A}, \ident{B} and \ident{C} as meta type variables which can stand in for any type. To implement this function instead of calling \ident{f} with \ident{g} directly, we wrap the call to \ident{g} with an anonymous function that also increments the current state by one. Then we wrap the whole thing in the state handler as shown before, with one small difference in the \ident{return} case to return the current state value only. Finally we run the function returned from the handler with $0$ as the initial value.
+
+\begin{minted}[tabsize=2]{haskell}
+count : ((A -> B) -> C) -> (A -> B) -> Int
+count f g =
+	statefn <- handle (
+		f (\x ->
+			n <- get ();
+			put (n + 1);
+			g x)
+	) {
+		get () k -> return (\s -> (f <- k s; return f s))
+		put v k -> return (\s -> (f <- k (); return f v))
+		return v -> return (\s -> return s)
+	};
+	statefn 0
+\end{minted}
+
+This function works as expected as long as neither \ident{f} or \ident{g} do not use \ident{State}.
+If they do then we might not get the correct count, since the \ident{State} effects from \ident{f} and \ident{g} are also handled by the handler within \ident{count}.
+What we want is to have the \ident{State} effects in \ident{f} and \ident{g} skip the handler in \ident{count}.
+\\\\
+Static instances provide a solution to this problem. In a system with static instances multiple different instances of the same effect can be declared. We use the syntax \mintinline{haskell}{instance E inst} to declare an instance named \ident{inst} of effect \ident{E}.
+Operations are then written as \mintinline{haskell}{i#op(v)} where \ident{i} is the instance that we are calling the operation on.
+Handlers also mention the specific instance in the operation cases, that way a handler can only handle one specific instance, while other instance will be passed on to the next handler, even if they are of the same effect.
+\\\\
+We can, for example, declare two instances of the \ident{Flip} effect \ident{fl1} and \ident{fl2} and then write a program (\ident{flipBoth}) which calls \ident{flip} on both of these instances. In the type of \ident{flipBoth} we can now see that both instances are used.
+Furthermore we can handle one of the instances (\ident{fl1} in \ident{handleFl1}) while leaving the other instance \ident{fl2} unhandled.
+
+\begin{minted}[tabsize=2]{haskell}
+instance Flip fl1
+instance Flip fl2
+
+flipBoth : Int!{fl1, fl2}
+flipBoth =
+	if fl1#flip () then
+		return 1
+	else if fl2#flip () then
+	  return 2
+  else
+   	return 3
+   	
+handleFl1 : Int!{fl2}
+handleFl1 = handle (flipBoth) {
+	fl1#flip () k -> k True
+	return x -> return x
+}
+\end{minted}
+
+Rewriting \ident{count} with static instances gives us the following solution.
+
+\begin{minted}[tabsize=2]{haskell}
+instance State countinst -- our State instance for use in the count function
+
+count : ((A -> B) -> C) -> (A -> B) -> Int
+count f g =
+	statefn <- handle (
+		f (\x ->
+			n <- countinst#get ();
+			countinst#put (n + 1);
+			g x)
+	) {
+		countinst#get () k -> return (\s -> (f <- k s; return f s))
+		countinst#put v k -> return (\s -> (f <- k (); return f v))
+		return v -> return (\s -> return s)
+	};
+	statefn 0
+\end{minted}
+
+Now the \ident{State} handler inside of \ident{count} will only handle operations on the \ident{countinst} instance while any other \ident{State} effects will not be handled. This does not completely solve the problem though, because \ident{countinst} is declared globally \ident{f} or \ident{g} also have access to it and could also still use the instance which would again interfere with the implementation of \ident{count}. What we would really want is for the \ident{State} effects in \ident{count} to be completely encapsulated such that the effects would not be observable. With static instances we cannot achieve this though since we have to globally declare the instance we are going to use. Having to predeclare every instance we are going to use is very convenient, especially when we have effects such as reference cells or communication channels. The global namespace would be littered with all references and channels the program would ever use. Furthermore we do not always know how many references we need. Take for example a function \ident{createMutableList} which creates a list of reference cells giving a length $l$. We do not know statically what the length of the list will be and so we do not know ahead how many instances we have to declare. Static instances will not help us in these cases.
 
 \section{Dynamic instances} \label{section:background-dynamicinst}
 
-% full mutable references
+Dynamic instances improve on static instances by allowing instances to be created dynamically.
+Taking the \ident{count} example again, using dynamic instances we can create a \ident{State} instance within the \ident{count} function itself.
+We use the syntax \mintinline{haskell}{i <- new E; c} to create a new instance of the \ident{E} effect that is bound to \ident{i} in \ident{c}.
+Rewriting \ident{count} for a final time, we end up with:
 
+\begin{minted}[tabsize=2]{haskell}
+count : ((A -> B) -> C) -> (A -> B) -> Int
+count f g =
+	countinst <- new State;
+	statefn <- handle (
+		f (\x ->
+			n <- countinst#get ();
+			countinst#put (n + 1);
+			g x)
+	) {
+		countinst#get () k -> return (\s -> (f <- k s; return f s))
+		countinst#put v k -> return (\s -> (f <- k (); return f v))
+		return v -> return (\s -> return s)
+	};
+	statefn 0
+\end{minted}
 
+Using the dynamically created instance \ident{countinst} we can be sure that \ident{f} and \ident{g} are unable to call operations on this instance since they do not have access to this specific instance. The use of \ident{State} in \ident{count} is now completely encapsulated. These encapsulated effects are also called ``local effects''.
+\\\\
+We can also implement the function \ident{createMutableList} mentioned previously. Here a list of length \ident{l} of \ident{State} instances is created.
 
-}
+\begin{minted}[tabsize=2]{haskell}
+createMutableList : Int -> List (Inst State)
+createMutableList l =
+	if l <= 0 then
+		return Nil
+	else
+		ref <- new State;
+		tail <- createMutableList (l - 1);
+		return (Cons ref tail)
+\end{minted}
+
+As a last example we will write a function that memoizes another function. We assume the language has a map type \ident{IntMap} with \ident{Int} keys and values, with the usual \ident{emptyIntMap}, \ident{has}, \ident{lookup} and \ident{insert} functions.
+
+\begin{minted}[tabsize=2]{haskell}
+emptyIntMap : () -> IntMap
+has : Int -> IntMap -> Bool
+lookup : Int -> IntMap -> Int
+insert : Int -> Int -> IntMap -> IntMap
+
+memoize : (Int -> Int) -> (Inst State, Int -> Int!{State})
+memoize f =
+	ref <- new State;
+	return (ref, \x ->
+		map <- ref#get ();
+		if (has x map) then
+			return (lookup x map)
+		else
+			val <- f x;
+			ref#put (insert x val map);
+			return val)
+
+fac : Int -> Int
+fac n =
+	if n < 3 then
+		return 1
+	else
+		return n * (fac (n - 1))
+
+useFac : Int
+useFac =
+	(inst, memFac) <- memoize fac;
+	statefn <- handle (
+		r1 <- memFac 10;
+		r2 <- memFac 20;
+		r3 <- memFac 30;
+		return r1 + r2 + r3
+	) {
+		inst#get () k -> return (\s -> (f <- k s; return f s))
+		inst#put v k -> return (\s -> (f <- k (); return f v))
+		return v -> return (\s -> return v)
+	};
+	statefn (emptyIntMap ())
+\end{minted}
+
+The \ident{memoize} function takes a function \ident{f} from \ident{Int} to \ident{Int} and returns a tuple of a \ident{State} instance and a new function from \ident{Int} to \ident{Int}. \ident{memoize} works by create a local \ident{State} instance \ident{ref}. In \ident{ref} we intend to store an \ident{IntMap} that stores the results of \ident{f}. \ident{memoize} returns a function that wraps \ident{f}. This wrapping function takes an argument \ident{x}. First we take the current map from \ident{ref} by using the \ident{get} operation, we store the current map in the variable \ident{map}. If \ident{x} is already in \ident{map} we just return that value. If not we first apply \ident{f} to \ident{x} storing this value in the variable \ident{val}. Then we insert \ident{val} for \ident{x} in \ident{map} and update \ident{ref} to this new map. Finally we return the computed \ident{val}. As an example we define a naive factorial function \ident{fac}. In \ident{useFac} we memoize \ident{fac} getting the \ident{State} instance \ident{inst} and the memoized factorial function \ident{memFac}. We call \ident{memFac} three times and because we have the instance \ident{inst} we can handle the effects using the \ident{State} handler as described earlier. Finally we use an empty \ident{IntMap} as the initial value for the \ident{State} effect.
+\\\\
+Dynamic instances have one big problem though: they are too dynamic. Similar to how in general it is undecidable to know whether a reference has escaped its scope, it is also not possible to know whether an instance has a handler associated with it. This makes it hard to think of a type system for dynamic instances which ensures that there are no unhandled operations. Earlier versions of the Eff programming language\cite{eff1} had dynamic instances but its type system underapproximated the uses of dynamic instances which meant you could still get a runtime error if any operation calls were left unhandled.

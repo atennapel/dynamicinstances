@@ -1,0 +1,16 @@
+- Clean up problem statement and proposed solution in Chapter 1
+- Better introduction for background
+  / mention pros of pure functions
+  / mention what effects I am talking about
+  / more about static and dynamic instances
+- Maybe no exception comparison
+/ Specify language more precisely (inspired by Koka)
+- Mention that we are using deep handlers
+- Explain commute better
+- Write examples for static and dynamic instances
+- Different color for return in the handler case
+x Fix page breaks in code
+x Simplify types by removing thunks
+x Separate handlers
+x Add our system examples before theory
+- More examples for dynamic instances
