@@ -7,14 +7,7 @@
 / Specify language more precisely (inspired by Koka)
 - Mention that we are using deep handlers
 - Explain commute better
-- Write examples for static and dynamic instances
 - Different color for return in the handler case
-x Fix page breaks in code
-x Simplify types by removing thunks
-x Separate handlers
-x Add our system examples before theory
-- More examples for dynamic instances
-- Use multiple exception example for static instances
 - One more fancy example for dynamic instances (ST example) (ST paper)
 - Introduction:
 	- contributions

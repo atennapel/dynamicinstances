@@ -284,160 +284,177 @@ sumRange a b =
 
 \section{Static instances} \label{section:background-staticinst}
 
-In order to explain the use of static instances we will use an example similar to one shown in \cite{handlewithcare}.
-Consider an higher-order function \ident{count} which, given two functions \ident{f} and \ident{g}, calls \ident{f} with \ident{g} and counts how many times \ident{f} uses \ident{g}. To implement \ident{count} we can use the \ident{State} effect. We will use \ident{A}, \ident{B} and \ident{C} as meta type variables which can stand in for any type. To implement this function instead of calling \ident{f} with \ident{g} directly, we wrap the call to \ident{g} with an anonymous function that also increments the current state by one. Then we wrap the whole thing in the state handler as shown before, with one small difference in the \ident{return} case to return the current state value only. Finally we run the function returned from the handler with $0$ as the initial value.
-
-\begin{minted}[tabsize=2]{haskell}
-count : ((A -> B) -> C) -> (A -> B) -> Int
-count f g =
-	statefn <- handle (
-		f (\x ->
-			n <- get ();
-			put (n + 1);
-			g x)
-	) {
-		get () k -> return (\s -> (f <- k s; return f s))
-		put v k -> return (\s -> (f <- k (); return f v))
-		return v -> return (\s -> return s)
-	};
-	statefn 0
-\end{minted}
-
-This function works as expected as long as neither \ident{f} or \ident{g} do not use \ident{State}.
-If they do then we might not get the correct count, since the \ident{State} effects from \ident{f} and \ident{g} are also handled by the handler within \ident{count}.
-What we want is to have the \ident{State} effects in \ident{f} and \ident{g} skip the handler in \ident{count}.
+Static instances extend algebraic effects by allowing multiple instances of the same effect to co-exist.
+These instances be handled independently of each other.
+Operations in such a system are always called on a specific instance and handlers also have to note instance they are handling.
+We will write operation calls as \ident{inst#op(v)} where \ident{inst} is the instance.
+Handlers are modified to take an instance parameter as follows \ident{handle#inst(comp) { ... }}.
 \\\\
-Static instances provide a solution to this problem. In a system with static instances multiple different instances of the same effect can be declared. We use the syntax \mintinline{haskell}{instance E inst} to declare an instance named \ident{inst} of effect \ident{E}.
-Operations are then written as \mintinline{haskell}{i#op(v)} where \ident{i} is the instance that we are calling the operation on.
-Handlers also mention the specific instance in the operation cases, that way a handler can only handle one specific instance, while other instance will be passed on to the next handler, even if they are of the same effect.
-\\\\
-We can, for example, declare two instances of the \ident{Flip} effect \ident{fl1} and \ident{fl2} and then write a program (\ident{flipBoth}) which calls \ident{flip} on both of these instances. In the type of \ident{flipBoth} we can now see that both instances are used.
-Furthermore we can handle one of the instances (\ident{fl1} in \ident{handleFl1}) while leaving the other instance \ident{fl2} unhandled.
+As an example let us take another look at the \ident{safeDiv} function.
 
 \begin{minted}[tabsize=2]{haskell}
-instance Flip fl1
-instance Flip fl2
-
-flipBoth : Int!{fl1, fl2}
-flipBoth =
-	if fl1#flip () then
-		return 1
-	else if fl2#flip () then
-	  return 2
-  else
-   	return 3
-   	
-handleFl1 : Int!{fl2}
-handleFl1 = handle (flipBoth) {
-	fl1#flip () k -> k True
-	return x -> return x
-}
+safeDiv : Int -> Int -> Int!{Exc}
+safeDiv a b =
+	if b == 0 then
+		throw "division by zero!"
+	else
+		return a / b
 \end{minted}
 
-Rewriting \ident{count} with static instances gives us the following solution.
+We can rewrite this to use static instances by declaring an instance of \ident{Exc} called \ident{divByZero} and calling the \ident{throw} operation on this instance.
+Note that in the we now state the instance used instead of the effect, since multiple instances of the same effect could be used and we would like to know which instances exactly.
 
 \begin{minted}[tabsize=2]{haskell}
-instance State countinst -- our State instance for use in the count function
+instance Exc divByZero
 
-count : ((A -> B) -> C) -> (A -> B) -> Int
-count f g =
-	statefn <- handle (
-		f (\x ->
-			n <- countinst#get ();
-			countinst#put (n + 1);
-			g x)
-	) {
-		countinst#get () k -> return (\s -> (f <- k s; return f s))
-		countinst#put v k -> return (\s -> (f <- k (); return f v))
-		return v -> return (\s -> return s)
-	};
-	statefn 0
+safeDiv : Int -> Int -> Int!{divByZero}
+safeDiv a b =
+	if b == 0 then
+		divByZero#throw "division by zero!"
+	else
+		return a / b
 \end{minted}
 
-Now the \ident{State} handler inside of \ident{count} will only handle operations on the \ident{countinst} instance while any other \ident{State} effects will not be handled. This does not completely solve the problem though, because \ident{countinst} is declared globally \ident{f} or \ident{g} also have access to it and could also still use the instance which would again interfere with the implementation of \ident{count}. What we would really want is for the \ident{State} effects in \ident{count} to be completely encapsulated such that the effects would not be observable. With static instances we cannot achieve this though since we have to globally declare the instance we are going to use. Having to predeclare every instance we are going to use is very convenient, especially when we have effects such as reference cells or communication channels. The global namespace would be littered with all references and channels the program would ever use. Furthermore we do not always know how many references we need. Take for example a function \ident{createMutableList} which creates a list of reference cells giving a length $l$. We do not know statically what the length of the list will be and so we do not know ahead how many instances we have to declare. Static instances will not help us in these cases.
+Imagine we wanted to also throw an exception in the case that the divisor was negative.
+Using instances we can easily declare another \ident{Exc} instance, let us call it \ident{negativeDivisor}, and use it in our function.
+We also have to modify the type to mention the use of \ident{negativeDivisor}.
+
+\begin{minted}[tabsize=2]{haskell}
+instance Exc divByZero
+instance Exc negativeDivisor
+
+safeDivPositive : Int -> Int -> Int!{divByZero, negativeDivisor}
+safeDivPositive a b =
+	if b == 0 then
+		divByZero#throw "division by zero!"
+	else if b < 0 then
+		negativeDivisor#throw "negative divisor!"
+	else
+		return a / b
+\end{minted}
+
+We can now see from the type what kind of exceptions are used in the function.
+We can also handle the exceptions independently.
+For example we could handle \ident{divByZero} by defaulting to \ident{0}, but leave \ident{negativeDivisor} unhandled.
+
+\begin{minted}[tabsize=2]{haskell}
+defaultTo0 : Int!{divByZero, negativeDivisor} -> Int!{negativeDivisor}
+defaultTo0 c =
+	handle#divByZero (c) {
+		throw msg -> return 0
+		return v -> return v
+	}
+\end{minted}
 
 \section{Dynamic instances} \label{section:background-dynamicinst}
 
-Dynamic instances improve on static instances by allowing instances to be created dynamically.
-Taking the \ident{count} example again, using dynamic instances we can create a \ident{State} instance within the \ident{count} function itself.
-We use the syntax \mintinline{haskell}{i <- new E; c} to create a new instance of the \ident{E} effect that is bound to \ident{i} in \ident{c}.
-Rewriting \ident{count} for a final time, we end up with:
-
-\begin{minted}[tabsize=2]{haskell}
-count : ((A -> B) -> C) -> (A -> B) -> Int
-count f g =
-	countinst <- new State;
-	statefn <- handle (
-		f (\x ->
-			n <- countinst#get ();
-			countinst#put (n + 1);
-			g x)
-	) {
-		countinst#get () k -> return (\s -> (f <- k s; return f s))
-		countinst#put v k -> return (\s -> (f <- k (); return f v))
-		return v -> return (\s -> return s)
-	};
-	statefn 0
-\end{minted}
-
-Using the dynamically created instance \ident{countinst} we can be sure that \ident{f} and \ident{g} are unable to call operations on this instance since they do not have access to this specific instance. The use of \ident{State} in \ident{count} is now completely encapsulated. These encapsulated effects are also called ``local effects''.
+Having to predeclare every instance we are going to use is very inconvenient, especially when we have effects such as reference cells or communication channels. The global namespace would be littered with all references and channels the program would ever use. Furthermore we do not always know how many references we need. Take for example a function which creates a list of reference cells giving a length $l$. We do not know statically what the length of the list will be and so we do not know ahead how many instances we have to declare.
+Furthermore because all the instances would be predeclared some information about the implementation of a function would be leaked to the global namespace. This means it is impossible to fully encapsulate the use of an effect when using static instances.
 \\\\
-We can also implement the function \ident{createMutableList} mentioned previously. Here a list of length \ident{l} of \ident{State} instances is created.
+Dynamic instances improve on static instances by allowing instances to be created dynamically.
+Instances become first-class values, they can be assigned to variables and passed to functions just like any other value.
+We use \ident{new E} to create a new instance of the \ident{E} effect.
+The actual implementation of the function can stay exactly the same, as can the handler \ident{defaultTo0}.
+We can translate the previous example to use dynamic instances by defining the \ident{divByZero} and \ident{negativeDivisor} as top-level variables and assigning newly created instances to them. We omit type annotation, since there does not exist any type system that can type all usages of dynamic instances.
 
 \begin{minted}[tabsize=2]{haskell}
-createMutableList : Int -> List (Inst State)
-createMutableList l =
-	if l <= 0 then
-		return Nil
+divByZero = new Exc
+negativeDivisor = new Exc
+
+safeDivPositive a b =
+	if b == 0 then
+		divByZero#throw "division by zero!"
+	else if b < 0 then
+		negativeDivisor#throw "negative divisor!"
 	else
-		ref <- new State;
-		tail <- createMutableList (l - 1);
-		return (Cons ref tail)
+		return a / b
+		
+defaultTo0 c =
+	handle#divByZero (c) {
+		throw msg -> return 0
+		return v -> return v
+	}
 \end{minted}
 
-As a last example we will write a function that memoizes another function. We assume the language has a map type \ident{IntMap} with \ident{Int} keys and values, with the usual \ident{emptyIntMap}, \ident{has}, \ident{lookup} and \ident{insert} functions.
+Using locally created instances we can emulate variables as they appear in imperative languages more easily.
+We can implement the factorial function in an imperative style using a locally created \ident{State} instance.
+The \ident{factorial} function computes the factorial of the paramter \ident{n} by creating a new \ident{State} instance named \ident{ref} and calling the helper function \ident{factorialLoop} with \ident{ref} and \ident{n}.
+The base case of \ident{factorialLoop} retrieves the current value from \ident{ref} and returns it.
+In the recursive case of \ident{factorialLoop} the value in \ident{ref} is modified by multiplying it by \ident{n} and then we continue by recursing with \ident{n - 1}.
+The call to \ident{factorialLoop} in \ident{factorial} is wrapped in the \ident{State} handler explained earlier, chosing \ident{1} as the initial value of \ident{ref}.
+\ident{factorial} thus computes the factorial of a number by using a locally created instance, but the use of this instance or the \ident{State} effect in general never escapes the function, it is completely encapsulated.
 
 \begin{minted}[tabsize=2]{haskell}
-emptyIntMap : () -> IntMap
-has : Int -> IntMap -> Bool
-lookup : Int -> IntMap -> Int
-insert : Int -> Int -> IntMap -> IntMap
-
-memoize : (Int -> Int) -> (Inst State, Int -> Int!{State})
-memoize f =
-	ref <- new State;
-	return (ref, \x ->
-		map <- ref#get ();
-		if (has x map) then
-			return (lookup x map)
-		else
-			val <- f x;
-			ref#put (insert x val map);
-			return val)
-
-fac : Int -> Int
-fac n =
-	if n < 3 then
-		return 1
+factorialLoop ref n =
+	if n == 0 then
+		ref#get ()
 	else
-		return n * (fac (n - 1))
+		x <- ref#get();
+		ref#put (x * n);
+		factorialLoop ref (n - 1) 
 
-useFac : Int
-useFac =
-	(inst, memFac) <- memoize fac;
-	statefn <- handle (
-		r1 <- memFac 10;
-		r2 <- memFac 20;
-		r3 <- memFac 30;
-		return r1 + r2 + r3
-	) {
-		inst#get () k -> return (\s -> (f <- k s; return f s))
-		inst#put v k -> return (\s -> (f <- k (); return f v))
+factorial n =
+	ref <- new State;
+	statefn <- handle#r (factorialLoop ref n) {
+		get () k -> return (\s -> (f <- k s; return f s))
+		put v k -> return (\s -> (f <- k (); return f v))
 		return v -> return (\s -> return v)
 	};
-	statefn (emptyIntMap ())
+	statefn 1 -- use 1 as the initial value of ref
 \end{minted}
 
-The \ident{memoize} function takes a function \ident{f} from \ident{Int} to \ident{Int} and returns a tuple of a \ident{State} instance and a new function from \ident{Int} to \ident{Int}. \ident{memoize} works by create a local \ident{State} instance \ident{ref}. In \ident{ref} we intend to store an \ident{IntMap} that stores the results of \ident{f}. \ident{memoize} returns a function that wraps \ident{f}. This wrapping function takes an argument \ident{x}. First we take the current map from \ident{ref} by using the \ident{get} operation, we store the current map in the variable \ident{map}. If \ident{x} is already in \ident{map} we just return that value. If not we first apply \ident{f} to \ident{x} storing this value in the variable \ident{val}. Then we insert \ident{val} for \ident{x} in \ident{map} and update \ident{ref} to this new map. Finally we return the computed \ident{val}. As an example we define a naive factorial function \ident{fac}. In \ident{useFac} we memoize \ident{fac} getting the \ident{State} instance \ident{inst} and the memoized factorial function \ident{memFac}. We call \ident{memFac} three times and because we have the instance \ident{inst} we can handle the effects using the \ident{State} handler as described earlier. Finally we use an empty \ident{IntMap} as the initial value for the \ident{State} effect.
+Next we will implement references more generally similar to the ones available in Standard ML\cite{standardml}, in our case specialized to \ident{Int}.
+In the previous example we see a pattern of creating a \ident{State} instance and then calling some function with it wrapped with a handler.
+This is the pattern we want to use when implementing references.
+To implement this pattern more generally this we first introduce a new effect named \ident{Heap}.
+\ident{Heap} has one operation called \ident{ref} which takes an initial value \ident{Int} and returns a \ident{State} instance.
+\ident{Heap} can be seen as a collection of references.
+We then define a handler \ident{runRefs} which takes a \ident{Heap} instance and a computation, and creates \ident{State} instances for every use of \ident{ref}. After we call the continuation with the newly created instance and wrap this call in the usual \ident{State} handler, giving the argument of \ident{ref} as the initial value.
+
+\begin{minted}[tabsize=2]{haskell}
+effect Heap {
+	ref : Int -> Inst State
+}
+
+runRefs inst c =
+	handle#inst (c) {
+		ref v k ->
+			r <- new State;
+			statefn <- handle#r (k r) {
+				get () k -> return (\s -> (f <- k s; return f s))
+				put v k -> return (\s -> (f <- k (); return f v))
+				return v -> return (\s -> return v)
+			};
+			statefn v 
+		return v -> return v
+	}
+\end{minted}
+
+By calling \ident{runRefs} at the top-level we will have the same semantics for references as Standard ML.
+In the following example we create two references and swap their values using a \ident{swap} function.
+First \ident{main} creates a new \ident{Heap} instance \ident{heap} and then calls \ident{runRefs} with this instance.
+The computation given to \ident{runRefs} is the function \ident{program} called with \ident{heap}.
+
+\begin{minted}[tabsize=2]{haskell}
+swap r1 r2 =
+	x <- r1#get ();
+	y <- r2#get ();
+	r1#put(y);
+	r2#put(x)
+	
+program heap =
+	r1 <- heap#ref 1;
+	r2 <- heap#ref 2;
+	swap r1 r2;
+	x <- r1#get ();
+	y <- r2#get ();
+	return (x, y)
+	
+main =
+	heap <- new Heap;
+	runRefs heap (program heap) -- returns (2, 1)
+\end{minted}
+
+WIP, ST example needed here.
 \\\\
 Dynamic instances have one big problem though: they are too dynamic. Similar to how in general it is undecidable to know whether a reference has escaped its scope, it is also not possible to know whether an instance has a handler associated with it. This makes it hard to think of a type system for dynamic instances which ensures that there are no unhandled operations. Earlier versions of the Eff programming language\cite{eff1} had dynamic instances but its type system underapproximated the uses of dynamic instances which meant you could still get a runtime error if any operation calls were left unhandled.
