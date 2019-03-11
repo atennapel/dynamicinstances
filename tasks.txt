@@ -14,3 +14,25 @@ x Simplify types by removing thunks
 x Separate handlers
 x Add our system examples before theory
 - More examples for dynamic instances
+- Use multiple exception example for static instances
+- One more fancy example for dynamic instances (ST example) (ST paper)
+- Introduction:
+	- contributions
+	- side-effects stuff in introduction
+	- mention monads as alternative or not at all
+	- precise control over non-pure part
+	- Write outline first
+	- Assume no knowledge of pure programming
+	- 3-5 pages
+	- Have objective.
+	- make sure relations between sentences are there
+	- many programs need side-effects
+	- side-effects hard for compilers
+	- leave out hard to reason
+	- ways of distinguising pure from non-pure
+	- we focus on algebraic effects
+	- Start with outline
+	- essence of the problem, build up to it
+	- effect encapsulation, address specific kind
+	- problem more general than algebraic effects
+- related work about monad/monad transformers/free
