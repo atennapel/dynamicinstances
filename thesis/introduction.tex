@@ -59,7 +59,9 @@ We give a formal description of the syntax, typing rules and semantics of the sy
 \section{Contributions}
 \begin{itemize}
 
-\item \textbf{We define a type-safe type-and-effect system for algebraic effects and handlers in the presence of dynamic instances.}
+\item \textbf{We define a calculus based on algebraic effects and handlers which allows for the definition of local mutable state.}
+We define a type-and-effect system which ensures that references do not escape their scope.
+We also define a small-step operation semantics.
 
 \item \textbf{We show how to implement state threads in this system.}
 Using our sytem we implement state threads similar to a monomorphic version Haskell's ST-monad.
