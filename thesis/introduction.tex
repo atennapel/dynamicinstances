@@ -1,75 +1,69 @@
-In this thesis we will devise a type and effect systems that can type some programs that use dynamic instances for algebraic effects and handlers.
+\iffalse
+\begin{enumerate}
+\item Side-effects are omnipresent
+\item Give examples
+\item Make programs hard to understand, test, debug, hard to compile
+\item many parts are pure
+\item give benefits for pure parts
+\item we want presice control over pure/non-pure parts
+\item want to keep track of effects
+\item want to use certain effects locally and encapsulated
+\end{enumerate}
 
-\section{Problem statement}
-% oxford comma before and (,and)
+\textbf{Explain side-effects generally}
+\textbf{Desires for a language}
+\textbf{Algebraic effects}
+\textbf{Our system}
+\fi
 
-% what are effects and what problems occur
-% first state problem in wider sense and state examples
-% define before use, examples before use
-% first: why algebraic effects
+Side-effects are generally used everywhere in programming.
+Examples include mutable state, exceptions, nondeterminism, and user input.
+Any function that includes such effects is called non-pure, while functions whose only effect is computing a result are called pure.
+Side-effects often make functions hard to understand, test and debug.
+This is because they rely on global state of some form, meaning that every invocation of the function may have different results.
+Furthermore side-effectful programs can also be difficult to optimize, since the compiler does not have much freedom in rearranging parts of the program.
+Pure functions on the other hand do not rely on any global state and thus can be reasoned about in isolation of the rest of the program.
+Every time a pure function is called with the same input, it will return the same output.
+This means those functions are easier to understand, test and debug.
+\\\\
+Even though side-effects are often an essential part of programs, many parts can still be written purely.
+By factoring out the pure parts from the non-pure parts, we can still gain the benefits of pure functions for many parts of our programs.
+Therefore it is desirable to a language to have precise control over which parts are pure and which are non-pure.
+In addition it would also be beneficial to be able to keep track of which effects exactly are used by which function.
+This gives an insight to the programmer to what a function may do when called.
+Some effects can also be encapsulated, this means that although a function may use side-effects, these uses are not observational to the outside world.
+We are thus unable to distinguise between a pure function and a function which locally uses encapsulated side-effects.
+For example a function implementing the factorial of a number could do this functionally using recursion or imperatively using local mutable variables, where the variables do not leak outside of the function.
+Both these approaches appear to the outside world as pure, since the effect of using local mutable variables in the imperative approach does not leak outside of the function.
+It is therefore also desirable for a language to allow certain side-effect such as local mutable state to be encapsulated.
+Lastly we would like non-pure functions to still compose as easily as pure functions do.
+\\\\
+Algebraic effects and handlers is an approach to programming with side-effects that has many of the desirable properties previously described.
+Each effect is defined as a set of operations, for example nondeterminism can be represented by an operation which takes to values and chooses one.
+Similarly state can be defined as two operations, get and put, where get is meant to return the current value of the state and put is meant to change this value.
+These operations can then be called in programs, where each operation call can be seen as a branch in a computation tree.
+Handlers take a program that calls operations and for each operation call defines how to proceed.
+Most side-effects that are used in programming can be defined in this system.
+Algebraic effects provide a way to factor out the pure parts, the operation calls, from the non-pure parts, the handlers.
+Furthermore functions using different algebraic effects compose just as easily as pure functions do.
+\\\\
+While algebraic effects and handlers have many of the desirable properties we would like, it is unable to express mutable local variables.
+In this thesis we define a calculus based on algebraic effects and handlers which allows for the definition of side-effects such as local references, local exceptions, and the dynamic opening of channels.
+This system gives full control of which parts of a program are pure and non-pure.
+Functions also compose easily, irrelevant of which side-effects they use.
+Using a type-and-effect system we every function keeps track of which effects it may use.
+We also statically ensure that side-effects are encapsulated.
+We give examples of programs using these side-effects in our system and show how to implement local mutable references in this system.
+We give a formal description of the syntax, typing rules and semantics of the system.
 
-% current state of the art
-% why is not enough
-% what we have done
-
-
-% people that know SOME functional programming
-% no theoretical background
-
-% why keep track of effects
-% mention guarantees given by type system (safety guarantees)
-
-% standard algebraic effects?
-% effect handlers
-
-% dynamically allocated cells
-% explain ``state threads''
-In the real world programs are effectful. They have to interact with the outside world, manage state, throw exceptions, and more.
-Purely functional programming is often said to be easier to reason about than imperative programming.
-This is partly because in purely functional programming effects are usually explicit.
-Many functional languages use monads to encapsulate effects.
-Monads make explicit what effects functions use and aid in reasoning.
-Unfortunately monads are hard to compose, requiring monad transformer stacks that are hard to understand and manage.
-\\
-Algebraic effects and handlers is an alternative approach to effectful programming.
-Using algebraic effects effects one can easily implement effects such as non-determinism, mutable state, exceptions, backtracking, and cooperative multi-threading.
-These effects can be composed and ordered in any way without any extra effort required from the user.
-\\
-Not all effectful programs can be easily expressed using algebraic effects.
-Handlers will handle all operations of a certain effects making effects such as state threads using multiple mutable references impossible to define.
-These so-called dynamic effects can be implemented by adding dynamic instances to the system.
-In such a system we can dynamically create instances of effects, distinct from other instances.
-Handlers then only handle a specific instance, giving fine-grained control over effects.
-\\
-There have been multiple type-and-effect systems proposed for algebraic effects and handler but none of them account for dynamic instances. Programming with them can still result in runtime crashes because of unhandled operations.
-\\
-We define a type-and-effect system for algebraic effects and handlers in the presence of dynamic instances.
-The system is sound with respect to progress and preservation and will ensure that a typed program with an empty effect set will have no unhandled operations.
-We show that functional state threads can be expressed in this system.
-We also formalize the system in Coq and prove type soundness.
-
-\section{Proposed solution}
+\section{Contributions}
 \begin{itemize}
 
-% type-safe preferred, type-sound
 \item \textbf{We define a type-safe type-and-effect system for algebraic effects and handlers in the presence of dynamic instances.}
-% The system is sound with respect to progress and preservation and will ensure that a typed program with an empty effect set will have no unhandled operations.
-
-% instead, core system is a principled extension, so easy to proof results and compose with other features
-% and easy for users to understand. 
-Furthermore the system is a simple extension of a system with algebraic effects without instances.
 
 \item \textbf{We show how to implement state threads in this system.}
 Using our sytem we implement state threads similar to a monomorphic version Haskell's ST-monad.
 We show that references cannot escape their scope and that we cannot use a variable from one state thread in another state thread.
-
-\item \textbf{We formally prove type-soundness of the system.}
-We prove that typed programs with empty effects sets will not have unhandled operations and so do not get stuck.
-We explain what techniques we used to implement the proofs.
-
-%\item \textbf{We formalize the system in Coq.}
-% explain why mechanization.
-% mechanized, lists parts (typing rules, semantics, proofs)
 
 \end{itemize}
 
