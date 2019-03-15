@@ -29,3 +29,32 @@
 	- effect encapsulation, address specific kind
 	- problem more general than algebraic effects
 - related work about monad/monad transformers/free
+
+- notes introduction
+- update 2.1
+- safety in storyline (koka for example) (can connect to dynamic instances)
+- ST in algebraic effects
+- a lot of work on language that allow more control
+	- control
+	- separation
+	- encapsulatio
+	- cite actual languages
+	- algebraic effects gives most things
+	- and then limitations
+- put in algebraic effecst example (small)
+	- State example
+	- see only 1 cell, limitations
+	- only give handler signature
+	- connect to the ST monad
+	- cite
+- introduce type systems generally
+
+- update introduction chapter 2
+- connect more to ST monad
+- safety guaruantees of the different systems
+- type system are everywhere, but often do not do much, we can do more with effect system, more control/guaruantees
+- type systems appear in all kinds of languages
+- dynamic instances connect to my system with st example, forces you to program in this way
+
+- ask Casper to send pdf
+- just make bullet list maybe in 2.3, explain them after.
