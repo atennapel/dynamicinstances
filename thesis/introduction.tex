@@ -27,40 +27,68 @@
 - why
 \fi
 
-Side-effects are generally used everywhere in programming.
+Side-effects are ubiquitous in programming.
 Examples include mutable state, exceptions, nondeterminism, and user input.
-Any function that includes such effects is called non-pure, while functions whose only effect is computing a result are called pure.
 Side-effects often make functions hard to understand, test and debug.
-This is because they rely on global state of some form, meaning that every invocation of the function may have different results.
+This is because that every invocation of the function with the same arguments may yield different results.
 Furthermore side-effectful programs can also be difficult to optimize, since the compiler does not have much freedom in rearranging parts of the program.
+\\\\
+Any function that includes such effects is called impure, while functions whose only effect is computing a result are called pure.
 Pure functions on the other hand do not rely on any global state and thus can be reasoned about in isolation of the rest of the program.
 Every time a pure function is called with the same input, it will return the same output.
 This means those functions are easier to understand, test and debug.
 \\\\
-Even though side-effects are often an essential part of programs, many parts can still be written purely.
-By factoring out the pure parts from the non-pure parts, we can still gain the benefits of pure functions for many parts of our programs.
-Therefore it is desirable to a language to have precise control over which parts are pure and which are non-pure.
-In addition it would also be beneficial to be able to keep track of which effects exactly are used by which function.
-This gives an insight to the programmer to what a function may do when called.
-Some effects can also be encapsulated, this means that although a function may use side-effects, these uses are not observational to the outside world.
-We are thus unable to distinguise between a pure function and a function which locally uses encapsulated side-effects.
-For example a function implementing the factorial of a number could do this functionally using recursion or imperatively using local mutable variables, where the variables do not leak outside of the function.
-Both these approaches appear to the outside world as pure, since the effect of using local mutable variables in the imperative approach does not leak outside of the function.
-It is therefore also desirable for a language to allow certain side-effect such as local mutable state to be encapsulated.
-Lastly we would like non-pure functions to still compose as easily as pure functions do.
+There has been a lot of work on programming languages that allow more control over the pure and impure parts of a program.
+Examples include Haskell\cite{haskell}, Eff\cite{eff1}, Koka\cite{koka2}, and Links\cite{links}.
+These languages, in one way or another, give the programmer more control over which parts of their program are pure and which parts are impure.
+By factoring out the pure parts from the impure parts, we can still gain the benefits of pure functions for many parts of our programs.
+In addition it would be even better to be able to keep track of which effects exactly are used by which function.
+They also allow some side-effects to be encapsulated, meaning that the use of a particular side-effect can be completely hidden such that the function still appears to be pure to the outside world.
 \\\\
-Algebraic effects and handlers is an approach to programming with side-effects that has many of the desirable properties previously described.
+Type systems appear in all kinds of languages.
+A type system statically enforces certain properties, different languages may have different type systems that enforce different properties.
+Usually a type system is used to statically encode the expected value and return types of a function.
+This ensures that a function does not receive an argument that is unable to compute with.
+In the case of effect-full language a type system can do even more.
+Using a type-and-effect system function can be statically annotated with the side-effects that may occur in that function.
+This gives more insight to the programmer and the compiler in to what a function may do when called.
+\\\\
+Algebraic effects and handlers\cite{algeff} are an approach to programming with side-effects that has many of the desirable properties previously described.
 Each effect is defined as a set of operations, for example nondeterminism can be represented by an operation which takes to values and chooses one.
-Similarly state can be defined as two operations, get and put, where get is meant to return the current value of the state and put is meant to change this value.
-These operations can then be called in programs, where each operation call can be seen as a branch in a computation tree.
+Similarly, state can be defined as two operations, get and put, where get is meant to return the current value of the state and put is meant to change this value.
+Functions are tagged by the set of effects they may use.
+These operations can then be called anywhere in a function.
 Handlers take a program that calls operations and for each operation call defines how to proceed.
 Most side-effects that are used in programming can be defined in this system.
-Algebraic effects provide a way to factor out the pure parts, the operation calls, from the non-pure parts, the handlers.
+Algebraic effects provide a way to factor out the pure parts, the operation calls, from the impure parts, the handlers.
 Furthermore functions using different algebraic effects compose just as easily as pure functions do.
+There also have been multiple type-and-effect systems that can handle algebraic effects\cite{eff2}\cite{koka1}\cite{links}.
+For example the following piece of code defines an effect called \textit{State} which simulates a single mutable state cell.
+The function \mintinline{haskell}{postInc} increments the current value in the state cell and returns the previous value.
+\begin{minted}[tabsize=2]{haskell}
+effect State {
+	get : () -> Int
+	put : Int -> ()
+}
+
+postInc : Int!{State}
+postInc =
+	x <- get ();
+	put (x + 1);
+	return x
+\end{minted}
+
+While algebraic effects and handlers have many of the desirable properties we would like, it is unable to express multiple mutable state cells.
+In the previous example it can be seen that \mintinline{haskell}{postInc} does not refer to any variables, but instead can only manipulate the mutable state using the get and put operations.
+In Haskell the the so-called ``ST monad''\cite{runst} can be used to safely implement multiple mutable state cells in such a way that stateful computations can be encapsulated and that the references to the mutable objects are not leaked outside of the function. 
+A feature called dynamic instances was introduced by the Eff programming language\cite{eff1}.
+With dynamic instances multiple different instances of the same effect can be dynamically created.
+Using this multiple state cells can be implemented.
+Unfortunately there is no type-and-effect for dynamic instances, using them can results in runtime errors when instances do not have an associated handler.
 \\\\
-While algebraic effects and handlers have many of the desirable properties we would like, it is unable to express mutable local variables.
 In this thesis we define a calculus based on algebraic effects and handlers which allows for the definition of side-effects such as local references, local exceptions, and the dynamic opening of channels.
-This system gives full control of which parts of a program are pure and non-pure.
+Using this system we can implement a system similar to the ``ST monad'' in Haskell.
+This system gives full control of which parts of a program are pure and impure.
 Functions also compose easily, irrelevant of which side-effects they use.
 Using a type-and-effect system we every function keeps track of which effects it may use.
 We also statically ensure that side-effects are encapsulated.
