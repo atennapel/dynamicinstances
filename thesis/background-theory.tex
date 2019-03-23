@@ -1,4 +1,6 @@
 {
+\newcommand\eff[0]{\epsilon}
+
 % types
 \newcommand\ty[0]{\tau}
 \newcommand\tunit[0]{()}
@@ -19,31 +21,22 @@
 \newcommand\vabst[3]{\Lambda(#1:#2) . #3}
 \newcommand\vabs[2]{\lambda #1 . #2}
 \newcommand\vappt[2]{#1 \; [ #2 ]}
-\newcommand\vhandler[1]{\textit{handler} \; \{#1\}}
-\newcommand\vhandleri[2]{\textit{handler} ( #1 ) \; \{#2\}}
-\newcommand\vhandlerc[0]{\vhandler{
-	\textit{return} \; x \rightarrow \comp,
-	\op_1(x ; k) \rightarrow \comp,
-	...,
-	\op_n(x ; k) \rightarrow \comp
-}}
-\newcommand\vhandlerci[1]{\vhandleri{#1}{
-	\textit{return} \; x \rightarrow \comp,
-	\op_1(x ; k) \rightarrow \comp,
-	...,
-	\op_n(x ; k) \rightarrow \comp
-}}
 
 % computations
 \newcommand\comp[0]{c}
 \newcommand\creturn[1]{\mathsf{return} \; #1}
 \newcommand\capp[2]{#1 \; #2}
 \newcommand\cdo[3]{#1 \leftarrow #2 ; #3}
-\newcommand\cop[4]{#1(#2 ; #3 . #4)}
+\newcommand\cop[2]{#1(#2)}
 \newcommand\copi[5]{#1 \# #2(#3 ; #4 . #5)}
-\newcommand\chandle[2]{\textit{with} \; #1 \; \textit{handle} \; #2}
-\newcommand\cnew[1]{\textit{new} \; #1}
+\newcommand\chandle[2]{\mathsf{handle} (#1) \{ #2 \}}
+\newcommand\cnew[1]{\mathsf{new} \; #1}
 \newcommand\cunpack[4]{(#1, #2) \leftarrow #3 ; #4}
+
+%handlers
+\newcommand\hop[5]{#1 \; #2 \; #3 \rightarrow #4 ; \; #5}
+\newcommand\hreturn[2]{\mathsf{return}\; #1 \rightarrow #2}
+\newcommand\hopc[4]{#1 \; #2 \; #3 \rightarrow #4}
 
 In this chapter we will show the basics of algebraic effects and handlers. We will start with the simply-typed lambda calculus (\cref{section:stlc}) and add algebraic effects (\cref{section:algeff}) and instances (\cref{section:staticinst}, \cref{section:dynamicinst}) to it. We end with dynamic instances and show why a type system for them is difficult to implement.
 
@@ -404,9 +397,226 @@ postInc = \() ->
 
 \subsection{Syntax}
 
+\begin{figure}
+\caption{Syntax of algebraic effects}
+\centering
+\fbox{
+\begin{minipage}{10 cm}
+\begin{align*}
+	\val \Coloneqq	&													\tag{values} \\
+									& x, y, z, k							\tag{variables} \\
+									& \vabs{x}{\comp}					\tag{abstraction} \\
+									& \vunit							\tag{unit value} \\
+	\comp \Coloneqq &													\tag{computations} \\
+									& \creturn{\val}					\tag{return value as computation} \\
+									& \capp{\val}{\val}					\tag{application} \\
+									& \cdo{x}{\comp}{\comp}			\tag{sequencing} \\
+									& \cop{op}{\val}					\tag{operation call} \\
+									& \chandle{\comp}{h}				\tag{handle} \\
+	h \Coloneqq &														\tag{handlers} \\
+									& \hop{op}{x}{k}{\comp}{h}			\tag{operation case} \\
+									& \hreturn{x}{\comp}				\tag{return case}
+\end{align*}
+\label{fig:syntax-algeff}
+\end{minipage}
+}
+\end{figure}
+
 \subsection{Semantics}
 
+\begin{figure}
+\caption{Semantics of algebraic effects}
+\centering
+\fbox{
+\begin{minipage}{16 cm}
+\[\inferrule{
+}{
+	\capp{(\vabs{x}{\comp})}{\val} \rightsquigarrow \comp[x := \val]
+}\quad(\footnotesize\textsc{AlgEff-S-App})\]
+
+\[\inferrule{
+}{
+	(\cdo{x}{\creturn{\val}}{\comp}) \rightsquigarrow \comp[x := \val]
+}\quad(\footnotesize\textsc{AlgEff-S-SeqReturn})\]
+
+\[\inferrule{
+}{
+	(\cdo{x}{(\cdo{y}{\comp_1}{\comp_2})}{\comp_3}) \rightsquigarrow (\cdo{y}{\comp_1}{(\cdo{x}{\comp_2}{\comp_3})})
+}\quad(\footnotesize\textsc{AlgEff-S-Flatten})\]
+
+\[\inferrule{
+	\comp_1 \rightsquigarrow \comp_1'
+}{
+	(\cdo{x}{\comp_1}{\comp_2}) \rightsquigarrow (\cdo{x}{\comp_1'}{\comp_2})
+}\quad(\footnotesize\textsc{AlgEff-S-Seq})\]
+
+\[\inferrule{
+}{
+	\cop{op}{\val} \rightsquigarrow (\cdo{x}{\cop{op}{\val}}{\creturn{x}})
+}\quad(\footnotesize\textsc{AlgEff-S-Op})\]
+
+\[\inferrule{
+}{
+	\chandle{\creturn{\val}}{h; \hreturn{x}{\comp}} \rightsquigarrow \comp[x := \val]
+}\quad(\footnotesize\textsc{AlgEff-S-HandleReturn})\]
+
+\[\inferrule{
+	\hopc{op}{x}{k}{\comp'} \in h
+}{
+	\chandle{\cdo{y}{\cop{op}{\val}}{\comp}}{h} \rightsquigarrow \comp'[x := \val, k := (\vabs{y}{\chandle{\comp}{h}})]
+}\quad(\footnotesize\textsc{AlgEff-S-HandleOp})\]
+
+\[\inferrule{
+	op \notin h
+}{
+	\chandle{\cdo{x}{\cop{op}{\val}}{\comp}}{h} \rightsquigarrow (\cdo{x}{\cop{op}{\val}}{\chandle{\comp}{h}})
+}\quad(\footnotesize\textsc{AlgEff-S-HandleOpSkip})\]
+
+\[\inferrule{
+	\comp \rightsquigarrow \comp'
+}{
+	\chandle{\comp}{h} \rightsquigarrow \chandle{\comp'}{h}
+}\quad(\footnotesize\textsc{AlgEff-S-Handle})\]
+\label{fig:semantics-algeff}
+\end{minipage}
+}
+\end{figure}
+
 \subsection{Type system}
+
+\begin{figure}
+\caption{Types of algebraic effects}
+\centering
+\fbox{
+\begin{minipage}{8 cm}
+\begin{align*}
+	\ty \Coloneqq 	& 												\tag{value types} \\
+									& \tunit						\tag{unit type} \\
+									& \tarr{\ty}{\cty}				\tag{type of functions} \\
+	\cty \Coloneqq 	& 												\tag{computation types} \\
+									& \aty{\ty}{r}					\tag{annotated value type} \\
+\end{align*}
+\label{fig:types-algeff}
+\end{minipage}
+}
+\end{figure}
+
+\begin{figure}
+\caption{Subtyping rules of algebraic effects}
+\centering
+\fbox{
+\begin{minipage}{14 cm}
+\[\inferrule{
+}{
+	\tunit <: \tunit
+}\quad(\footnotesize\textsc{AlgEff-Sub-Unit})\]
+
+\[\inferrule{
+	\ty_3 <: \ty_1 \\
+	\cty_2 <: \cty_4
+}{
+	\tarr{\ty_1}{\cty_2} <: \tarr{\ty_3}{\cty_4}
+}\quad(\footnotesize\textsc{AlgEff-Sub-Arr})\]
+
+\[\inferrule{
+	\ty_1 <: \ty_2 \\
+	r_1 \subseteq r_2
+}{
+	\aty{\ty_1}{r_1} <: \aty{\ty_2}{r_2}
+}\quad(\footnotesize\textsc{AlgEff-Sub-Annot})\]
+\label{fig:subtyping-algeff}
+\end{minipage}
+}
+\end{figure}
+
+\begin{figure}
+\caption{Typing rules of algebraic effects}
+\centering
+\fbox{
+\begin{minipage}{14 cm}
+\[\inferrule{
+	\Gamma[x] = \ty
+}{
+	\Gamma \vdash x : \ty
+}\quad(\footnotesize\textsc{AlgEff-T-Var})\]
+
+\[\inferrule{
+}{
+	\Gamma \vdash \vunit : \tunit
+}\quad(\footnotesize\textsc{AlgEff-T-Unit})\]
+
+\[\inferrule{
+	\Gamma, x : \ty_1 \vdash \comp : \cty_2
+}{
+	\Gamma \vdash \vabs{x}{\comp} : \tarr{\ty_1}{\cty_2}
+}\quad(\footnotesize\textsc{AlgEff-T-Abs})\]
+
+\[\inferrule{
+	\Gamma \vdash \val : \ty_1 \\
+	\ty_1 <: \ty_2
+}{
+	\Gamma \vdash \val : \ty_2
+}\quad(\footnotesize\textsc{AlgEff-T-SubVal})\]
+
+\[\inferrule{
+	\Gamma \vdash \val : \ty
+}{
+	\Gamma \vdash \creturn{\val} : \aty{\ty}{\varnothing}
+}\quad(\footnotesize\textsc{AlgEff-T-Return})\]
+
+\[\inferrule{
+	\Gamma \vdash \val_1 : \tarr{\ty_1}{\cty_2}\\
+	\Gamma \vdash \val_2 : \ty_1
+}{
+	\Gamma \vdash \capp{\val_1}{\val_2} : \cty_2
+}\quad(\footnotesize\textsc{AlgEff-T-App})\]
+
+\[\inferrule{
+	\Gamma \vdash \comp_1 : \aty{\ty_1}{r}\\
+	\Gamma, x : \ty_1 \vdash \comp_2 : \aty{\ty_2}{r}
+}{
+	\Gamma \vdash (\cdo{x}{\comp_1}{\comp_2}) : \aty{\ty_2}{r}
+}\quad(\footnotesize\textsc{AlgEff-T-Seq})\]
+
+\[\inferrule{
+	\Gamma[op] = (\eff, \ty^1_{op}, \ty^2_{op}) \\
+	\Gamma \vdash \val : \ty^1_{op} \\
+}{
+	\Gamma \vdash \cop{op}{\val} : \aty{\ty^2_{op}}{\{ \eff \}}
+}\quad(\footnotesize\textsc{AlgEff-T-Op})\]
+
+\[\inferrule{
+	\Gamma \vdash \comp : \aty{\ty_1}{r_1} \\
+	op \in h \Leftrightarrow op \in O^\eff \\
+	\Gamma \vdash^{\ty_1} h : \aty{\ty_2}{r_2}
+}{
+	\Gamma \vdash \chandle{\comp}{h} :\aty{\ty_2}{((r_1 \setminus \{\eff\}) \cup r_2)}
+}\quad(\footnotesize\textsc{AlgEff-T-Handle})\]
+
+\[\inferrule{
+	\Gamma \vdash \comp : \cty_1 \\
+	\cty_1 <: \cty_2
+}{
+	\Gamma \vdash \comp : \cty_2
+}\quad(\footnotesize\textsc{AlgEff-T-SubComp})\]
+
+\[\inferrule{
+	\Gamma \vdash^{\ty_1} h : \aty{\ty_2}{r} \\
+	\Gamma[op] = (\eff, \ty^1_{op}, \ty^2_{op}) \\
+	\Gamma, x : \ty^1_{op}, k : \tarr{\ty^2_{op}}{\aty{\ty_2}{r}} \vdash \comp : \aty{\ty_2}{r} \\
+}{
+	\Gamma \vdash^{\ty_1} (\hop{op}{x}{k}{\comp}{h}) : \aty{\ty_2}{r}
+}\quad(\footnotesize\textsc{AlgEff-T-HOp})\]
+
+\[\inferrule{
+	\Gamma, x : \ty_1 \vdash \comp : \aty{\ty_2}{r}
+}{
+	\Gamma \vdash^{\ty_1} (\hreturn{x}{\comp}) : \aty{\ty_2}{r}
+}\quad(\footnotesize\textsc{AlgEff-T-HReturn})\]
+\label{fig:typing-algeff}
+\end{minipage}
+}
+\end{figure}
 
 \subsection{Discussion/limitations}
 
