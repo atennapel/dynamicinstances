@@ -7,17 +7,17 @@
 \newcommand\tarr[2]{#1 \rightarrow #2}
 \newcommand\thandler[2]{#1 \Rightarrow #2}
 \newcommand\tforall[3]{\forall(#1:#2) . #3}
+\newcommand\tinst[1]{\mathsf{inst}(#1)}
 
 % computation type
 \newcommand\cty[0]{\underline{\ty}}
 \newcommand\aty[2]{#1 \; ! \; #2}
 \newcommand\texists[3]{\exists(#1:#2) . #3}
 \newcommand\texistss[2]{\exists \overrightarrow{#1} . #2}
-
 % values
 \newcommand\val[0]{\nu}
 \newcommand\vunit[0]{()}
-\newcommand\vinst[1]{\mathsf{inst}(#1)}
+\newcommand\vinst[0]{\iota}
 \newcommand\vabst[3]{\Lambda(#1:#2) . #3}
 \newcommand\vabs[2]{\lambda #1 . #2}
 \newcommand\vappt[2]{#1 \; [ #2 ]}
@@ -28,8 +28,9 @@
 \newcommand\capp[2]{#1 \; #2}
 \newcommand\cdo[3]{#1 \leftarrow #2 ; #3}
 \newcommand\cop[2]{#1(#2)}
-\newcommand\copi[5]{#1 \# #2(#3 ; #4 . #5)}
+\newcommand\copi[3]{#1 \# #2(#3)}
 \newcommand\chandle[2]{\mathsf{handle} (#1) \{ #2 \}}
+\newcommand\chandlei[3]{\mathsf{handle}^{#1} (#2) \{ #3 \}}
 \newcommand\cnew[1]{\mathsf{new} \; #1}
 \newcommand\cunpack[4]{(#1, #2) \leftarrow #3 ; #4}
 
@@ -632,10 +633,242 @@ Explain:
 \end{itemize}
 
 \subsection{Syntax}
+\begin{figure}
+\caption{Syntax of algebraic effects with static instances}
+\centering
+\fbox{
+\begin{minipage}{10 cm}
+\begin{align*}
+	\val \Coloneqq	&													\tag{values} \\
+									& x, y, z, k							\tag{variables} \\
+									& \vabs{x}{\comp}					\tag{abstraction} \\
+									& \vunit							\tag{unit value} \\
+									& \vinst							\tag{instance} \\
+	\comp \Coloneqq &													\tag{computations} \\
+									& \creturn{\val}					\tag{return value as computation} \\
+									& \capp{\val}{\val}					\tag{application} \\
+									& \cdo{x}{\comp}{\comp}			\tag{sequencing} \\
+									& \copi{\val}{op}{\val}				\tag{operation call} \\
+									& \chandlei{\val}{\comp}{h}			\tag{handle} \\
+	h \Coloneqq &														\tag{handlers} \\
+									& \hop{op}{x}{k}{\comp}{h}			\tag{operation case} \\
+									& \hreturn{x}{\comp}				\tag{return case}
+\end{align*}
+\label{fig:syntax-static}
+\end{minipage}
+}
+\end{figure}
 
 \subsection{Semantics}
 
+\begin{figure}
+\caption{Semantics of algebraic effects with static instances}
+\centering
+\fbox{
+\begin{minipage}{18 cm}
+\[\inferrule{
+}{
+	\capp{(\vabs{x}{\comp})}{\val} \rightsquigarrow \comp[x := \val]
+}\quad(\footnotesize\textsc{Static-S-App})\]
+
+\[\inferrule{
+}{
+	(\cdo{x}{\creturn{\val}}{\comp}) \rightsquigarrow \comp[x := \val]
+}\quad(\footnotesize\textsc{Static-S-SeqReturn})\]
+
+\[\inferrule{
+}{
+	(\cdo{x}{(\cdo{y}{\comp_1}{\comp_2})}{\comp_3}) \rightsquigarrow (\cdo{y}{\comp_1}{(\cdo{x}{\comp_2}{\comp_3})})
+}\quad(\footnotesize\textsc{Static-S-Flatten})\]
+
+\[\inferrule{
+	\comp_1 \rightsquigarrow \comp_1'
+}{
+	(\cdo{x}{\comp_1}{\comp_2}) \rightsquigarrow (\cdo{x}{\comp_1'}{\comp_2})
+}\quad(\footnotesize\textsc{Static-S-Seq})\]
+
+\[\inferrule{
+}{
+	\copi{\val_1}{op}{\val_2} \rightsquigarrow (\cdo{x}{\copi{\val_1}{op}{\val_2}}{\creturn{x}})
+}\quad(\footnotesize\textsc{Static-S-Op})\]
+
+\[\inferrule{
+}{
+	\chandlei{\val_1}{\creturn{\val_2}}{h; \hreturn{x}{\comp}} \rightsquigarrow \comp[x := \val_2]
+}\quad(\footnotesize\textsc{Static-S-HandleReturn})\]
+
+\[\inferrule{
+	\hopc{op}{x}{k}{\comp'} \in h
+}{
+	\chandlei{\vinst}{\cdo{y}{\copi{\vinst}{op}{\val}}{\comp}}{h} \rightsquigarrow \comp'[x := \val, k := (\vabs{y}{\chandlei{\vinst}{\comp}{h}})]
+}\quad(\footnotesize\textsc{Static-S-HandleOp})\]
+
+\[\inferrule{
+	op \notin h \land \vinst_1 \neq \vinst_2
+}{
+	\chandlei{\vinst_1}{\cdo{x}{\copi{\vinst_2}{op}{\val}}{\comp}}{h} \rightsquigarrow (\cdo{x}{\copi{\vinst_2}{op}{\val}}{\chandlei{\vinst_1}{\comp}{h}})
+}\quad(\footnotesize\textsc{Static-S-HandleOpSkip})\]
+
+\[\inferrule{
+	\comp \rightsquigarrow \comp'
+}{
+	\chandlei{\val}{\comp}{h} \rightsquigarrow \chandlei{\val}{\comp'}{h}
+}\quad(\footnotesize\textsc{Static-S-Handle})\]
+\label{fig:semantics-static}
+\end{minipage}
+}
+\end{figure}
+
 \subsection{Type system}
+
+\begin{figure}
+\caption{Types of algebraic effects with static instances}
+\centering
+\fbox{
+\begin{minipage}{8 cm}
+\begin{align*}
+	\ty \Coloneqq 	& 												\tag{value types} \\
+									& \tunit						\tag{unit type} \\
+									& \tinst{\vinst}					\tag{instance type} \\
+									& \tarr{\ty}{\cty}				\tag{type of functions} \\
+	\cty \Coloneqq 	& 												\tag{computation types} \\
+									& \aty{\ty}{r}					\tag{annotated value type} \\
+\end{align*}
+\label{fig:types-static}
+\end{minipage}
+}
+\end{figure}
+
+\begin{figure}
+\caption{Subtyping rules of algebraic effects with static instances}
+\centering
+\fbox{
+\begin{minipage}{14 cm}
+\[\inferrule{
+}{
+	\tunit <: \tunit
+}\quad(\footnotesize\textsc{Static-Sub-Unit})\]
+
+\[\inferrule{
+}{
+	\tinst{\vinst} <: \tinst{\vinst}
+}\quad(\footnotesize\textsc{Static-Sub-Unit})\]
+
+\[\inferrule{
+	\ty_3 <: \ty_1 \\
+	\cty_2 <: \cty_4
+}{
+	\tarr{\ty_1}{\cty_2} <: \tarr{\ty_3}{\cty_4}
+}\quad(\footnotesize\textsc{Static-Sub-Arr})\]
+
+\[\inferrule{
+	\ty_1 <: \ty_2 \\
+	r_1 \subseteq r_2
+}{
+	\aty{\ty_1}{r_1} <: \aty{\ty_2}{r_2}
+}\quad(\footnotesize\textsc{Static-Sub-Annot})\]
+\label{fig:subtyping-algeff}
+\end{minipage}
+}
+\end{figure}
+
+\begin{figure}
+\caption{Typing rules of algebraic effects with static instances}
+\centering
+\fbox{
+\begin{minipage}{13 cm}
+\[\inferrule{
+	\Gamma[x] = \ty
+}{
+	\Gamma \vdash x : \ty
+}\quad(\footnotesize\textsc{Static-T-Var})\]
+
+\[\inferrule{
+}{
+	\Gamma \vdash \vunit : \tunit
+}\quad(\footnotesize\textsc{Static-T-Unit})\]
+
+\[\inferrule{
+}{
+	\Gamma \vdash \vinst : \tinst{\vinst}
+}\quad(\footnotesize\textsc{Static-T-Inst})\]
+
+\[\inferrule{
+	\Gamma, x : \ty_1 \vdash \comp : \cty_2
+}{
+	\Gamma \vdash \vabs{x}{\comp} : \tarr{\ty_1}{\cty_2}
+}\quad(\footnotesize\textsc{Static-T-Abs})\]
+
+\[\inferrule{
+	\Gamma \vdash \val : \ty_1 \\
+	\ty_1 <: \ty_2
+}{
+	\Gamma \vdash \val : \ty_2
+}\quad(\footnotesize\textsc{Static-T-SubVal})\]
+
+\[\inferrule{
+	\Gamma \vdash \val : \ty
+}{
+	\Gamma \vdash \creturn{\val} : \aty{\ty}{\varnothing}
+}\quad(\footnotesize\textsc{Static-T-Return})\]
+
+\[\inferrule{
+	\Gamma \vdash \val_1 : \tarr{\ty_1}{\cty_2}\\
+	\Gamma \vdash \val_2 : \ty_1
+}{
+	\Gamma \vdash \capp{\val_1}{\val_2} : \cty_2
+}\quad(\footnotesize\textsc{Static-T-App})\]
+
+\[\inferrule{
+	\Gamma \vdash \comp_1 : \aty{\ty_1}{r}\\
+	\Gamma, x : \ty_1 \vdash \comp_2 : \aty{\ty_2}{r}
+}{
+	\Gamma \vdash (\cdo{x}{\comp_1}{\comp_2}) : \aty{\ty_2}{r}
+}\quad(\footnotesize\textsc{Static-T-Seq})\]
+
+\[\inferrule{
+	\Gamma \vdash \val_1 : \tinst{\vinst} \\
+	\Gamma[\vinst] = \eff \\
+	\Gamma[op] = (\eff, \ty^1_{op}, \ty^2_{op}) \\
+	\Gamma \vdash \val_2 : \ty^1_{op} \\
+}{
+	\Gamma \vdash \copi{\val_1}{op}{\val_2} : \aty{\ty^2_{op}}{\{ \vinst \}}
+}\quad(\footnotesize\textsc{Static-T-Op})\]
+
+\[\inferrule{
+	\Gamma \vdash \val : \tinst{\vinst} \\
+	\Gamma[\vinst] = \eff \\
+	\Gamma \vdash \comp : \aty{\ty_1}{r_1} \\
+	op \in h \Leftrightarrow op \in O^\eff \\
+	\Gamma \vdash^{\ty_1} h : \aty{\ty_2}{r_2}
+}{
+	\Gamma \vdash \chandlei{\val}{\comp}{h} :\aty{\ty_2}{((r_1 \setminus \{\vinst\}) \cup r_2)}
+}\quad(\footnotesize\textsc{Static-T-Handle})\]
+
+\[\inferrule{
+	\Gamma \vdash \comp : \cty_1 \\
+	\cty_1 <: \cty_2
+}{
+	\Gamma \vdash \comp : \cty_2
+}\quad(\footnotesize\textsc{Static-T-SubComp})\]
+
+\[\inferrule{
+	\Gamma \vdash^{\ty_1} h : \aty{\ty_2}{r} \\
+	\Gamma[op] = (\eff, \ty^1_{op}, \ty^2_{op}) \\
+	\Gamma, x : \ty^1_{op}, k : \tarr{\ty^2_{op}}{\aty{\ty_2}{r}} \vdash \comp : \aty{\ty_2}{r} \\
+}{
+	\Gamma \vdash^{\ty_1} (\hop{op}{x}{k}{\comp}{h}) : \aty{\ty_2}{r}
+}\quad(\footnotesize\textsc{Static-T-HOp})\]
+
+\[\inferrule{
+	\Gamma, x : \ty_1 \vdash \comp : \aty{\ty_2}{r}
+}{
+	\Gamma \vdash^{\ty_1} (\hreturn{x}{\comp}) : \aty{\ty_2}{r}
+}\quad(\footnotesize\textsc{Static-T-HReturn})\]
+\label{fig:typing-algeff}
+\end{minipage}
+}
+\end{figure}
 
 \subsection{Examples}
 Show state with multiple static instances (references).
