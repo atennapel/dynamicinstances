@@ -1,5 +1,7 @@
 {
 \newcommand\eff[0]{\epsilon}
+\newcommand\Eff[0]{E}
+\newcommand\Op[1]{O^{#1}}
 
 % types
 \newcommand\ty[0]{\tau}
@@ -56,16 +58,10 @@ Another way to look at FG-STLC is to see it as a syntax for the lambda calculus 
 \caption{Syntax of the fine-grained lambda calculus}
 \centering
 \fbox{
-\begin{minipage}{10 cm}
+\begin{minipage}{6 cm}
 \begin{align*}
-	\val \Coloneqq	&													\tag{values} \\
-									& x, y, z, k							\tag{variables} \\
-									& \vabs{x}{\comp}					\tag{abstraction} \\
-									& \vunit									\tag{unit value} \\
-	\comp \Coloneqq&													\tag{computations} \\
-									& \creturn{\val}					\tag{return value as computation} \\
-									& \capp{\val}{\val}				\tag{application} \\
-									& \cdo{x}{\comp}{\comp}		\tag{sequencing} \\
+& \val \Coloneqq x, y, z, k \;|\; \vabs{x}{\comp} \;|\; \vunit \\
+& \comp \Coloneqq \creturn{\val} \;|\; \capp{\val}{\val} \;|\; \cdo{x}{\comp}{\comp} \\
 \end{align*}
 \label{fig:syntax-stlc}
 \end{minipage}
@@ -127,13 +123,10 @@ Meaning that $\comp$ in $\comp \rightsquigarrow^* \comp$ can reach $\comp'$ in z
 \caption{Types of the fine-grained simply-typed lambda calculus}
 \centering
 \fbox{
-\begin{minipage}{8 cm}
+\begin{minipage}{4 cm}
 \begin{align*}
-	\ty \Coloneqq 	& 												\tag{value types} \\
-									& \tunit									\tag{unit type} \\
-									& \tarr{\ty}{\cty}				\tag{type of functions} \\
-	\cty \Coloneqq 	& 												\tag{computation types} \\
-									& \ty											\tag{value type} \\
+& \ty \Coloneqq \tunit \;|\; \tarr{\ty}{\cty} \\
+& \cty \Coloneqq \ty \\
 \end{align*}
 \label{fig:types-stlc}
 \end{minipage}
@@ -152,7 +145,7 @@ For the simply-typed lambda calculus a computation type is simply a value type, 
 \caption{Typing rules of the fine-grained simply-typed lambda calculus}
 \centering
 \fbox{
-\begin{minipage}{14 cm}
+\begin{minipage}{10 cm}
 \[\inferrule{
 	\Gamma[x] = \ty
 }{
@@ -321,82 +314,9 @@ Where the progress lemma states that given a well-typed computation $\comp$ then
 \newpage
 \section{Algebraic effects} \label{section:algeff}
 
-\subsection{Intro}
-Explain:
-\begin{itemize}
-	\item What are algebraic effects and handlers
-	\item Why algebraic effects
-	\begin{itemize}
-		\item easy to use
-		\item can express often used monads
-		\item composable
-		\item always commuting
-		\item modular (split between computations and handlers)
-	\end{itemize}
-\end{itemize}
-
-Algebraic effects and handlers are a way of treating computational effects that is modular and compositional.
-
-With algebraic effects impure behavior is modeled using operations.
-For example a mutable store has get and put operations, exceptions have a throw operation and console input/output has read and print operations.
-Handlers of algebraic effects generalize handlers of exceptions by not only catching called operations but also adding the ability to resume where the operation was called.
-While not all monads can be written in terms of algebraic effects, for example the continuation monad, in practice most useful computation effects can be modeled this way.
-\\
-For example we can model stateful computations that mutate an integer by defining the following algebraic effect signature:
-
-\[ \textbf{State} := \{ \textbf{get} : () \rightarrow \textbf{Int}, \textbf{put} : \textbf{Int} \rightarrow () \} \]
-
-\textbf{State} is an effect that has two operations \textbf{get} and \textbf{put}. \textbf{get} takes unit has its parameter type and returns an integer value, \textbf{put} takes an integer value and returns unit.
-\\
-We can then use the \textbf{State} operations in a program:
-
-\[ \textit{inc} \; () := x \leftarrow \textbf{get} \; () ;\; \textbf{put} \; (x + 1) \]
-
-The program \textbf{inc} uses the \textbf{get} and \textbf{put}, but these operations are abstract.
-Handlers are used to give the abstract effects in a computation semantics.
-
-\textbf{Handlers}
-Algebraic effect handlers can be seen as a generalization of exception handlers where the programmer also has access
-to a continuation that continues from the point of where a operation was called.
-
-For example the following handler gives the \textbf{get} and \textbf{put} the usual function-passing style state semantics:
-
-\[ \textit{state} \; := \textbf{handler} \; \{ \;
-  \textbf{return} \; v \rightarrow \lambda s \rightarrow v,
-  \textbf{get} \; () \; k \rightarrow \lambda s \rightarrow k \; s \; s,
-  \textbf{put} \; s \; k \rightarrow \lambda s' \rightarrow k \; () \; s,
-\} \]
-
-We are able to give different interpretations of a computation by using different handlers.
-We could for example think of a transaction state interpretation where changed to the state are only applied at the end if the computation succeeds.
-
-\textbf{Examples}
-\begin{minted}[tabsize=2]{haskell}
-effect Flip {
-	flip : () -> Bool
-}
-
-program = \() ->
-	b <- flip ();
-	if b then
-		flip ()
-	else
-		false
-\end{minted}
-
-\begin{minted}[tabsize=2]{haskell}
-effect State {
-	get : () -> Int
-	put : Int -> ()
-}
-
-postInc = \() ->
-	n <- get ();
-	put (n + 1);
-	return n
-\end{minted}
-
-\subsection{Syntax}
+We now extend the previous calculus with algebraic effects and handlers.
+We assume there is a set of effect names $\Eff = \{ \mathsf{Flip}, \mathsf{State}, ... \}$ and for each effect $\eff$ a set of operations $\Op{\eff}$.
+For example $\Op{\mathsf{Flip}} = \{ \mathsf{flip} \}$ and $\Op{\mathsf{State}} = \{ \mathsf{get}, \mathsf{put} \}$.
 
 \begin{figure}
 \caption{Syntax of algebraic effects}
@@ -404,26 +324,20 @@ postInc = \() ->
 \fbox{
 \begin{minipage}{10 cm}
 \begin{align*}
-	\val \Coloneqq	&													\tag{values} \\
-									& x, y, z, k							\tag{variables} \\
-									& \vabs{x}{\comp}					\tag{abstraction} \\
-									& \vunit							\tag{unit value} \\
-	\comp \Coloneqq &													\tag{computations} \\
-									& \creturn{\val}					\tag{return value as computation} \\
-									& \capp{\val}{\val}					\tag{application} \\
-									& \cdo{x}{\comp}{\comp}			\tag{sequencing} \\
-									& \cop{op}{\val}					\tag{operation call} \\
-									& \chandle{\comp}{h}				\tag{handle} \\
-	h \Coloneqq &														\tag{handlers} \\
-									& \hop{op}{x}{k}{\comp}{h}			\tag{operation case} \\
-									& \hreturn{x}{\comp}				\tag{return case}
+& \val \Coloneqq x, y, z, k \;|\; \vabs{x}{\comp}	\;|\; \vunit \\
+& \comp \Coloneqq \creturn{\val} \;|\; \capp{\val}{\val} \;|\; \cdo{x}{\comp}{\comp} \;|\; \cop{op}{\val} \;|\; \chandle{\comp}{h} \\
+& h \Coloneqq \hop{op}{x}{k}{\comp}{h} \;|\; \hreturn{x}{\comp} \\
 \end{align*}
 \label{fig:syntax-algeff}
 \end{minipage}
 }
 \end{figure}
 
-\subsection{Semantics}
+\textbf{Syntax}
+The syntax for the extended system is shown in figure \ref{fig:syntax-algeff}.
+Values stay the same. We add two forms of computations, operation calls $\cop{op}{\val}$ where $op \in \Op{\eff}$ for some effect $\eff$ and
+we can handle computations using $\chandle{\comp}{h}$.
+Handlers $h$ are linked lists of operation cases $\hop{op}{x}{k}{\comp}{h}$ ending in the return case $\hreturn{x}{\comp}$.
 
 \begin{figure}
 \caption{Semantics of algebraic effects}
@@ -441,15 +355,15 @@ postInc = \() ->
 }\quad(\footnotesize\textsc{AlgEff-S-SeqReturn})\]
 
 \[\inferrule{
-}{
-	(\cdo{x}{(\cdo{y}{\comp_1}{\comp_2})}{\comp_3}) \rightsquigarrow (\cdo{y}{\comp_1}{(\cdo{x}{\comp_2}{\comp_3})})
-}\quad(\footnotesize\textsc{AlgEff-S-Flatten})\]
-
-\[\inferrule{
 	\comp_1 \rightsquigarrow \comp_1'
 }{
 	(\cdo{x}{\comp_1}{\comp_2}) \rightsquigarrow (\cdo{x}{\comp_1'}{\comp_2})
 }\quad(\footnotesize\textsc{AlgEff-S-Seq})\]
+
+\[\inferrule{
+}{
+	(\cdo{x}{(\cdo{y}{\comp_1}{\comp_2})}{\comp_3}) \rightsquigarrow (\cdo{y}{\comp_1}{(\cdo{x}{\comp_2}{\comp_3})})
+}\quad(\footnotesize\textsc{AlgEff-S-Flatten})\]
 
 \[\inferrule{
 }{
@@ -483,19 +397,29 @@ postInc = \() ->
 }
 \end{figure}
 
-\subsection{Type system}
+\textbf{Semantics}
+We give a small-step operational semantics in figure \ref{fig:semantics-algeff}.
+\textsc{AlgEff-S-App}, \textsc{AlgEff-S-SeqReturn} and \textsc{AlgEff-S-Seq} are the same as the \textsc{STLC-S-App}, \textsc{STLC-S-SeqReturn} and \
+\textsc{STLC-S-Seq} in the fine-grained system.
+To be able to handle a computation we first transform the computation to the form $\creturn{\val}$ or $(\cdo{x}{\cop{op}{\val}}{\comp})$.
+\textsc{AlgEff-S-Flatten} and \textsc{AlgEff-S-Op} are used to get a computation to those forms.
+The last four rules are used to handle a computation.
+\textsc{AlgEff-S-HandleReturn} handles a computation of the form $\creturn{\val}$ by substituting $\val$ in the body of the return case of the handler.
+\textsc{AlgEff-S-HandleOp} and \textsc{AlgEff-S-HandleOpSkip} handle computations of the form $(\cdo{x}{\cop{op}{\val}}{\comp})$.
+If the operation $op$ is contained in the handler $h$ then the rule \textsc{AlgEff-S-HandleOp} substitutes the value $\val$ of the operation call in the body of the matching operation case $\comp'$.
+We also substitute a continuation in $\comp'$, which continues with the computation $\comp$ wrapped by the same handler $h$.
+If the operation $op$ is not contained in the handler then we float out the operation call $\cop{op}{\val}$ and wrap the handler $h$ around the continuing computation $\comp$.
+Lastly \textsc{AlgEff-S-Handle} is able to reduce a computation in the handle computation.
 
 \begin{figure}
 \caption{Types of algebraic effects}
 \centering
 \fbox{
-\begin{minipage}{8 cm}
+\begin{minipage}{6 cm}
 \begin{align*}
-	\ty \Coloneqq 	& 												\tag{value types} \\
-									& \tunit						\tag{unit type} \\
-									& \tarr{\ty}{\cty}				\tag{type of functions} \\
-	\cty \Coloneqq 	& 												\tag{computation types} \\
-									& \aty{\ty}{r}					\tag{annotated value type} \\
+& \ty \Coloneqq \tunit \;|\; \tarr{\ty}{\cty}	\\
+& \cty \Coloneqq 	\aty{\ty}{r} \\
+& r \Coloneqq \{ \eff_1, ..., \eff_n \} \\
 \end{align*}
 \label{fig:types-algeff}
 \end{minipage}
@@ -506,7 +430,7 @@ postInc = \() ->
 \caption{Subtyping rules of algebraic effects}
 \centering
 \fbox{
-\begin{minipage}{14 cm}
+\begin{minipage}{10 cm}
 \[\inferrule{
 }{
 	\tunit <: \tunit
@@ -619,7 +543,90 @@ postInc = \() ->
 }
 \end{figure}
 
-\subsection{Discussion/limitations}
+\textbf{Type syntax}
+We now give a type system which ensures that a program reduced by the given semantics will not get ``stuck'' meaning that the result will be a computation of the form $\creturn{\val}$ for some value $\val$.
+In figure \ref{fig:types-algeff} we give the syntax of the types.
+Value types $\ty$ are the same as in the fine-grained system.
+Computation types $\cty$ are now of the form $\aty{\ty}{r}$ for some value type $\ty$.
+An annotation $r$ is a set of effect names.
+
+\textbf{Subtyping}
+It is always valid in the system to weaken a type by adding more effects to an annotation.
+This is done using subtyping judgments $\ty <: \ty$ and $\cty <: \cty$.
+In figure \ref{fig:subtyping-algeff} we give the subtyping rules for the system.
+Subtyping proceeds structurally on the value and computation types.
+In \textsc{AlgEff-Sub-Arr} we compare function arguments contravariantly.
+To compare two annotated types we compare the value types and then check that the annotation on the left is a subset of the annotation on the right.
+
+\textbf{Typing rules}
+Finally we give the typing rules in figure \ref{fig:typing-algeff}.
+We have three judgements:
+\begin{enumerate}
+\item $\Gamma \vdash \val : \ty$, which types the value $\val$ with the value type $\ty$
+\item $\Gamma \vdash \comp : \cty$, which types the computation $\comp$ with the computation type $\cty$
+\item $\Gamma \vdash^{\ty} h : \cty$ which types the handler $h$ with the computation type $\cty$ given some value type $\ty$
+\end{enumerate}
+We can get the type of a variable from the context using $\Gamma[x] = \ty$.
+For each operation $op$ we have a parameter type $\ty^1_{op}$ and a return type $\ty^2_{op}$.
+We can retrieve the effect, parameter and return types of an operation from the context using $\Gamma[op] = (\eff, \ty^1_{op}, \ty^2_{op})$.
+\\\\
+\textsc{AlgEff-T-Var}, \textsc{AlgEff-T-Unit}, \textsc{AlgEff-T-Abs}, \textsc{AlgEff-T-App}, and \textsc{AlgEff-T-Seq} are the same as in the fine-grained system.
+We can weaken the type of values and computations using subtyping using the rules \textsc{AlgEff-T-SubVal} and \textsc{AlgEff-T-SubComp}.
+For return computations $\creturn{\val}$ we type the value and annotate it with the empty effect set using the rule \textsc{AlgEff-T-Return}.
+\textsc{AlgEff-T-Op} shows that for operation calls we first lookup the operation in the context to find the effect, parameter and return types.
+We then check that the argument of the operation call is of the same type as the paramter type of the operation.
+Finally we type the operation call as an annotated type of the return type and a singleton effect set of the effect of the operation.
+\\\\
+For handling we use the rule \textsc{AlgEff-T-Handle}.
+First we typecheck the type of the computation we are handling as having the computation type $\aty{\ty_1}{r_1}$.
+Then we check that all operations in the handler $h$ are in the set of operations of some effect $\eff$, this means that handlers always have to contain exactly the operations of some effect.
+We then typecheck the handler $h$, giving it the type of the computation we are handling $\ty_1$  and getting the return type $\aty{\ty_2}{r_2}$.
+The return type of the handling computation is then $\ty_2$ annotated with the effects from the handled computation minus the effect $\eff$ we handled together with the effects from the handler.
+\\\\
+Finally the rules \textsc{AlgEff-T-HOp} and \textsc{AlgEff-T-HReturn} type the two cases of a handler.
+\textsc{AlgEff-T-HReturn} checks that the computation $\comp$ of the return case types as $\aty{\ty_2}{r}$ after adding $x$ to $\Gamma$ with the given type $\ty_1$. $\aty{\ty_2}{r}$ is the return type of the handler.
+\textsc{AlgEff-T-HOp} first checks the rest of the handler. Then the parameter and return types of the operation $op$ are retrieved.
+Finally we add the parameter $x$ of the operation and the continuation $k$ to $\Gamma$ and check that the type of the computation $\comp$ agrees with the return type of the rest of the handler.
+
+\textbf{Type soundness}
+TODO \\
+We define a computation $\comp$ to be a value if $\comp$ is of the form $\creturn{\val}$ for some value $\val$.
+	\[ \mathsf{value}(\comp) \;\mathsf{if}\; \exists \val. \comp = \creturn{\val} \]
+
+\begin{theorem}[Type soundness]
+\[
+	\mathsf{if}\;
+		\cdot \vdash \comp : \aty{\ty}{\varnothing}
+		\;\land\;
+		\comp \rightsquigarrow^* \comp'
+	\;\mathsf{then}\;
+		\mathsf{value}(\comp')
+		\lor
+		(\exists \comp''.\; \comp' \rightsquigarrow \comp'')
+\]
+\end{theorem}
+
+\begin{lemma}[Progress]
+\[
+	\mathsf{if}\;
+		\cdot \vdash \comp : \aty{\ty}{\varnothing}
+	\;\mathsf{then}\;
+		\mathsf{value}(\comp)
+		\lor
+		(\exists \comp'.\; \comp \rightsquigarrow \comp')
+\]
+\end{lemma}
+
+\begin{lemma}[Preservation]
+\[
+	\mathsf{if}\;
+		\Gamma \vdash \comp : \cty
+		\;\land\;
+		\comp \rightsquigarrow \comp'
+	\;\mathsf{then}\;
+		\Gamma \vdash \comp' : \cty
+\]
+\end{lemma}
 
 \newpage
 \section{Static instances} \label{section:staticinst}
@@ -637,22 +644,12 @@ Explain:
 \caption{Syntax of algebraic effects with static instances}
 \centering
 \fbox{
-\begin{minipage}{10 cm}
+\begin{minipage}{12 cm}
 \begin{align*}
-	\val \Coloneqq	&													\tag{values} \\
-									& x, y, z, k							\tag{variables} \\
-									& \vabs{x}{\comp}					\tag{abstraction} \\
-									& \vunit							\tag{unit value} \\
-									& \vinst							\tag{instance} \\
-	\comp \Coloneqq &													\tag{computations} \\
-									& \creturn{\val}					\tag{return value as computation} \\
-									& \capp{\val}{\val}					\tag{application} \\
-									& \cdo{x}{\comp}{\comp}			\tag{sequencing} \\
-									& \copi{\val}{op}{\val}				\tag{operation call} \\
-									& \chandlei{\val}{\comp}{h}			\tag{handle} \\
-	h \Coloneqq &														\tag{handlers} \\
-									& \hop{op}{x}{k}{\comp}{h}			\tag{operation case} \\
-									& \hreturn{x}{\comp}				\tag{return case}
+& \val \Coloneqq x, y, z, k \;|\; \vabs{x}{\comp} \;|\; \vunit \;|\; \vinst \\
+& \comp \Coloneqq \creturn{\val} \;|\; \capp{\val}{\val} \;|\; \cdo{x}{\comp}{\comp} \;|\;
+		\copi{\val}{op}{\val} \;|\; \chandlei{\val}{\comp}{h} \\	\tag{handle} \\
+& h \Coloneqq \hop{op}{x}{k}{\comp}{h} \;|\; \hreturn{x}{\comp} \\
 \end{align*}
 \label{fig:syntax-static}
 \end{minipage}
@@ -727,12 +724,9 @@ Explain:
 \fbox{
 \begin{minipage}{8 cm}
 \begin{align*}
-	\ty \Coloneqq 	& 												\tag{value types} \\
-									& \tunit						\tag{unit type} \\
-									& \tinst{\vinst}					\tag{instance type} \\
-									& \tarr{\ty}{\cty}				\tag{type of functions} \\
-	\cty \Coloneqq 	& 												\tag{computation types} \\
-									& \aty{\ty}{r}					\tag{annotated value type} \\
+& \ty \Coloneqq \tunit \;|\; \tinst{\vinst} \;|\; \tarr{\ty}{\cty} \\
+& \cty \Coloneqq \aty{\ty}{r} \\
+& r \Coloneqq \{ \vinst_1, ..., \vinst_n \} \\
 \end{align*}
 \label{fig:types-static}
 \end{minipage}
@@ -743,7 +737,7 @@ Explain:
 \caption{Subtyping rules of algebraic effects with static instances}
 \centering
 \fbox{
-\begin{minipage}{14 cm}
+\begin{minipage}{10 cm}
 \[\inferrule{
 }{
 	\tunit <: \tunit
