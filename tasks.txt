@@ -58,3 +58,36 @@
 
 - ask Casper to send pdf
 - just make bullet list maybe in 2.3, explain them after.
+
+- update contributions
+- oxford comma everywhere
+- ~ to avoid linebreak word~\ref
+- use named references (google it)
+- storyline sentences do not follow each other well enough
+	- side effects tricky
+	- type system appear out of the blue
+		- type system play essential role in achieve stratification
+		- type system allow to enforece these things
+	- then zoom in to algebraic effects and handlers
+	- start algebraic effects section with arguments
+		- 
+- rename background to introduciton to algebraic effects
+- think about name for system
+- use background to show syntax extensions
+- put rule name above type rules
+- hyperref rule names
+
+- in conclusion future work what can dynamic instances do more
+
+- rules in greenlight (takes months probably)
+
+- green light in month
+
+TODO:
+- one more pass over introduction
+- add contributions
+- come up with ST example
+- omit dynamic instances in theory background
+
+week after
+- introduction to our system
