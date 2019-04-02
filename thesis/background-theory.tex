@@ -1,4 +1,6 @@
 {
+\newcommand\change[1]{\colorbox{lightgray}{$#1$}}
+
 \newcommand\eff[0]{\epsilon}
 \newcommand\Eff[0]{E}
 \newcommand\Op[1]{O^{#1}}
@@ -41,7 +43,7 @@
 \newcommand\hreturn[2]{\mathsf{return}\; #1 \rightarrow #2}
 \newcommand\hopc[4]{#1 \; #2 \; #3 \rightarrow #4}
 
-In this chapter we will show the basics of algebraic effects and handlers. We will start with the simply-typed lambda calculus (\cref{section:stlc}) and add algebraic effects (\cref{section:algeff}) and instances (\cref{section:staticinst}, \cref{section:dynamicinst}) to it. We end with dynamic instances and show why a type system for them is difficult to implement.
+In this chapter we will show the basics of algebraic effects and handlers. We will start with the simply-typed lambda calculus (\cref{section:stlc}) and add algebraic effects (\cref{section:algeff}) and static instances (\cref{section:staticinst} to it.
 
 \section{Simply-typed lambda calculus} \label{section:stlc}
 
@@ -89,18 +91,18 @@ Using the unit value we can also delay computations by wrapping them in an abstr
 \[\inferrule{
 }{
 	\capp{(\vabs{x}{\comp})}{\val} \rightsquigarrow \comp[x := \val]
-}\quad(\footnotesize\textsc{STLC-S-App})\]
+}\quad(\footnotesize\textsc{S-App})\]
 
 \[\inferrule{
 }{
 	(\cdo{x}{\creturn{\val}}{\comp}) \rightsquigarrow \comp[x := \val]
-}\quad(\footnotesize\textsc{STLC-S-SeqReturn})\]
+}\quad(\footnotesize\textsc{S-SeqReturn})\]
 
 \[\inferrule{
 	\comp_1 \rightsquigarrow \comp_1'
 }{
 	(\cdo{x}{\comp_1}{\comp_2}) \rightsquigarrow (\cdo{x}{\comp_1'}{\comp_2})
-}\quad(\footnotesize\textsc{STLC-S-Seq})\]
+}\quad(\footnotesize\textsc{S-Seq})\]
 \label{fig:semantics-stlc}
 \end{minipage}
 }
@@ -110,9 +112,9 @@ Using the unit value we can also delay computations by wrapping them in an abstr
 The small-step operational semantics is shown in Figure \ref{fig:semantics-stlc}.
 The relation $\rightsquigarrow$ is defined on computations, where the $\comp \rightsquigarrow \comp'$ means $\comp$ reduces to $\comp'$ in one step.
 These rules are a fine-grained approach to the standard reduction rules of the simply-typed lambda calculus.
-In {\footnotesize\textsc{STLC-S-App}} we apply a lambda abstraction to a value argument, by substituting the value for the variable $x$ in the body of the abstraction.
-In {\footnotesize\textsc{STLC-S-SeqReturn}} we sequence a computation that just returns a value in another computation by substituting the value for the variable $x$ in the computation.
-Lastly, in {\footnotesize\textsc{STLC-S-Seq}} we can reduce a sequence of two computations, $\comp_1$ and $\comp_2$ by reducing the first, $\comp_1$.
+In {\footnotesize\textsc{S-App}} we apply a lambda abstraction to a value argument, by substituting the value for the variable $x$ in the body of the abstraction.
+In {\footnotesize\textsc{S-SeqReturn}} we sequence a computation that just returns a value in another computation by substituting the value for the variable $x$ in the computation.
+Lastly, in {\footnotesize\textsc{S-Seq}} we can reduce a sequence of two computations, $\comp_1$ and $\comp_2$ by reducing the first, $\comp_1$.
 \\\\
 We define $\rightsquigarrow^*$ as the transitive-reflexive closure of $\rightsquigarrow$.
 Meaning that $\comp$ in $\comp \rightsquigarrow^* \comp$ can reach $\comp'$ in zero or more steps, while $\comp$ in $\comp \rightsquigarrow \comp'$ reaches $\comp'$ in exactly on step.
@@ -150,38 +152,38 @@ For the simply-typed lambda calculus a computation type is simply a value type, 
 	\Gamma[x] = \ty
 }{
 	\Gamma \vdash x : \ty
-}\quad(\footnotesize\textsc{STLC-T-Var})\]
+}\quad(\footnotesize\textsc{T-Var})\]
 
 \[\inferrule{
 }{
 	\Gamma \vdash \vunit : \tunit
-}\quad(\footnotesize\textsc{STLC-T-Unit})\]
+}\quad(\footnotesize\textsc{T-Unit})\]
 
 \[\inferrule{
 	\Gamma, x : \ty_1 \vdash \comp : \cty_2
 }{
 	\Gamma \vdash \vabs{x}{\comp} : \tarr{\ty_1}{\cty_2}
-}\quad(\footnotesize\textsc{STLC-T-Abs})\]
+}\quad(\footnotesize\textsc{T-Abs})\]
 
 \[\inferrule{
 	\Gamma \vdash \val : \ty
 }{
 	\Gamma \vdash \creturn{\val} : \cty
-}\quad(\footnotesize\textsc{STLC-T-Return})\]
+}\quad(\footnotesize\textsc{T-Return})\]
 
 \[\inferrule{
 	\Gamma \vdash \val_1 : \tarr{\ty_1}{\cty_2}\\
 	\Gamma \vdash \val_2 : \ty_1
 }{
 	\Gamma \vdash \capp{\val_1}{\val_2} : \cty_2
-}\quad(\footnotesize\textsc{STLC-T-App})\]
+}\quad(\footnotesize\textsc{T-App})\]
 
 \[\inferrule{
 	\Gamma \vdash \comp_1 : \cty_1\\
 	\Gamma, x : \ty_1 \vdash \comp_2 : \cty_2
 }{
 	\Gamma \vdash (\cdo{x}{\comp_1}{\comp_2}) : \cty_2
-}\quad(\footnotesize\textsc{STLC-T-Seq})\]
+}\quad(\footnotesize\textsc{T-Seq})\]
 \label{fig:typing-stlc}
 \end{minipage}
 }
@@ -192,9 +194,9 @@ Finally we give the typing rules in Figure \ref{fig:typing-stlc}.
 We have a typing judgment for values $\Gamma \vdash \val : \ty$ and a typing judgment for computations $\Gamma \vdash \comp : \cty$.
 In both these judgments the context $\Gamma$ assigns value types to variables.
 \\\\
-The rules for variables ({\footnotesize\textsc{STLC-T-Var}}), unit ({\footnotesize\textsc{STLC-T-Unit}}), abstractions ({\footnotesize\textsc{STLC-T-Abs}}) and applications ({\footnotesize\textsc{STLC-T-App}}) are the standard typing rules of the simply-typed lambda calculus.
-For $\creturn{\val}$ ({\footnotesize\textsc{STLC-T-Return}}) we simply check the type of $\val$.
-For the sequencing of two computations $(\cdo{x}{\comp_1}{\comp_2})$ ({\footnotesize\textsc{STLC-T-Seq}}) we first check the type of $\comp_1$ and then check $\comp_2$ with the type of $\comp_1$ added to the context for $x$.
+The rules for variables ({\footnotesize\textsc{T-Var}}), unit ({\footnotesize\textsc{T-Unit}}), abstractions ({\footnotesize\textsc{T-Abs}}) and applications ({\footnotesize\textsc{T-App}}) are the standard typing rules of the simply-typed lambda calculus.
+For $\creturn{\val}$ ({\footnotesize\textsc{T-Return}}) we simply check the type of $\val$.
+For the sequencing of two computations $(\cdo{x}{\comp_1}{\comp_2})$ ({\footnotesize\textsc{T-Seq}}) we first check the type of $\comp_1$ and then check $\comp_2$ with the type of $\comp_1$ added to the context for $x$.
 
 % \subsection{Examples}
 \textbf{Examples}
@@ -325,8 +327,8 @@ For example $\Op{\mathsf{Flip}} = \{ \mathsf{flip} \}$ and $\Op{\mathsf{State}} 
 \begin{minipage}{10 cm}
 \begin{align*}
 & \val \Coloneqq x, y, z, k \;|\; \vabs{x}{\comp}	\;|\; \vunit \\
-& \comp \Coloneqq \creturn{\val} \;|\; \capp{\val}{\val} \;|\; \cdo{x}{\comp}{\comp} \;|\; \cop{op}{\val} \;|\; \chandle{\comp}{h} \\
-& h \Coloneqq \hop{op}{x}{k}{\comp}{h} \;|\; \hreturn{x}{\comp} \\
+& \comp \Coloneqq \creturn{\val} \;|\; \capp{\val}{\val} \;|\; \cdo{x}{\comp}{\comp} \;|\; \change{\cop{op}{\val} \;|\; \chandle{\comp}{h}} \\
+& \change{h \Coloneqq \hop{op}{x}{k}{\comp}{h} \;|\; \hreturn{x}{\comp}} \\
 \end{align*}
 \label{fig:syntax-algeff}
 \end{minipage}
@@ -334,7 +336,7 @@ For example $\Op{\mathsf{Flip}} = \{ \mathsf{flip} \}$ and $\Op{\mathsf{State}} 
 \end{figure}
 
 \textbf{Syntax}
-The syntax for the extended system is shown in figure \ref{fig:syntax-algeff}.
+The syntax for the extended system is shown in figure \ref{fig:syntax-algeff}, additions are highlighted with a gray background.
 Values stay the same. We add two forms of computations, operation calls $\cop{op}{\val}$ where $op \in \Op{\eff}$ for some effect $\eff$ and
 we can handle computations using $\chandle{\comp}{h}$.
 Handlers $h$ are linked lists of operation cases $\hop{op}{x}{k}{\comp}{h}$ ending in the return case $\hreturn{x}{\comp}$.
@@ -346,52 +348,36 @@ Handlers $h$ are linked lists of operation cases $\hop{op}{x}{k}{\comp}{h}$ endi
 \begin{minipage}{16 cm}
 \[\inferrule{
 }{
-	\capp{(\vabs{x}{\comp})}{\val} \rightsquigarrow \comp[x := \val]
-}\quad(\footnotesize\textsc{AlgEff-S-App})\]
-
-\[\inferrule{
-}{
-	(\cdo{x}{\creturn{\val}}{\comp}) \rightsquigarrow \comp[x := \val]
-}\quad(\footnotesize\textsc{AlgEff-S-SeqReturn})\]
-
-\[\inferrule{
-	\comp_1 \rightsquigarrow \comp_1'
-}{
-	(\cdo{x}{\comp_1}{\comp_2}) \rightsquigarrow (\cdo{x}{\comp_1'}{\comp_2})
-}\quad(\footnotesize\textsc{AlgEff-S-Seq})\]
-
-\[\inferrule{
-}{
 	(\cdo{x}{(\cdo{y}{\comp_1}{\comp_2})}{\comp_3}) \rightsquigarrow (\cdo{y}{\comp_1}{(\cdo{x}{\comp_2}{\comp_3})})
-}\quad(\footnotesize\textsc{AlgEff-S-Flatten})\]
+}\quad(\footnotesize\textsc{S-Flatten})\]
 
 \[\inferrule{
 }{
 	\cop{op}{\val} \rightsquigarrow (\cdo{x}{\cop{op}{\val}}{\creturn{x}})
-}\quad(\footnotesize\textsc{AlgEff-S-Op})\]
+}\quad(\footnotesize\textsc{S-Op})\]
 
 \[\inferrule{
 }{
 	\chandle{\creturn{\val}}{h; \hreturn{x}{\comp}} \rightsquigarrow \comp[x := \val]
-}\quad(\footnotesize\textsc{AlgEff-S-HandleReturn})\]
+}\quad(\footnotesize\textsc{S-HandleReturn})\]
 
 \[\inferrule{
 	\hopc{op}{x}{k}{\comp'} \in h
 }{
 	\chandle{\cdo{y}{\cop{op}{\val}}{\comp}}{h} \rightsquigarrow \comp'[x := \val, k := (\vabs{y}{\chandle{\comp}{h}})]
-}\quad(\footnotesize\textsc{AlgEff-S-HandleOp})\]
+}\quad(\footnotesize\textsc{S-HandleOp})\]
 
 \[\inferrule{
 	op \notin h
 }{
 	\chandle{\cdo{x}{\cop{op}{\val}}{\comp}}{h} \rightsquigarrow (\cdo{x}{\cop{op}{\val}}{\chandle{\comp}{h}})
-}\quad(\footnotesize\textsc{AlgEff-S-HandleOpSkip})\]
+}\quad(\footnotesize\textsc{S-HandleOpSkip})\]
 
 \[\inferrule{
 	\comp \rightsquigarrow \comp'
 }{
 	\chandle{\comp}{h} \rightsquigarrow \chandle{\comp'}{h}
-}\quad(\footnotesize\textsc{AlgEff-S-Handle})\]
+}\quad(\footnotesize\textsc{S-Handle})\]
 \label{fig:semantics-algeff}
 \end{minipage}
 }
@@ -399,17 +385,16 @@ Handlers $h$ are linked lists of operation cases $\hop{op}{x}{k}{\comp}{h}$ endi
 
 \textbf{Semantics}
 We give a small-step operational semantics in figure \ref{fig:semantics-algeff}.
-\textsc{AlgEff-S-App}, \textsc{AlgEff-S-SeqReturn} and \textsc{AlgEff-S-Seq} are the same as the \textsc{STLC-S-App}, \textsc{STLC-S-SeqReturn} and \
-\textsc{STLC-S-Seq} in the fine-grained system.
+\textsc{S-App}, \textsc{AlgEff-S-SeqReturn} and \textsc{S-Seq} are the same as in the fine-grained system and are left out of the figure.
 To be able to handle a computation we first transform the computation to the form $\creturn{\val}$ or $(\cdo{x}{\cop{op}{\val}}{\comp})$.
-\textsc{AlgEff-S-Flatten} and \textsc{AlgEff-S-Op} are used to get a computation to those forms.
+\textsc{S-Flatten} and \textsc{S-Op} are used to get a computation to those forms.
 The last four rules are used to handle a computation.
-\textsc{AlgEff-S-HandleReturn} handles a computation of the form $\creturn{\val}$ by substituting $\val$ in the body of the return case of the handler.
-\textsc{AlgEff-S-HandleOp} and \textsc{AlgEff-S-HandleOpSkip} handle computations of the form $(\cdo{x}{\cop{op}{\val}}{\comp})$.
-If the operation $op$ is contained in the handler $h$ then the rule \textsc{AlgEff-S-HandleOp} substitutes the value $\val$ of the operation call in the body of the matching operation case $\comp'$.
+\textsc{S-HandleReturn} handles a computation of the form $\creturn{\val}$ by substituting $\val$ in the body of the return case of the handler.
+\textsc{S-HandleOp} and \textsc{S-HandleOpSkip} handle computations of the form $(\cdo{x}{\cop{op}{\val}}{\comp})$.
+If the operation $op$ is contained in the handler $h$ then the rule \textsc{S-HandleOp} substitutes the value $\val$ of the operation call in the body of the matching operation case $\comp'$.
 We also substitute a continuation in $\comp'$, which continues with the computation $\comp$ wrapped by the same handler $h$.
 If the operation $op$ is not contained in the handler then we float out the operation call $\cop{op}{\val}$ and wrap the handler $h$ around the continuing computation $\comp$.
-Lastly \textsc{AlgEff-S-Handle} is able to reduce a computation in the handle computation.
+Lastly \textsc{S-Handle} is able to reduce a computation in the handle computation.
 
 \begin{figure}
 \caption{Types of algebraic effects}
@@ -434,21 +419,21 @@ Lastly \textsc{AlgEff-S-Handle} is able to reduce a computation in the handle co
 \[\inferrule{
 }{
 	\tunit <: \tunit
-}\quad(\footnotesize\textsc{AlgEff-Sub-Unit})\]
+}\quad(\footnotesize\textsc{Sub-Unit})\]
 
 \[\inferrule{
 	\ty_3 <: \ty_1 \\
 	\cty_2 <: \cty_4
 }{
 	\tarr{\ty_1}{\cty_2} <: \tarr{\ty_3}{\cty_4}
-}\quad(\footnotesize\textsc{AlgEff-Sub-Arr})\]
+}\quad(\footnotesize\textsc{Sub-Arr})\]
 
 \[\inferrule{
 	\ty_1 <: \ty_2 \\
 	r_1 \subseteq r_2
 }{
 	\aty{\ty_1}{r_1} <: \aty{\ty_2}{r_2}
-}\quad(\footnotesize\textsc{AlgEff-Sub-Annot})\]
+}\quad(\footnotesize\textsc{Sub-Annot})\]
 \label{fig:subtyping-algeff}
 \end{minipage}
 }
@@ -462,53 +447,53 @@ Lastly \textsc{AlgEff-S-Handle} is able to reduce a computation in the handle co
 \[\inferrule{
 	\Gamma[x] = \ty
 }{
-	\Gamma \vdash x : \ty
-}\quad(\footnotesize\textsc{AlgEff-T-Var})\]
+	\Gamma \vdash x : \aty{\ty}{\varnothing}
+}\quad(\footnotesize\textsc{T-Var})\]
 
 \[\inferrule{
 }{
 	\Gamma \vdash \vunit : \tunit
-}\quad(\footnotesize\textsc{AlgEff-T-Unit})\]
+}\quad(\footnotesize\textsc{T-Unit})\]
 
 \[\inferrule{
 	\Gamma, x : \ty_1 \vdash \comp : \cty_2
 }{
 	\Gamma \vdash \vabs{x}{\comp} : \tarr{\ty_1}{\cty_2}
-}\quad(\footnotesize\textsc{AlgEff-T-Abs})\]
+}\quad(\footnotesize\textsc{T-Abs})\]
 
 \[\inferrule{
 	\Gamma \vdash \val : \ty_1 \\
 	\ty_1 <: \ty_2
 }{
 	\Gamma \vdash \val : \ty_2
-}\quad(\footnotesize\textsc{AlgEff-T-SubVal})\]
+}\quad(\footnotesize\textsc{T-SubVal})\]
 
 \[\inferrule{
 	\Gamma \vdash \val : \ty
 }{
 	\Gamma \vdash \creturn{\val} : \aty{\ty}{\varnothing}
-}\quad(\footnotesize\textsc{AlgEff-T-Return})\]
+}\quad(\footnotesize\textsc{T-Return})\]
 
 \[\inferrule{
 	\Gamma \vdash \val_1 : \tarr{\ty_1}{\cty_2}\\
 	\Gamma \vdash \val_2 : \ty_1
 }{
 	\Gamma \vdash \capp{\val_1}{\val_2} : \cty_2
-}\quad(\footnotesize\textsc{AlgEff-T-App})\]
+}\quad(\footnotesize\textsc{T-App})\]
 
 \[\inferrule{
 	\Gamma \vdash \comp_1 : \aty{\ty_1}{r}\\
 	\Gamma, x : \ty_1 \vdash \comp_2 : \aty{\ty_2}{r}
 }{
 	\Gamma \vdash (\cdo{x}{\comp_1}{\comp_2}) : \aty{\ty_2}{r}
-}\quad(\footnotesize\textsc{AlgEff-T-Seq})\]
+}\quad(\footnotesize\textsc{T-Seq})\]
 
 \[\inferrule{
 	\Gamma[op] = (\eff, \ty^1_{op}, \ty^2_{op}) \\
 	\Gamma \vdash \val : \ty^1_{op} \\
 }{
 	\Gamma \vdash \cop{op}{\val} : \aty{\ty^2_{op}}{\{ \eff \}}
-}\quad(\footnotesize\textsc{AlgEff-T-Op})\]
+}\quad(\footnotesize\textsc{T-Op})\]
 
 \[\inferrule{
 	\Gamma \vdash \comp : \aty{\ty_1}{r_1} \\
@@ -516,14 +501,14 @@ Lastly \textsc{AlgEff-S-Handle} is able to reduce a computation in the handle co
 	\Gamma \vdash^{\ty_1} h : \aty{\ty_2}{r_2}
 }{
 	\Gamma \vdash \chandle{\comp}{h} :\aty{\ty_2}{((r_1 \setminus \{\eff\}) \cup r_2)}
-}\quad(\footnotesize\textsc{AlgEff-T-Handle})\]
+}\quad(\footnotesize\textsc{T-Handle})\]
 
 \[\inferrule{
 	\Gamma \vdash \comp : \cty_1 \\
 	\cty_1 <: \cty_2
 }{
 	\Gamma \vdash \comp : \cty_2
-}\quad(\footnotesize\textsc{AlgEff-T-SubComp})\]
+}\quad(\footnotesize\textsc{T-SubComp})\]
 
 \[\inferrule{
 	\Gamma \vdash^{\ty_1} h : \aty{\ty_2}{r} \\
@@ -531,13 +516,13 @@ Lastly \textsc{AlgEff-S-Handle} is able to reduce a computation in the handle co
 	\Gamma, x : \ty^1_{op}, k : \tarr{\ty^2_{op}}{\aty{\ty_2}{r}} \vdash \comp : \aty{\ty_2}{r} \\
 }{
 	\Gamma \vdash^{\ty_1} (\hop{op}{x}{k}{\comp}{h}) : \aty{\ty_2}{r}
-}\quad(\footnotesize\textsc{AlgEff-T-HOp})\]
+}\quad(\footnotesize\textsc{T-HOp})\]
 
 \[\inferrule{
 	\Gamma, x : \ty_1 \vdash \comp : \aty{\ty_2}{r}
 }{
 	\Gamma \vdash^{\ty_1} (\hreturn{x}{\comp}) : \aty{\ty_2}{r}
-}\quad(\footnotesize\textsc{AlgEff-T-HReturn})\]
+}\quad(\footnotesize\textsc{T-HReturn})\]
 \label{fig:typing-algeff}
 \end{minipage}
 }
@@ -555,7 +540,7 @@ It is always valid in the system to weaken a type by adding more effects to an a
 This is done using subtyping judgments $\ty <: \ty$ and $\cty <: \cty$.
 In figure \ref{fig:subtyping-algeff} we give the subtyping rules for the system.
 Subtyping proceeds structurally on the value and computation types.
-In \textsc{AlgEff-Sub-Arr} we compare function arguments contravariantly.
+In \textsc{Sub-Arr} we compare function arguments contravariantly.
 To compare two annotated types we compare the value types and then check that the annotation on the left is a subset of the annotation on the right.
 
 \textbf{Typing rules}
@@ -570,22 +555,22 @@ We can get the type of a variable from the context using $\Gamma[x] = \ty$.
 For each operation $op$ we have a parameter type $\ty^1_{op}$ and a return type $\ty^2_{op}$.
 We can retrieve the effect, parameter and return types of an operation from the context using $\Gamma[op] = (\eff, \ty^1_{op}, \ty^2_{op})$.
 \\\\
-\textsc{AlgEff-T-Var}, \textsc{AlgEff-T-Unit}, \textsc{AlgEff-T-Abs}, \textsc{AlgEff-T-App}, and \textsc{AlgEff-T-Seq} are the same as in the fine-grained system.
-We can weaken the type of values and computations using subtyping using the rules \textsc{AlgEff-T-SubVal} and \textsc{AlgEff-T-SubComp}.
-For return computations $\creturn{\val}$ we type the value and annotate it with the empty effect set using the rule \textsc{AlgEff-T-Return}.
-\textsc{AlgEff-T-Op} shows that for operation calls we first lookup the operation in the context to find the effect, parameter and return types.
+\textsc{T-Var}, \textsc{T-Unit}, \textsc{T-Abs}, \textsc{T-App}, and \textsc{T-Seq} are the same as in the fine-grained system.
+We can weaken the type of values and computations using subtyping using the rules \textsc{T-SubVal} and \textsc{T-SubComp}.
+For return computations $\creturn{\val}$ we type the value and annotate it with the empty effect set using the rule \textsc{T-Return}.
+\textsc{T-Op} shows that for operation calls we first lookup the operation in the context to find the effect, parameter and return types.
 We then check that the argument of the operation call is of the same type as the paramter type of the operation.
 Finally we type the operation call as an annotated type of the return type and a singleton effect set of the effect of the operation.
 \\\\
-For handling we use the rule \textsc{AlgEff-T-Handle}.
+For handling we use the rule \textsc{T-Handle}.
 First we typecheck the type of the computation we are handling as having the computation type $\aty{\ty_1}{r_1}$.
 Then we check that all operations in the handler $h$ are in the set of operations of some effect $\eff$, this means that handlers always have to contain exactly the operations of some effect.
 We then typecheck the handler $h$, giving it the type of the computation we are handling $\ty_1$  and getting the return type $\aty{\ty_2}{r_2}$.
 The return type of the handling computation is then $\ty_2$ annotated with the effects from the handled computation minus the effect $\eff$ we handled together with the effects from the handler.
 \\\\
-Finally the rules \textsc{AlgEff-T-HOp} and \textsc{AlgEff-T-HReturn} type the two cases of a handler.
-\textsc{AlgEff-T-HReturn} checks that the computation $\comp$ of the return case types as $\aty{\ty_2}{r}$ after adding $x$ to $\Gamma$ with the given type $\ty_1$. $\aty{\ty_2}{r}$ is the return type of the handler.
-\textsc{AlgEff-T-HOp} first checks the rest of the handler. Then the parameter and return types of the operation $op$ are retrieved.
+Finally the rules \textsc{T-HOp} and \textsc{T-HReturn} type the two cases of a handler.
+\textsc{T-HReturn} checks that the computation $\comp$ of the return case types as $\aty{\ty_2}{r}$ after adding $x$ to $\Gamma$ with the given type $\ty_1$. $\aty{\ty_2}{r}$ is the return type of the handler.
+\textsc{T-HOp} first checks the rest of the handler. Then the parameter and return types of the operation $op$ are retrieved.
 Finally we add the parameter $x$ of the operation and the continuation $k$ to $\Gamma$ and check that the type of the computation $\comp$ agrees with the return type of the rest of the handler.
 
 \textbf{Type soundness}
@@ -631,24 +616,20 @@ We define a computation $\comp$ to be a value if $\comp$ is of the form $\cretur
 \newpage
 \section{Static instances} \label{section:staticinst}
 
-\subsection{Intro}
-Explain:
-\begin{itemize}
-	\item Show problems with wanting to use multiple state instances
-	\item What are static instances
-	\item Show that static instances partially solve the problem
-\end{itemize}
+Finally extend algebraic effects with static instances. We assume there exists a set of instances $I = \{ \vinst_1, ..., \vinst_n \}$, where each instance belongs to a single effect $\eff$, written as $E[\vinst] = \eff$.
 
-\subsection{Syntax}
+\textbf{Syntax}
+The syntax of the system with algebraic effects and handlers is extended in figure~\ref{fig:syntax-static}, changes and new additions are shown in gray. For values we add instances, these are taking from the set of instances $I$. We also change the operation call and handle computations to take an extra value term, which is the instance they are operating on.
+
 \begin{figure}
 \caption{Syntax of algebraic effects with static instances}
 \centering
 \fbox{
 \begin{minipage}{12 cm}
 \begin{align*}
-& \val \Coloneqq x, y, z, k \;|\; \vabs{x}{\comp} \;|\; \vunit \;|\; \vinst \\
+& \val \Coloneqq x, y, z, k \;|\; \vabs{x}{\comp} \;|\; \vunit\;|\; \change{\vinst} \\
 & \comp \Coloneqq \creturn{\val} \;|\; \capp{\val}{\val} \;|\; \cdo{x}{\comp}{\comp} \;|\;
-		\copi{\val}{op}{\val} \;|\; \chandlei{\val}{\comp}{h} \\	\tag{handle} \\
+		\change{\copi{\val}{op}{\val} \;|\; \chandlei{\val}{\comp}{h}} \\
 & h \Coloneqq \hop{op}{x}{k}{\comp}{h} \;|\; \hreturn{x}{\comp} \\
 \end{align*}
 \label{fig:syntax-static}
@@ -656,7 +637,8 @@ Explain:
 }
 \end{figure}
 
-\subsection{Semantics}
+\textbf{Semantics}
+The semantics for static instances are shown in figure~\ref{fig:semantics-static}. The rules from algebraic effects that did not change are left out of this figure. The rules \ref{S-Op}, \ref{S-HandleReturn} and \ref{S-Handle} are, except for the change in syntax with the addition of the value term, identical to the corresponding rules in the previous system. For static instances the only important change is in the \ref{S-HandleOp} and \ref{S-HandleOpSkip} rules. In \ref{S-HandleOp} the instance in the handle and the instance in the operation call have to be the same, besides this the rule is the same as the corresponding rule in the previous system. If the instances do not match or if the operation is not in the handler then the rule \ref{S-HandleOpSkip} is used to lift the operation call over the handler, also like in the previous system.
 
 \begin{figure}
 \caption{Semantics of algebraic effects with static instances}
@@ -665,58 +647,40 @@ Explain:
 \begin{minipage}{18 cm}
 \[\inferrule{
 }{
-	\capp{(\vabs{x}{\comp})}{\val} \rightsquigarrow \comp[x := \val]
-}\quad(\footnotesize\textsc{Static-S-App})\]
-
-\[\inferrule{
-}{
-	(\cdo{x}{\creturn{\val}}{\comp}) \rightsquigarrow \comp[x := \val]
-}\quad(\footnotesize\textsc{Static-S-SeqReturn})\]
-
-\[\inferrule{
-}{
-	(\cdo{x}{(\cdo{y}{\comp_1}{\comp_2})}{\comp_3}) \rightsquigarrow (\cdo{y}{\comp_1}{(\cdo{x}{\comp_2}{\comp_3})})
-}\quad(\footnotesize\textsc{Static-S-Flatten})\]
-
-\[\inferrule{
-	\comp_1 \rightsquigarrow \comp_1'
-}{
-	(\cdo{x}{\comp_1}{\comp_2}) \rightsquigarrow (\cdo{x}{\comp_1'}{\comp_2})
-}\quad(\footnotesize\textsc{Static-S-Seq})\]
-
-\[\inferrule{
-}{
 	\copi{\val_1}{op}{\val_2} \rightsquigarrow (\cdo{x}{\copi{\val_1}{op}{\val_2}}{\creturn{x}})
-}\quad(\footnotesize\textsc{Static-S-Op})\]
+}\quad(\footnotesize\textsc{S-Op})\]
 
 \[\inferrule{
 }{
 	\chandlei{\val_1}{\creturn{\val_2}}{h; \hreturn{x}{\comp}} \rightsquigarrow \comp[x := \val_2]
-}\quad(\footnotesize\textsc{Static-S-HandleReturn})\]
+}\quad(\footnotesize\textsc{S-HandleReturn})\]
 
 \[\inferrule{
 	\hopc{op}{x}{k}{\comp'} \in h
 }{
 	\chandlei{\vinst}{\cdo{y}{\copi{\vinst}{op}{\val}}{\comp}}{h} \rightsquigarrow \comp'[x := \val, k := (\vabs{y}{\chandlei{\vinst}{\comp}{h}})]
-}\quad(\footnotesize\textsc{Static-S-HandleOp})\]
+}\quad(\footnotesize\textsc{S-HandleOp})\]
 
 \[\inferrule{
 	op \notin h \land \vinst_1 \neq \vinst_2
 }{
 	\chandlei{\vinst_1}{\cdo{x}{\copi{\vinst_2}{op}{\val}}{\comp}}{h} \rightsquigarrow (\cdo{x}{\copi{\vinst_2}{op}{\val}}{\chandlei{\vinst_1}{\comp}{h}})
-}\quad(\footnotesize\textsc{Static-S-HandleOpSkip})\]
+}\quad(\footnotesize\textsc{S-HandleOpSkip})\]
 
 \[\inferrule{
 	\comp \rightsquigarrow \comp'
 }{
 	\chandlei{\val}{\comp}{h} \rightsquigarrow \chandlei{\val}{\comp'}{h}
-}\quad(\footnotesize\textsc{Static-S-Handle})\]
+}\quad(\footnotesize\textsc{S-Handle})\]
 \label{fig:semantics-static}
 \end{minipage}
 }
 \end{figure}
 
-\subsection{Type system}
+\textbf{Type syntax}
+The updated syntax for types is shown in figure~\ref{fig:types-static}.
+We add instances types, which are just instance names from the set $I$.
+The effect annotation on the computation types are now sets of instance names instead effect names.
 
 \begin{figure}
 \caption{Types of algebraic effects with static instances}
@@ -724,14 +688,17 @@ Explain:
 \fbox{
 \begin{minipage}{8 cm}
 \begin{align*}
-& \ty \Coloneqq \tunit \;|\; \tinst{\vinst} \;|\; \tarr{\ty}{\cty} \\
+& \ty \Coloneqq \tunit \;|\; \change{\tinst{\vinst}} \;|\; \tarr{\ty}{\cty} \\
 & \cty \Coloneqq \aty{\ty}{r} \\
-& r \Coloneqq \{ \vinst_1, ..., \vinst_n \} \\
+&\change{ r \Coloneqq \{ \vinst_1, ..., \vinst_n \} } \\
 \end{align*}
 \label{fig:types-static}
 \end{minipage}
 }
 \end{figure}
+
+\textbf{Subtyping}
+For subtyping we keep the rules from the previous system but we add a rule for the instance types (figure~\ref{fig:subtyping-algeff}).
 
 \begin{figure}
 \caption{Subtyping rules of algebraic effects with static instances}
@@ -740,157 +707,47 @@ Explain:
 \begin{minipage}{10 cm}
 \[\inferrule{
 }{
-	\tunit <: \tunit
-}\quad(\footnotesize\textsc{Static-Sub-Unit})\]
-
-\[\inferrule{
-}{
 	\tinst{\vinst} <: \tinst{\vinst}
-}\quad(\footnotesize\textsc{Static-Sub-Unit})\]
-
-\[\inferrule{
-	\ty_3 <: \ty_1 \\
-	\cty_2 <: \cty_4
-}{
-	\tarr{\ty_1}{\cty_2} <: \tarr{\ty_3}{\cty_4}
-}\quad(\footnotesize\textsc{Static-Sub-Arr})\]
-
-\[\inferrule{
-	\ty_1 <: \ty_2 \\
-	r_1 \subseteq r_2
-}{
-	\aty{\ty_1}{r_1} <: \aty{\ty_2}{r_2}
-}\quad(\footnotesize\textsc{Static-Sub-Annot})\]
+}\quad(\footnotesize\textsc{Sub-Inst})\]
 \label{fig:subtyping-algeff}
 \end{minipage}
 }
 \end{figure}
 
+\textbf{Typing rules}
+
+
 \begin{figure}
 \caption{Typing rules of algebraic effects with static instances}
 \centering
 \fbox{
-\begin{minipage}{13 cm}
-\[\inferrule{
-	\Gamma[x] = \ty
-}{
-	\Gamma \vdash x : \ty
-}\quad(\footnotesize\textsc{Static-T-Var})\]
-
-\[\inferrule{
-}{
-	\Gamma \vdash \vunit : \tunit
-}\quad(\footnotesize\textsc{Static-T-Unit})\]
-
+\begin{minipage}{15 cm}
 \[\inferrule{
 }{
 	\Gamma \vdash \vinst : \tinst{\vinst}
-}\quad(\footnotesize\textsc{Static-T-Inst})\]
-
-\[\inferrule{
-	\Gamma, x : \ty_1 \vdash \comp : \cty_2
-}{
-	\Gamma \vdash \vabs{x}{\comp} : \tarr{\ty_1}{\cty_2}
-}\quad(\footnotesize\textsc{Static-T-Abs})\]
-
-\[\inferrule{
-	\Gamma \vdash \val : \ty_1 \\
-	\ty_1 <: \ty_2
-}{
-	\Gamma \vdash \val : \ty_2
-}\quad(\footnotesize\textsc{Static-T-SubVal})\]
-
-\[\inferrule{
-	\Gamma \vdash \val : \ty
-}{
-	\Gamma \vdash \creturn{\val} : \aty{\ty}{\varnothing}
-}\quad(\footnotesize\textsc{Static-T-Return})\]
-
-\[\inferrule{
-	\Gamma \vdash \val_1 : \tarr{\ty_1}{\cty_2}\\
-	\Gamma \vdash \val_2 : \ty_1
-}{
-	\Gamma \vdash \capp{\val_1}{\val_2} : \cty_2
-}\quad(\footnotesize\textsc{Static-T-App})\]
-
-\[\inferrule{
-	\Gamma \vdash \comp_1 : \aty{\ty_1}{r}\\
-	\Gamma, x : \ty_1 \vdash \comp_2 : \aty{\ty_2}{r}
-}{
-	\Gamma \vdash (\cdo{x}{\comp_1}{\comp_2}) : \aty{\ty_2}{r}
-}\quad(\footnotesize\textsc{Static-T-Seq})\]
+}\quad(\footnotesize\textsc{T-Inst})\]
 
 \[\inferrule{
 	\Gamma \vdash \val_1 : \tinst{\vinst} \\
-	\Gamma[\vinst] = \eff \\
+	E[\vinst] = \eff \\
 	\Gamma[op] = (\eff, \ty^1_{op}, \ty^2_{op}) \\
 	\Gamma \vdash \val_2 : \ty^1_{op} \\
 }{
 	\Gamma \vdash \copi{\val_1}{op}{\val_2} : \aty{\ty^2_{op}}{\{ \vinst \}}
-}\quad(\footnotesize\textsc{Static-T-Op})\]
+}\quad(\footnotesize\textsc{T-Op})\]
 
 \[\inferrule{
 	\Gamma \vdash \val : \tinst{\vinst} \\
-	\Gamma[\vinst] = \eff \\
+	E[\vinst] = \eff \\
 	\Gamma \vdash \comp : \aty{\ty_1}{r_1} \\
 	op \in h \Leftrightarrow op \in O^\eff \\
 	\Gamma \vdash^{\ty_1} h : \aty{\ty_2}{r_2}
 }{
 	\Gamma \vdash \chandlei{\val}{\comp}{h} :\aty{\ty_2}{((r_1 \setminus \{\vinst\}) \cup r_2)}
-}\quad(\footnotesize\textsc{Static-T-Handle})\]
-
-\[\inferrule{
-	\Gamma \vdash \comp : \cty_1 \\
-	\cty_1 <: \cty_2
-}{
-	\Gamma \vdash \comp : \cty_2
-}\quad(\footnotesize\textsc{Static-T-SubComp})\]
-
-\[\inferrule{
-	\Gamma \vdash^{\ty_1} h : \aty{\ty_2}{r} \\
-	\Gamma[op] = (\eff, \ty^1_{op}, \ty^2_{op}) \\
-	\Gamma, x : \ty^1_{op}, k : \tarr{\ty^2_{op}}{\aty{\ty_2}{r}} \vdash \comp : \aty{\ty_2}{r} \\
-}{
-	\Gamma \vdash^{\ty_1} (\hop{op}{x}{k}{\comp}{h}) : \aty{\ty_2}{r}
-}\quad(\footnotesize\textsc{Static-T-HOp})\]
-
-\[\inferrule{
-	\Gamma, x : \ty_1 \vdash \comp : \aty{\ty_2}{r}
-}{
-	\Gamma \vdash^{\ty_1} (\hreturn{x}{\comp}) : \aty{\ty_2}{r}
-}\quad(\footnotesize\textsc{Static-T-HReturn})\]
+}\quad(\footnotesize\textsc{T-Handle})\]
 \label{fig:typing-algeff}
 \end{minipage}
 }
 \end{figure}
 
-\subsection{Examples}
-Show state with multiple static instances (references).
-
-\newpage
-\section{Dynamic instances (untyped)} \label{section:dynamicinst}
-
-\subsection{Intro}
-Explain:
-\begin{itemize}
-	\item Show that static instances require pre-defining all instances on the top-level.
-	\item Static instances not sufficient to implement references.
-	\item Show that dynamic instances are required to truly implement references.
-	\item Show more uses of dynamic instances (file system stuff, local exceptions)
-	\item No type system yet.
-\end{itemize}
-
-\subsection{Syntax}
-
-\subsection{Semantics}
-
-\subsection{Examples}
-Show untyped examples.
-\begin{itemize}
-	\item Local exceptions
-	\item ML-style references
-\end{itemize}
-
-\subsection{Type system (discussion, problems)}
-Show difficulty of implementing a type system for this.
 }
