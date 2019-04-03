@@ -638,13 +638,13 @@ The syntax of the system with algebraic effects and handlers is extended in figu
 \end{figure}
 
 \textbf{Semantics}
-The semantics for static instances are shown in figure~\ref{fig:semantics-static}. The rules from algebraic effects that did not change are left out of this figure. The rules \ref{S-Op}, \ref{S-HandleReturn} and \ref{S-Handle} are, except for the change in syntax with the addition of the value term, identical to the corresponding rules in the previous system. For static instances the only important change is in the \ref{S-HandleOp} and \ref{S-HandleOpSkip} rules. In \ref{S-HandleOp} the instance in the handle and the instance in the operation call have to be the same, besides this the rule is the same as the corresponding rule in the previous system. If the instances do not match or if the operation is not in the handler then the rule \ref{S-HandleOpSkip} is used to lift the operation call over the handler, also like in the previous system.
+The semantics for static instances are shown in figure~\ref{fig:semantics-static}. The rules from algebraic effects that did not change are left out of this figure. The rules \textsc{S-Op}, \textsc{S-HandleReturn} and \textsc{S-Handle} are, except for the change in syntax with the addition of the value term, identical to the corresponding rules in the previous system. For static instances the only important change is in the \textsc{S-HandleOp} and \textsc{S-HandleOpSkip} rules. In \textsc{S-HandleOp} the instance in the handle and the instance in the operation call have to be the same, besides this the rule is the same as the corresponding rule in the previous system. If the instances do not match or if the operation is not in the handler then the rule \textsc{S-HandleOpSkip} is used to lift the operation call over the handler, also like in the previous system.
 
 \begin{figure}
 \caption{Semantics of algebraic effects with static instances}
 \centering
 \fbox{
-\begin{minipage}{18 cm}
+\begin{minipage}{16 cm}
 \[\inferrule{
 }{
 	\copi{\val_1}{op}{\val_2} \rightsquigarrow (\cdo{x}{\copi{\val_1}{op}{\val_2}}{\creturn{x}})
@@ -715,7 +715,9 @@ For subtyping we keep the rules from the previous system but we add a rule for t
 \end{figure}
 
 \textbf{Typing rules}
-
+The typing rules from the previous system mostly stay the same except for the rules \textsc{T-OP} and \textsc{T-Handle}, they are showin in figure~\ref{fig:typing-algeff}.
+We also had a rule to type instances (\textsc{T-Inst}), this rule simply types an instance as a instance type with the same name.
+For both \textsc{T-OP} and \textsc{T-Handle} we just have to check that the added value term is an instance and that the effect of that instance matches the operations.
 
 \begin{figure}
 \caption{Typing rules of algebraic effects with static instances}
@@ -749,5 +751,8 @@ For subtyping we keep the rules from the previous system but we add a rule for t
 \end{minipage}
 }
 \end{figure}
+
+\textbf{Type soundness}
+TODO, same as algebraic effects
 
 }
