@@ -84,10 +84,10 @@
 - green light in month
 
 TODO:
-- come up with ST example
 - add contributions
 - one more pass over introduction
 - write type soundness sections
+/ come up with ST example
 X omit dynamic instances in theory background
 
 week after

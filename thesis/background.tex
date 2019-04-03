@@ -455,6 +455,62 @@ main =
 	runRefs heap (program heap) -- returns (2, 1)
 \end{minted}
 
-WIP, ST example needed here.
-\\\\
+In the Haskell programming language the ST monad\ref{runst} can be used to implement algorithms that internally use mutable state.
+The type system, using the \ident{runST} function, will make sure that the mutable state does not leak outside of the function.
+For example the following function \ident{fibST} implements the Fibonacci function in constant space by creating two mutable references.
+
+\begin{minted}[tabsize=2]{haskell}
+fibST :: Integer -> Integer
+fibST n = 
+    if n < 2 then
+      n
+    else runST $ do
+        x <- newSTRef 0
+        y <- newSTRef 1
+        fibST' n x y
+
+    where fibST' 0 x _ = readSTRef x
+          fibST' n x y = do
+              x' <- readSTRef x
+              y' <- readSTRef y
+              writeSTRef x y'
+              writeSTRef y $! x' + y'
+              fibST' (n - 1) x y
+\end{minted}
+
+Using dynamic instances we can implement the same algorithm, named \ident{fib} below.
+Our \ident{fib} takes a parameter \ident{n} and returns the \ident{n}th Fibonacci number.
+First we check if \ident{n} is smaller than 2, in which case we can return \ident{n} as the result, since $n$th Fibonacci number is $n$, if $n < 2$.
+Else we create a new \ident{Heap} instance named \ident{heap} and use the \ident{runRefs} function defined earlier to run a computation on this heap.
+We create two \ident{State} instances on \ident{heap}, \ident{x} and \ident{y} initialized with \ident{0} and \ident{1} respectively and call the auxillary function \ident{fibRec} with \ident{n} and the two instances \ident{x} and \ident{y}.
+\ident{fibRec} implements the actual algorithm.
+It works by (recursively) looping on \ident{n}, subtracting by \ident{1} each recursive call.
+\ident{x} and \ident{y} store the current and next Fibonacci respectively and each loop they are moved one Fibonacci number to the right.
+When \ident{n} is \ident{0} we know \ident{x} contains the \ident{n}th (for the initial value of \ident{n}) Fibonacci number and we can just get the current value from \ident{x} and return it.
+Even though this algorithm uses the \ident{Heap} and \ident{State} effects, their uses are completely encapsulated by the \ident{fib} function.
+The \ident{fib} function does not leak the fact that it's using those effects to implement the algorithm.
+
+\begin{minted}[tabsize=2]{haskell}
+fib n =
+  if n < 2 then
+    n
+  else
+    heap <- new Heap;
+    runRefs heap (
+      x <- heap#ref 0;
+      y <- heap#ref 1;
+      fibRec n x y
+    )
+
+fibRec n x y =
+  if n == 0 then
+    x#get ()
+  else
+    x' <- x#get ();
+    y' <- y#get ();
+    x#put(y');
+    y#put(x' + y');
+    fibRec (n - 1) x y
+\end{minted}
+
 Dynamic instances have one big problem though: they are too dynamic. Similar to how in general it is undecidable to know whether a reference has escaped its scope, it is also not possible to know whether an instance has a handler associated with it. This makes it hard to think of a type system for dynamic instances which ensures that there are no unhandled operations. Earlier versions of the Eff programming language\cite{eff1} had dynamic instances but its type system underapproximated the uses of dynamic instances which meant you could still get a runtime error if any operation calls were left unhandled.

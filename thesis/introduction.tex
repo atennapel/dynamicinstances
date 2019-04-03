@@ -45,24 +45,34 @@ By factoring out the pure parts from the impure parts, we can still gain the ben
 In addition it would be even better to be able to keep track of which effects exactly are used by which function.
 They also allow some side-effects to be encapsulated, meaning that the use of a particular side-effect can be completely hidden such that the function still appears to be pure to the outside world.
 \\\\
-Type systems appear in all kinds of languages.
-A type system statically enforces certain properties, different languages may have different type systems that enforce different properties.
-Usually a type system is used to statically encode the expected value and return types of a function.
-This ensures that a function does not receive an argument that is unable to compute with.
-In the case of effect-full language a type system can do even more.
-Using a type-and-effect system function can be statically annotated with the side-effects that may occur in that function.
-This gives more insight to the programmer and the compiler in to what a function may do when called.
+Type systems play an essential role in enforcing the distinction between pure and impure code.
+By extending type systems to also show which effects a function may use, we can statically enfore which functions are pure and which are not.
+This gives insight to the user to what a function may do when called, and also allows a compiler to do more interesting optimizations.
+For example pure function calls may be reordered in any way that the compiler sees fit, while impure function calls may not, since the effects may interact.
+Type systems that also keep track of effects are called type-and-effects systems.
+Type-and-effects systems can have different levels of granularity.
+For example one system could only keep track of a single bit per function, whether the function is impure or not.
+More fine-grained systems are also possible, where each function is annotated with a set of effects that is used, where the set of possible effects is defined by the language.
+For example in Koka a function which prints something to the console may be given the type:
+\begin{minted}[tabsize=2]{haskell}
+string -> <console> () 
+\end{minted}
+Where \textsc{console} shows the use of the console.
+User-defined effects are also supported in languages such as Koka and Eff.
+Users, in those systems, can define the effects with which the functions are annotated.
+Type-and-effects systems can also allow for effect polymorphism.
+For example a map function over lists takes a function and applies it to every element of the list, producing a new list with the transformed elements.
+Systems with effect polymorphism will be able to give a type to this function by allowing the effects in the mapping function to be left abstract, represented by a type variable.
 \\\\
 Algebraic effects and handlers\cite{algeff} are an approach to programming with side-effects that has many of the desirable properties previously described.
+Algebraic effects provide a way to factor out the pure parts, the operation calls, from the impure parts.
+Users can define effects and easily use them in functions, with different effects composing without any extra effort.
+Algebraic effects also easily admit typing, with different type-and-effect already proposed\cite{eff2}\cite{koka}\cite{links}.
 Each effect is defined as a set of operations, for example nondeterminism can be represented by an operation which takes to values and chooses one.
 Similarly, state can be defined as two operations, get and put, where get is meant to return the current value of the state and put is meant to change this value.
 Functions are tagged by the set of effects they may use.
 These operations can then be called anywhere in a function.
 Handlers take a program that calls operations and for each operation call defines how to proceed.
-Most side-effects that are used in programming can be defined in this system.
-Algebraic effects provide a way to factor out the pure parts, the operation calls, from the impure parts, the handlers.
-Furthermore functions using different algebraic effects compose just as easily as pure functions do.
-There also have been multiple type-and-effect systems that can handle algebraic effects\cite{eff2}\cite{koka1}\cite{links}.
 For example the following piece of code defines an effect called \textit{State} which simulates a single mutable state cell.
 The function \mintinline{haskell}{postInc} increments the current value in the state cell and returns the previous value.
 \begin{minted}[tabsize=2]{haskell}
@@ -95,17 +105,26 @@ We also statically ensure that side-effects are encapsulated.
 We give examples of programs using these side-effects in our system and show how to implement local mutable references in this system.
 We give a formal description of the syntax, typing rules and semantics of the system.
 
-\section{Contributions}
+\section*{Contributions}
 \begin{itemize}
 
-\item \textbf{We define a calculus based on algebraic effects and handlers which allows for the definition of local mutable state.}
-We define a type-and-effect system which ensures that references do not escape their scope.
-We also define a small-step operation semantics.
+\item \textbf{Language}
+We define a language based on algebraic effects and handlers that can handle a form of dynamic effect instances.
+We give examples in our language that would be difficult or impossible to express with just algebraic effects.
 
-\item \textbf{We show how to implement state threads in this system.}
-Using our sytem we implement state threads similar to a monomorphic version Haskell's ST-monad.
-We show that references cannot escape their scope and that we cannot use a variable from one state thread in another state thread.
+\item \textbf{Operational semantics and type system}
+We define a core calculus of our language together with a small-step operational semantics and a type system.
+
+\item \textbf{Type soundness}
+We prove type soundness of our type system with respect to the operational semantics via type preservation and progress for the core calculus.
 
 \end{itemize}
 
-\section{Thesis structure}
+\section*{Thesis structure}
+The thesis is structured as follows.
+Chapter 2 gives an introduction to algebraic effects and handlers, and static and dynamic instances.
+Chapter 3 gives an introduction to our proposed language.
+Chapter 4 gives formal definitions of systems with algebraic effecst and handlers, and static instances.
+Chapter 5 gives a formal account of X.
+Chapter 6 discusses related work.
+Chapter 7 concludes the thesis and discusses future work.
