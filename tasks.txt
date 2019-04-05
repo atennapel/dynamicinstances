@@ -84,11 +84,43 @@
 - green light in month
 
 TODO:
-- add contributions
-- one more pass over introduction
 - write type soundness sections
+/ one more pass over introduction
 / come up with ST example
 X omit dynamic instances in theory background
 
 week after
 - introduction to our system
+
+- Eind juli deadline scriptie af
+- begin september verdediging
+
+
+Introductie notes
+- Check oxford comma, CTRL-f spatie and
+- "in addition" weg in Introductie
+- \emph bij nieuwe notie
+- polymorphism weg bij effects
+- er zijn een hoops type systemen die dit doen, wij kijken naar algebraic effects
+- terminologie
+- uitleg code na code zelf
+- refers to one implicit reference cell, we want more and we want to dynamically allocate them
+- dynamic instances nieuwe paragraaf, link met ST
+- begin met bridge om te verbinden
+- contributie: we can model dynamically allocated references etc.
+
+- "previous example" specifieke referentie
+- replace variables with references
+
+- maybe reference big ST example without giving.
+- gives strong example in introduction as well.
+
+- ask on IRC
+
+- "previous calculus" give name
+- figure met hoofdletter!
+- maak macro
+- hyperref, cref
+- static instances give names
+- short chapter names in header
+

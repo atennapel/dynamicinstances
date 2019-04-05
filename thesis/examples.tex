@@ -1,0 +1,30 @@
+\begin{minted}[tabsize=2]{haskell}
+effect State {
+	get : () -> Int
+	put : Int -> ()
+}
+
+newRef : forall s. Int -> (Inst s State)!{State@s}
+newRef [s] v =
+	new State@s {
+		get () k -> \s -> k s s
+		put s' k -> \s -> k () s'
+		return x -> \s -> return x
+		finally f -> f v
+	} as x in return x
+
+postInc : forall s. Inst s State -> Int!{State@s}
+postInc [s] r =
+	x <- r#get();
+	r#put(x + 1);
+	return x
+
+inc : forall s. Int -> Int!{State@s}
+inc [s] n =
+	r <- newRef [s] n;
+	postInc [s] r;
+	r#get()
+
+main : Int
+main = handle(s -> inc [s] 42)
+\end{minted}
