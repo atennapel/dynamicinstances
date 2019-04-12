@@ -1,9 +1,15 @@
+\iffalse
+\fi
+
+\section{Mutable references}
 \begin{minted}[tabsize=2]{haskell}
+-- the State effect
 effect State {
 	get : () -> Int
 	put : Int -> ()
 }
 
+-- create a fresh reference initialized with the integer value v
 newRef : forall s. Int -> (Inst s State)!{State@s}
 newRef [s] v =
 	new State@s {
@@ -12,19 +18,184 @@ newRef [s] v =
 		return x -> \s -> return x
 		finally f -> f v
 	} as x in return x
+\end{minted}
 
-postInc : forall s. Inst s State -> Int!{State@s}
-postInc [s] r =
-	x <- r#get();
-	r#put(x + 1);
-	return x
+\section{Mutable vectors}
+\begin{minted}[tabsize=2]{haskell}
+-- (linked) list of integer values
+data List = Nil | Cons Int List
 
-inc : forall s. Int -> Int!{State@s}
-inc [s] n =
-	r <- newRef [s] n;
-	postInc [s] r;
-	r#get()
+-- a mutable vector modeled by
+-- a list of references in scope s
+type Vector s = List (Inst s State)
 
-main : Int
-main = handle(s -> inc [s] 42)
+-- get the length of a list
+length : List -> Int
+length Nil = 0
+length (Cons _ t) = 1 + (length t)
+
+-- transform a list to a vector by replacing each value in the list
+-- by a reference initialized with that value
+toVector : forall s. List -> (Vector s)!{State@s}
+toVector [s] Nil = Nil
+toVector [s] (Cons h t) =
+	h' <- newRef [s] h;
+	t' <- toVector [s] t;
+	return (Cons h' t')
+
+-- transform a vector back to a list by getting the
+-- current values from the references in the vector
+toList : forall s. Vector s -> List!{State@s}
+toList [s] Nil = Nil
+toList [s] (Cons h t) =
+	h' <- h#get();
+	t' <- toList [s] t;
+	return (Const h' t')
+
+-- get the value at the index given as the first argument
+-- assumes the index is within range of the vector
+vget : forall s. Int -> Vector s -> Int!{State@s}
+vget [s] 0 (Cons h _) = h#get()
+vget [s] n (Cons _ t) = vget [s] (n - 1) t
+
+-- set the value at the index given as the first argument
+-- to the value given as the second argument
+-- assumes the index is within range of the vector
+vset : forall s. Int -> Int -> Vector s -> ()!{State@s}
+vset [s] 0 v (Cons h _) = h#put(v)
+vset [s] n v (Cons _ t) = vset [s] (n - 1) v t
+\end{minted}
+
+\section{List shuffle}
+\begin{minted}[tabsize=2]{haskell}
+-- random number generation effect
+-- the operation `rand` gives back a random integer
+-- between 0..n, where n is the argument given (exclusive)
+effect Rng {
+	rand : Int -> Int
+}
+
+-- shuffles a list given an instance of Rng
+shuffle : forall s'. Inst s' Rng -> List -> List!{Rng@s'}
+shuffle [s'] rng lst =
+	handle(s ->
+		let vec = toVector [s] lst;
+		shuffleVector [s] [s'] rng 100 vec;
+		return (toList vec))
+
+-- shuffles a vector given an instance of Rng
+-- by swapping two random elements of the vector
+-- the second argument to shuffleVector is the amount of times
+-- to swap elements
+shuffleVector : forall s s'. Inst s' Rng -> Int -> Vector s -> ()!{State@s, Rng@s'}
+shuffleVector [s] [s'] _ 0 vec = vec
+shuffleVector [s] [s'] rng n vec =
+	let len = length vec;
+	i <- rng#rand(len);
+	j <- rng#rand(len);
+	a <- vget [s] i vec;
+	b <- vget [s] j vec;
+	vset [s] i b vec;
+	vset [s] j a vec;
+	shuffleVector [s] [s'] rng (n - 1) vec
+\end{minted}
+
+\section{Local effects}
+\begin{minted}[tabsize=2]{haskell}
+-- folding with early exit
+effect Done {
+	done : Int -> ()
+}
+
+-- foldr creates a new instance of Done
+-- and passes this to the reducer function
+-- if done is called on the instance
+-- then foldr stops and returns the value given
+-- note: nested uses of foldr do not interfere because
+-- new instances are created with each call
+foldr : (forall s. Inst s Done -> Int -> Int -> Int!{Done@s}) ->
+	Int -> List -> Int
+foldr fn initial list =
+	handle(s ->
+		new Done@s {
+			done v k -> return v
+			return x -> return x
+		} as inst in
+		foldrRec [s] (fn [s] inst) initial list)
+
+-- recursive foldr implementation
+foldrRec : forall s. (Int -> Int ->Int!{Done@s}) ->
+	Int -> List -> Int!{Done@s}
+foldRec fn initial Nil = initial
+foldRec fn initial (Cons h t) = fn h (foldRec fn initial t)
+
+-- does the list have any element satifying the predicate function
+-- returns early if the predicate function returns True
+contains : (Int -> Bool) -> List -> Bool
+contains fn list =
+	let result = foldr (\inst h _ ->
+		if fn h then
+			inst#done(1)
+		else
+			0
+	) 0 list;
+	return (result == 1)
+\end{minted}
+
+\section{Unification}
+Unification of structures of atoms and pairs.
+\begin{minted}[tabsize=2]{haskell}
+data Maybe t = Nothing | Just t
+
+effect Fail {
+	fail : () -> Void
+}
+
+effect MetaVar {
+	assign : (Term s) -> ()
+	prune : () -> Maybe (Term s)
+}
+
+data Term s = Var (Inst s MetaVar) | Atom String | Pair Term Term
+
+unify : forall s. Inst s Fail -> Term s -> Term s -> ()!{MetaVar@s, Fail@s}
+unify [s] fail (Var x) t = assignVar [s] x t
+unify [s] fail t (Var x) = assignVar [s] x t
+unify [s] fail (Atom a) (Atom b) | a == b = return ()
+unify [s] fail (Pair l1 r1) (Pair l2 r2) =
+	unify [s] fail l1 l2;
+	unify [s] fail r1 r2
+unify [s] fail _ _ = fail#fail()
+
+assignVar : forall s. Inst s Fail -> Inst s MetaVar -> (Term s) -> ()!{MetaVar@s}
+assignVar [s] fail x (Var y) | x == y = return ()
+assignVar [s] fail x t =
+	currentTerm <- x#prune();
+	case currentTerm of
+		Just t' -> unify [s] fail t' t
+		Nothing -> x#assign(t)
+
+freshMetaVar : forall s. () -> (Inst s MetaVar)!{MetaVar@s}
+freshMetaVar [s] () =
+	new MetaVar@s {
+		assign t k ->
+			return \currentTerm ->
+				case currentTerm of
+					Just t -> k () currentTerm
+					Nothing -> k () (Just t)
+		
+		prune () k ->
+			return \currentTerm -> k currentTerm currentTerm
+		
+		return f -> f False (Atom "not set")
+	} as mv in return mv
+
+prune : forall s. Term s -> (Term s)!{MetaVar@s}
+prune [s] (Var x) =
+	currentTerm <- x#prune();
+	case currentTerm of
+		Just t -> -- TODO
+		Nothing -> Var x
+prune [s] (Atom x) = Atom x
+prune [s] (Pair l r) = Pair (prune [s] l) (prune [s] r)
 \end{minted}
