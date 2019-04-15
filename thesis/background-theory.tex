@@ -317,7 +317,7 @@ Where the progress lemma states that given a well-typed computation $\comp$ then
 \section{Algebraic effects} \label{section:algeff}
 
 We now extend the previous calculus with algebraic effects and handlers.
-We assume there is a set of effect names $\Eff = \{ \mathsf{Flip}, \mathsf{State}, ... \}$ and for each effect $\eff$ a set of operations $\Op{\eff}$.
+We assume there is a set of effect names $\mathsf{EffName}$ with $\Eff \subseteq \mathsf{EffName}$, for example $\Eff = \{ \mathsf{Flip}, \mathsf{State}, ... \}$. For each effect $\eff$ there assume there is a non-empty set of operations $\Op{\eff}$.
 For example $\Op{\mathsf{Flip}} = \{ \mathsf{flip} \}$ and $\Op{\mathsf{State}} = \{ \mathsf{get}, \mathsf{put} \}$.
 
 \begin{figure}
@@ -336,10 +336,11 @@ For example $\Op{\mathsf{Flip}} = \{ \mathsf{flip} \}$ and $\Op{\mathsf{State}} 
 \end{figure}
 
 \textbf{Syntax}
-The syntax for the extended system is shown in figure \ref{fig:syntax-algeff}, additions are highlighted with a gray background.
+The syntax for the extended system is shown in Figure~\ref{fig:syntax-algeff}, additions are highlighted with a gray background.
 Values stay the same. We add two forms of computations, operation calls $\cop{op}{\val}$ where $op \in \Op{\eff}$ for some effect $\eff$ and
 we can handle computations using $\chandle{\comp}{h}$.
-Handlers $h$ are linked lists of operation cases $\hop{op}{x}{k}{\comp}{h}$ ending in the return case $\hreturn{x}{\comp}$.
+Handlers $h$ are lists of operation cases $\hop{op}{x}{k}{\comp}{h}$ ending in the return case $\hreturn{x}{\comp}$.
+We assume that operations are not repeated within a handler.
 
 \begin{figure}
 \caption{Semantics of algebraic effects}
@@ -384,7 +385,7 @@ Handlers $h$ are linked lists of operation cases $\hop{op}{x}{k}{\comp}{h}$ endi
 \end{figure}
 
 \textbf{Semantics}
-We give a small-step operational semantics in figure \ref{fig:semantics-algeff}.
+We give a small-step operational semantics in Figure~\ref{fig:semantics-algeff}.
 \textsc{S-App}, \textsc{AlgEff-S-SeqReturn} and \textsc{S-Seq} are the same as in the fine-grained system and are left out of the figure.
 To be able to handle a computation we first transform the computation to the form $\creturn{\val}$ or $(\cdo{x}{\cop{op}{\val}}{\comp})$.
 \textsc{S-Flatten} and \textsc{S-Op} are used to get a computation to those forms.
@@ -394,7 +395,7 @@ The last four rules are used to handle a computation.
 If the operation $op$ is contained in the handler $h$ then the rule \textsc{S-HandleOp} substitutes the value $\val$ of the operation call in the body of the matching operation case $\comp'$.
 We also substitute a continuation in $\comp'$, which continues with the computation $\comp$ wrapped by the same handler $h$.
 If the operation $op$ is not contained in the handler then we float out the operation call $\cop{op}{\val}$ and wrap the handler $h$ around the continuing computation $\comp$.
-Lastly \textsc{S-Handle} is able to reduce a computation in the handle computation.
+Lastly, \textsc{S-Handle} is able to reduce a computation in the handle computation.
 
 \begin{figure}
 \caption{Types of algebraic effects}
@@ -489,7 +490,7 @@ Lastly \textsc{S-Handle} is able to reduce a computation in the handle computati
 }\quad(\footnotesize\textsc{T-Seq})\]
 
 \[\inferrule{
-	\Gamma[op] = (\eff, \ty^1_{op}, \ty^2_{op}) \\
+	op \Rightarrow (\eff, \ty^1_{op}, \ty^2_{op}) \\
 	\Gamma \vdash \val : \ty^1_{op} \\
 }{
 	\Gamma \vdash \cop{op}{\val} : \aty{\ty^2_{op}}{\{ \eff \}}
@@ -512,7 +513,7 @@ Lastly \textsc{S-Handle} is able to reduce a computation in the handle computati
 
 \[\inferrule{
 	\Gamma \vdash^{\ty_1} h : \aty{\ty_2}{r} \\
-	\Gamma[op] = (\eff, \ty^1_{op}, \ty^2_{op}) \\
+	op \Rightarrow (\eff, \ty^1_{op}, \ty^2_{op}) \\
 	\Gamma, x : \ty^1_{op}, k : \tarr{\ty^2_{op}}{\aty{\ty_2}{r}} \vdash \comp : \aty{\ty_2}{r} \\
 }{
 	\Gamma \vdash^{\ty_1} (\hop{op}{x}{k}{\comp}{h}) : \aty{\ty_2}{r}
@@ -530,21 +531,21 @@ Lastly \textsc{S-Handle} is able to reduce a computation in the handle computati
 
 \textbf{Type syntax}
 We now give a type system which ensures that a program reduced by the given semantics will not get ``stuck'' meaning that the result will be a computation of the form $\creturn{\val}$ for some value $\val$.
-In figure \ref{fig:types-algeff} we give the syntax of the types.
+In Figure~\ref{fig:types-algeff} we give the syntax of the types.
 Value types $\ty$ are the same as in the fine-grained system.
 Computation types $\cty$ are now of the form $\aty{\ty}{r}$ for some value type $\ty$.
-An annotation $r$ is a set of effect names.
+An annotation $r \subseteq \Eff$ is a set of effect names.
 
 \textbf{Subtyping}
 It is always valid in the system to weaken a type by adding more effects to an annotation.
 This is done using subtyping judgments $\ty <: \ty$ and $\cty <: \cty$.
-In figure \ref{fig:subtyping-algeff} we give the subtyping rules for the system.
+In Figure~\ref{fig:subtyping-algeff} we give the subtyping rules for the system.
 Subtyping proceeds structurally on the value and computation types.
 In \textsc{Sub-Arr} we compare function arguments contravariantly.
 To compare two annotated types we compare the value types and then check that the annotation on the left is a subset of the annotation on the right.
 
 \textbf{Typing rules}
-Finally we give the typing rules in figure \ref{fig:typing-algeff}.
+Finally we give the typing rules in Figure~\ref{fig:typing-algeff}.
 We have three judgements:
 \begin{enumerate}
 \item $\Gamma \vdash \val : \ty$, which types the value $\val$ with the value type $\ty$
@@ -553,7 +554,7 @@ We have three judgements:
 \end{enumerate}
 We can get the type of a variable from the context using $\Gamma[x] = \ty$.
 For each operation $op$ we have a parameter type $\ty^1_{op}$ and a return type $\ty^2_{op}$.
-We can retrieve the effect, parameter and return types of an operation from the context using $\Gamma[op] = (\eff, \ty^1_{op}, \ty^2_{op})$.
+We use the syntax $op \Rightarrow (\eff, \ty^1_{op}, \ty^2_{op})$ to retrieve the effect, parameter and return type given an operation $op$.
 \\\\
 \textsc{T-Var}, \textsc{T-Unit}, \textsc{T-Abs}, \textsc{T-App}, and \textsc{T-Seq} are the same as in the fine-grained system.
 We can weaken the type of values and computations using subtyping using the rules \textsc{T-SubVal} and \textsc{T-SubComp}.
@@ -619,7 +620,7 @@ We define a computation $\comp$ to be a value if $\comp$ is of the form $\cretur
 Finally extend algebraic effects with static instances. We assume there exists a set of instances $I = \{ \vinst_1, ..., \vinst_n \}$, where each instance belongs to a single effect $\eff$, written as $E[\vinst] = \eff$.
 
 \textbf{Syntax}
-The syntax of the system with algebraic effects and handlers is extended in figure~\ref{fig:syntax-static}, changes and new additions are shown in gray. For values we add instances, these are taking from the set of instances $I$. We also change the operation call and handle computations to take an extra value term, which is the instance they are operating on.
+The syntax of the system with algebraic effects and handlers is extended in Figure~\ref{fig:syntax-static}, changes and new additions are shown in gray. For values we add instances, these are taking from the set of instances $I$. We also change the operation call and handle computations to take an extra value term, which is the instance they are operating on.
 
 \begin{figure}
 \caption{Syntax of algebraic effects with static instances}
@@ -638,7 +639,7 @@ The syntax of the system with algebraic effects and handlers is extended in figu
 \end{figure}
 
 \textbf{Semantics}
-The semantics for static instances are shown in figure~\ref{fig:semantics-static}. The rules from algebraic effects that did not change are left out of this figure. The rules \textsc{S-Op}, \textsc{S-HandleReturn} and \textsc{S-Handle} are, except for the change in syntax with the addition of the value term, identical to the corresponding rules in the previous system. For static instances the only important change is in the \textsc{S-HandleOp} and \textsc{S-HandleOpSkip} rules. In \textsc{S-HandleOp} the instance in the handle and the instance in the operation call have to be the same, besides this the rule is the same as the corresponding rule in the previous system. If the instances do not match or if the operation is not in the handler then the rule \textsc{S-HandleOpSkip} is used to lift the operation call over the handler, also like in the previous system.
+The semantics for static instances are shown in Figure~\ref{fig:semantics-static}. The rules from algebraic effects that did not change are left out of this figure. The rules \textsc{S-Op}, \textsc{S-HandleReturn} and \textsc{S-Handle} are, except for the change in syntax with the addition of the value term, identical to the corresponding rules in the previous system. For static instances the only important change is in the \textsc{S-HandleOp} and \textsc{S-HandleOpSkip} rules. In \textsc{S-HandleOp} the instance in the handle and the instance in the operation call have to be the same, besides this the rule is the same as the corresponding rule in the previous system. If the instances do not match or if the operation is not in the handler then the rule \textsc{S-HandleOpSkip} is used to lift the operation call over the handler, also like in the previous system.
 
 \begin{figure}
 \caption{Semantics of algebraic effects with static instances}
@@ -678,7 +679,7 @@ The semantics for static instances are shown in figure~\ref{fig:semantics-static
 \end{figure}
 
 \textbf{Type syntax}
-The updated syntax for types is shown in figure~\ref{fig:types-static}.
+The updated syntax for types is shown in Figure~\ref{fig:types-static}.
 We add instances types, which are just instance names from the set $I$.
 The effect annotation on the computation types are now sets of instance names instead effect names.
 
@@ -698,7 +699,7 @@ The effect annotation on the computation types are now sets of instance names in
 \end{figure}
 
 \textbf{Subtyping}
-For subtyping we keep the rules from the previous system but we add a rule for the instance types (figure~\ref{fig:subtyping-algeff}).
+For subtyping we keep the rules from the previous system but we add a rule for the instance types (Figure~\ref{fig:subtyping-algeff}).
 
 \begin{figure}
 \caption{Subtyping rules of algebraic effects with static instances}
@@ -715,7 +716,7 @@ For subtyping we keep the rules from the previous system but we add a rule for t
 \end{figure}
 
 \textbf{Typing rules}
-The typing rules from the previous system mostly stay the same except for the rules \textsc{T-OP} and \textsc{T-Handle}, they are showin in figure~\ref{fig:typing-algeff}.
+The typing rules from the previous system mostly stay the same except for the rules \textsc{T-OP} and \textsc{T-Handle}, they are showin in Figure~\ref{fig:typing-algeff}.
 We also had a rule to type instances (\textsc{T-Inst}), this rule simply types an instance as a instance type with the same name.
 For both \textsc{T-OP} and \textsc{T-Handle} we just have to check that the added value term is an instance and that the effect of that instance matches the operations.
 
