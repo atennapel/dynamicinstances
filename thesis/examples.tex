@@ -1,6 +1,11 @@
 \iffalse
 \fi
 
+We will use a language reminiscent of Haskell with algebraic data types and pattern matching.
+Type constructors are uppercase while type variables are lowercase.
+We will always explicitly show \ident{forall} for universally quantified scope variables.
+Other type variables are implicitly quantified.
+
 \section{Mutable references}
 \begin{minted}[tabsize=2]{haskell}
 -- the State effect
@@ -10,7 +15,7 @@ effect State {
 }
 
 -- create a fresh reference initialized with the integer value v
-newRef : forall s. Int -> (Inst s State)!{State@s}
+newRef : forall s. t -> (Inst s State)!{State@s}
 newRef [s] v =
 	new State@s {
 		get () k -> \s -> k s s
@@ -103,8 +108,8 @@ shuffleVector [s] [s'] rng n vec =
 \section{Local effects}
 \begin{minted}[tabsize=2]{haskell}
 -- folding with early exit
-effect Done {
-	done : Int -> ()
+effect Done t {
+	done : t -> ()
 }
 
 -- foldr creates a new instance of Done
@@ -113,8 +118,8 @@ effect Done {
 -- then foldr stops and returns the value given
 -- note: nested uses of foldr do not interfere because
 -- new instances are created with each call
-foldr : (forall s. Inst s Done -> Int -> Int -> Int!{Done@s}) ->
-	Int -> List -> Int
+foldr : (forall s. Inst s (Done r) -> Int -> r -> r!{(Done r)@s}) ->
+	r -> List -> r
 foldr fn initial list =
 	handle(s ->
 		new Done@s {
@@ -124,8 +129,8 @@ foldr fn initial list =
 		foldrRec [s] (fn [s] inst) initial list)
 
 -- recursive foldr implementation
-foldrRec : forall s. (Int -> Int ->Int!{Done@s}) ->
-	Int -> List -> Int!{Done@s}
+foldrRec : forall s. (Int -> r -> r!{(Done r)@s}) ->
+	r -> List -> r!{(Done r)@s}
 foldRec fn initial Nil = initial
 foldRec fn initial (Cons h t) = fn h (foldRec fn initial t)
 
@@ -135,15 +140,13 @@ contains : (Int -> Bool) -> List -> Bool
 contains fn list =
 	let result = foldr (\inst h _ ->
 		if fn h then
-			inst#done(1)
+			inst#done(True)
 		else
-			0
-	) 0 list;
-	return (result == 1)
+			False
+	) False list
 \end{minted}
 
-\section{Unification}
-Unification of structures of atoms and pairs.
+\section{Type inference for STLC}
 \begin{minted}[tabsize=2]{haskell}
 data Maybe t = Nothing | Just t
 
@@ -152,50 +155,105 @@ effect Fail {
 }
 
 effect MetaVar {
-	assign : (Term s) -> ()
-	prune : () -> Maybe (Term s)
+	assign : Ty s -> ()
+	get : () -> Maybe (Ty s)
 }
 
-data Term s = Var (Inst s MetaVar) | Atom String | Pair Term Term
+data Term = Var String | Abs String Term | App Term Term
+type MVar s = Inst s MetaVar
+data Ty s = TVar (MVar s) | TFun Ty Ty
 
-unify : forall s. Inst s Fail -> Term s -> Term s -> ()!{MetaVar@s, Fail@s}
-unify [s] fail (Var x) t = assignVar [s] x t
-unify [s] fail t (Var x) = assignVar [s] x t
-unify [s] fail (Atom a) (Atom b) | a == b = return ()
-unify [s] fail (Pair l1 r1) (Pair l2 r2) =
+freshMVar : forall s. (MVar s)!{MetaVar@s}
+freshMVar [s] () =
+	new MetaVar@s {
+		assign t k -> 	return \mty -> k () (Just t)
+		get () k -> 	return \mty -> k mty mty
+		return f -> f Nothing
+	} as mv in return mv
+
+pruneMVar : forall s. MVar s -> (Ty s)!{MetaVar@s}
+pruneMVar [s] mv =
+	mty <- mv#get();
+	case mty of
+		Nothing -> TVar mv
+		Just t ->
+			let t' = prune [s] t;
+			mv#assign(t');
+			return t'
+
+prune : forall s. Ty s -> (Ty s)!{MetaVar@s}
+prune [s] (TVar mv) = pruneMVar [s] mv
+prune [s] (TFun a b) = TFun (prune [s] a) (prune [s] b)
+
+unify : forall s. Inst s Fail -> Ty s -> Ty s -> ()!{MetaVar@s, Fail@s}
+unify [s] fail (TVar mv) t = assignMVar [s] fail x t
+unify [s] fail t (Var mv) = assignMVar [s] fail x t
+unify [s] fail (TFun l1 r1) (TFun l2 r2) =
 	unify [s] fail l1 l2;
 	unify [s] fail r1 r2
 unify [s] fail _ _ = fail#fail()
 
-assignVar : forall s. Inst s Fail -> Inst s MetaVar -> (Term s) -> ()!{MetaVar@s}
-assignVar [s] fail x (Var y) | x == y = return ()
-assignVar [s] fail x t =
-	currentTerm <- x#prune();
-	case currentTerm of
-		Just t' -> unify [s] fail t' t
-		Nothing -> x#assign(t)
+assignMVar : forall s. Inst s Fail -> MVar s -> Ty s -> ()!{MetaVar@s}
+assignMVar [s] fail x (TVar y) | x == y = return ()
+assignMVar [s] fail x t =
+	let ty = pruneMVar [s] x;
+	case ty of
+		TVar mv -> mv#assign(t)
+		_ -> unify [s] fail ty t
 
-freshMetaVar : forall s. () -> (Inst s MetaVar)!{MetaVar@s}
-freshMetaVar [s] () =
-	new MetaVar@s {
-		assign t k ->
-			return \currentTerm ->
-				case currentTerm of
-					Just t -> k () currentTerm
-					Nothing -> k () (Just t)
-		
-		prune () k ->
-			return \currentTerm -> k currentTerm currentTerm
-		
-		return f -> f False (Atom "not set")
-	} as mv in return mv
+data Env s = ENil | ECons String (Ty s) (Env s)
 
-prune : forall s. Term s -> (Term s)!{MetaVar@s}
-prune [s] (Var x) =
-	currentTerm <- x#prune();
-	case currentTerm of
-		Just t -> -- TODO
-		Nothing -> Var x
-prune [s] (Atom x) = Atom x
-prune [s] (Pair l r) = Pair (prune [s] l) (prune [s] r)
+extend : forall s. String -> Ty s -> Env s -> Env s
+extend [s] x t e = ECons x t e
+
+lookup : forall s. String -> Env s -> Maybe (Ty s)
+lookup [s] x ENil = Nothing
+lookup [s] x (ECons y ty _) | x == y = Just ty
+lookup [s] x (ECons _ _ rest) = lookup [s] x rest
+
+infer : forall s. Inst s Fail -> Env -> Term -> (Ty s)!{MetaVar@s, Fail@s}
+infer [s] fail env (Var x) =
+	case (lookup x env) of
+		Just ty -> return ty
+		Nothing -> fail#fail()
+infer [s] fail env (Abs x b) =
+	mv <- freshMVar [s];
+	let env' = extend x (TVar mv) env;
+	ty <- infer [s] fail env' b;
+	return (TFun (TVar mv) ty)
+infer [s] fail env (App a b) =
+	ta <- infer [s] fail env a;
+	tb <- infer [s] fail env b;
+	mv <- freshMVar [s];
+	unify [s] fail ta (TFun tb (TVar mv));
+	return (TVar mv)
+
+data FinalTy = FTVar Int | FTFun FinalTy FinalTy
+
+finalizeTy : forall s. Inst s State -> Ty s -> FinalTy!{MetaVar@s, State@s}
+finalizeTy [s] ref (TVar mv) =
+	ty <- mv#get();
+	case ty of
+		Just t -> finalizeTy [s] ref t
+		Nothing ->
+			i <- ref#get();
+			ref#put(i + 1);
+			mv#assign(FTVar i);
+			return (FTVar i)
+finalizeTy [s] ref (TFun a b) =
+	a' <- finalizeTy [s] ref a;
+	b' <- finalizeTy [s] ref b;
+	return (FTFun a' b')
+
+inferTop : Env -> Term -> Maybe FinalTy
+inferTop [s] env term =
+	handle(s ->
+		new Fail@s {
+			fail () k -> return Nothing
+			return x -> return x
+		} as fail in
+		ty <- infer [s] fail env term;
+		pruned <- prune ty;
+		fty <- finalizeTy pruned;
+		return (Just fty))
 \end{minted}
