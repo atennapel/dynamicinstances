@@ -124,3 +124,10 @@ Introductie notes
 - static instances give names
 - short chapter names in header
 
+2019-04-17
+- cite logic variables, starrays example papers
+- lose type inference example
+- no type polymorphism
+
+- write text for the examples
+- 
