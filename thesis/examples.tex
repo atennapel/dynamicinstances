@@ -1,19 +1,60 @@
 \iffalse
 \fi
 
+In this chapter we will give an introduction to programming with X. We will start with defining mutable references and mutable vectors. After we will show how to implement a list shuffling algorithm that internally uses mutation and we will finish with an example of locally scoped effects.
+\\\\
 We will use a language reminiscent of Haskell with algebraic data types and pattern matching.
 Type constructors are uppercase while type variables are lowercase.
 We will always explicitly show \ident{forall} for universally quantified scope variables.
-Other type variables are implicitly quantified.
 
 \section{Mutable references}
+To start off we will define a \ident{State} effect specialized to \ident{Int}s.
 \begin{minted}[tabsize=2]{haskell}
 -- the State effect
 effect State {
 	get : () -> Int
 	put : Int -> ()
 }
+\end{minted}
 
+This definition is exactly the same as the \ident{State} effect definition in Chapter~2.1, in the basic algebraic effects system.
+With the \ident{effect} keyword we declare a new effect called \ident{State} with two operations: \ident{get} and \ident{put}.
+For each operation we give parameter and return types. For \ident{get} we give the unit type \ident{()} as the parameter type, \ident{()} is the unit type, the type with exactly one value: the unit value, also written as \ident{()}. A parameter type of \ident{()} means that \ident{get} does not expect a meaningful argument. As the return type we give \ident{Int}, meaning that calling the \ident{get} operation will return a integer value. For the \ident{put} operation it is the other way around, as the parameter type we have \ident{Int}, meaning that \ident{put} requires an integer value when called, and the return type is \ident{()}, calling \ident{put} will give back the unit value. Having \ident{()} as the return type of an operation means that the operation does not return any meaningful value but calling the operation is only useful for its effect.
+\\\\
+Example of usage of operations here.
+\\\\
+In order to use an effect we first have to create an instance of it.
+We can do this using the \ident{new} keyword, for example:
+\begin{minted}[tabsize=2]{haskell}
+new State@s {
+	get v k -> k 0
+	put v k -> k ()
+	return xr -> return xr
+	finally xf -> return xf
+} as inst in e
+\end{minted}
+Here we create a new instance of the \ident{State} effect at scope \ident{s} (the meaning of which we will explain later), the newly-created instance is available in the expressions \ident{e}, as the variable \ident{inst}.
+When creating an instance we have to give an \emph{handler}, the handler specifies what should happen when the operations are called.
+The handler is defined within curly braces and consists of a case for each operation of the effect, plus a \ident{return} case and a \ident{finally} case.
+\\\\
+In each operation case, \ident{get} and \ident{put} in the above example, we have access to two arguments.
+The first variable, \ident{v} above, refers to the argument given when the operation was called.
+The second variable, \ident{k} above, refers to the continuation of the operation call, this is the rest of the computation, after the operation call.
+By calling \ident{k} with a value we can continue the computation at the point where the operation was called, at that point the program receives the value we give to the continuation \ident{k}.
+In the example above we continue with \ident{0} every time \ident{get} on the instance \ident{inst} is called, and we continue with \ident{()} (without performing any other effects) whenever \ident{put} is called.
+\\\\
+The \ident{return} case gets called at the end of the computation \ident{e}.
+The variable \ident{xf} contains the final value of the computation, which can be transformed in the case branch.
+It is not required for the computation returned from the case to have the same type as \ident{xr}, and other operations are also allowed to be called.
+Finally the \ident{finally} case is wrapped around the whole computation \ident{e} after the \ident{return} computation has been performed.
+The variable \ident{xf} contains the transformed value returned from the \ident{return} case.
+This case may not seem that useful, but we will see it is necessary in order to define mutable references.
+\\\\
+Explain scopes here.
+\\\\
+Example of references
+
+\begin{minted}[tabsize=2]{haskell}
 -- create a fresh reference initialized with the integer value v
 newRef : forall s. t -> (Inst s State)!{State@s}
 newRef [s] v =
@@ -24,6 +65,9 @@ newRef [s] v =
 		finally f -> f v
 	} as x in return x
 \end{minted}
+explanation.
+\\\\
+Example of using references
 
 \section{Mutable vectors}
 \begin{minted}[tabsize=2]{haskell}
