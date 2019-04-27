@@ -68,11 +68,11 @@ This case may not seem that useful, but we will see it is necessary in order to 
 \\\\
 Explain scopes here.
 \\\\
-Example of references
+Actual implementation of references, explain \ident{[s]} and how the implementation works.
 
 \begin{minted}[tabsize=2]{haskell}
 -- create a fresh reference initialized with the integer value v
-newRef : forall s. t -> (Inst s State)!{State@s}
+newRef : forall s. t -> (Inst s State)!{s}
 newRef [s] v =
 	new State@s {
 		get () k -> \s -> k s s
@@ -89,10 +89,7 @@ Example of using references
 \begin{minted}[tabsize=2]{haskell}
 -- (linked) list of integer values
 data List = Nil | Cons Int List
-
--- a mutable vector modeled by
--- a list of references in scope s
-type Vector s = List (Inst s State)
+data Vector s = VNil | VCons (Inst s State) Vector
 
 -- get the length of a list
 length : List -> Int
@@ -101,34 +98,34 @@ length (Cons _ t) = 1 + (length t)
 
 -- transform a list to a vector by replacing each value in the list
 -- by a reference initialized with that value
-toVector : forall s. List -> (Vector s)!{State@s}
-toVector [s] Nil = Nil
+toVector : forall s. List -> (Vector s)!{s}
+toVector [s] Nil = VNil
 toVector [s] (Cons h t) =
 	h' <- newRef [s] h;
 	t' <- toVector [s] t;
-	return (Cons h' t')
+	return (VCons h' t')
 
 -- transform a vector back to a list by getting the
 -- current values from the references in the vector
-toList : forall s. Vector s -> List!{State@s}
-toList [s] Nil = Nil
-toList [s] (Cons h t) =
+toList : forall s. Vector s -> List!{s}
+toList [s] VNil = Nil
+toList [s] (VCons h t) =
 	h' <- h#get();
 	t' <- toList [s] t;
 	return (Const h' t')
 
 -- get the value at the index given as the first argument
 -- assumes the index is within range of the vector
-vget : forall s. Int -> Vector s -> Int!{State@s}
-vget [s] 0 (Cons h _) = h#get()
-vget [s] n (Cons _ t) = vget [s] (n - 1) t
+vget : forall s. Int -> Vector s -> Int!{s}
+vget [s] 0 (VCons h _) = h#get()
+vget [s] n (VCons _ t) = vget [s] (n - 1) t
 
 -- set the value at the index given as the first argument
 -- to the value given as the second argument
 -- assumes the index is within range of the vector
-vset : forall s. Int -> Int -> Vector s -> ()!{State@s}
-vset [s] 0 v (Cons h _) = h#put(v)
-vset [s] n v (Cons _ t) = vset [s] (n - 1) v t
+vset : forall s. Int -> Int -> Vector s -> ()!{s}
+vset [s] 0 v (VCons h _) = h#put(v)
+vset [s] n v (VCons _ t) = vset [s] (n - 1) v t
 \end{minted}
 
 \section{List shuffle}
@@ -141,7 +138,7 @@ effect Rng {
 }
 
 -- shuffles a list given an instance of Rng
-shuffle : forall s'. Inst s' Rng -> List -> List!{Rng@s'}
+shuffle : forall s'. Inst s' Rng -> List -> List!{s'}
 shuffle [s'] rng lst =
 	handle(s ->
 		let vec = toVector [s] lst;
@@ -152,7 +149,7 @@ shuffle [s'] rng lst =
 -- by swapping two random elements of the vector
 -- the second argument to shuffleVector is the amount of times
 -- to swap elements
-shuffleVector : forall s s'. Inst s' Rng -> Int -> Vector s -> ()!{State@s, Rng@s'}
+shuffleVector : forall s s'. Inst s' Rng -> Int -> Vector s -> ()!{s, s'}
 shuffleVector [s] [s'] _ 0 vec = vec
 shuffleVector [s] [s'] rng n vec =
 	let len = length vec;
@@ -168,8 +165,8 @@ shuffleVector [s] [s'] rng n vec =
 \section{Local effects}
 \begin{minted}[tabsize=2]{haskell}
 -- folding with early exit
-effect Done t {
-	done : t -> ()
+effect Done {
+	done : T -> ()
 }
 
 -- foldr creates a new instance of Done
@@ -178,8 +175,8 @@ effect Done t {
 -- then foldr stops and returns the value given
 -- note: nested uses of foldr do not interfere because
 -- new instances are created with each call
-foldr : (forall s. Inst s (Done r) -> Int -> r -> r!{(Done r)@s}) ->
-	r -> List -> r
+foldr : (forall s. Inst s Done -> Int -> T -> T!{s}) ->
+	T -> List -> T
 foldr fn initial list =
 	handle(s ->
 		new Done@s {
@@ -189,8 +186,8 @@ foldr fn initial list =
 		foldrRec [s] (fn [s] inst) initial list)
 
 -- recursive foldr implementation
-foldrRec : forall s. (Int -> r -> r!{(Done r)@s}) ->
-	r -> List -> r!{(Done r)@s}
+foldrRec : forall s. (Int -> r -> r!{s}) ->
+	r -> List -> r!{s}
 foldRec fn initial Nil = initial
 foldRec fn initial (Cons h t) = fn h (foldRec fn initial t)
 
@@ -204,116 +201,4 @@ contains fn list =
 		else
 			False
 	) False list
-\end{minted}
-
-\section{Type inference for STLC}
-\begin{minted}[tabsize=2]{haskell}
-data Maybe t = Nothing | Just t
-
-effect Fail {
-	fail : () -> Void
-}
-
-effect MetaVar {
-	assign : Ty s -> ()
-	get : () -> Maybe (Ty s)
-}
-
-data Term = Var String | Abs String Term | App Term Term
-type MVar s = Inst s MetaVar
-data Ty s = TVar (MVar s) | TFun Ty Ty
-
-freshMVar : forall s. (MVar s)!{MetaVar@s}
-freshMVar [s] () =
-	new MetaVar@s {
-		assign t k -> 	return \mty -> k () (Just t)
-		get () k -> 	return \mty -> k mty mty
-		return f -> f Nothing
-	} as mv in return mv
-
-pruneMVar : forall s. MVar s -> (Ty s)!{MetaVar@s}
-pruneMVar [s] mv =
-	mty <- mv#get();
-	case mty of
-		Nothing -> TVar mv
-		Just t ->
-			let t' = prune [s] t;
-			mv#assign(t');
-			return t'
-
-prune : forall s. Ty s -> (Ty s)!{MetaVar@s}
-prune [s] (TVar mv) = pruneMVar [s] mv
-prune [s] (TFun a b) = TFun (prune [s] a) (prune [s] b)
-
-unify : forall s. Inst s Fail -> Ty s -> Ty s -> ()!{MetaVar@s, Fail@s}
-unify [s] fail (TVar mv) t = assignMVar [s] fail x t
-unify [s] fail t (Var mv) = assignMVar [s] fail x t
-unify [s] fail (TFun l1 r1) (TFun l2 r2) =
-	unify [s] fail l1 l2;
-	unify [s] fail r1 r2
-unify [s] fail _ _ = fail#fail()
-
-assignMVar : forall s. Inst s Fail -> MVar s -> Ty s -> ()!{MetaVar@s}
-assignMVar [s] fail x (TVar y) | x == y = return ()
-assignMVar [s] fail x t =
-	let ty = pruneMVar [s] x;
-	case ty of
-		TVar mv -> mv#assign(t)
-		_ -> unify [s] fail ty t
-
-data Env s = ENil | ECons String (Ty s) (Env s)
-
-extend : forall s. String -> Ty s -> Env s -> Env s
-extend [s] x t e = ECons x t e
-
-lookup : forall s. String -> Env s -> Maybe (Ty s)
-lookup [s] x ENil = Nothing
-lookup [s] x (ECons y ty _) | x == y = Just ty
-lookup [s] x (ECons _ _ rest) = lookup [s] x rest
-
-infer : forall s. Inst s Fail -> Env -> Term -> (Ty s)!{MetaVar@s, Fail@s}
-infer [s] fail env (Var x) =
-	case (lookup x env) of
-		Just ty -> return ty
-		Nothing -> fail#fail()
-infer [s] fail env (Abs x b) =
-	mv <- freshMVar [s];
-	let env' = extend x (TVar mv) env;
-	ty <- infer [s] fail env' b;
-	return (TFun (TVar mv) ty)
-infer [s] fail env (App a b) =
-	ta <- infer [s] fail env a;
-	tb <- infer [s] fail env b;
-	mv <- freshMVar [s];
-	unify [s] fail ta (TFun tb (TVar mv));
-	return (TVar mv)
-
-data FinalTy = FTVar Int | FTFun FinalTy FinalTy
-
-finalizeTy : forall s. Inst s State -> Ty s -> FinalTy!{MetaVar@s, State@s}
-finalizeTy [s] ref (TVar mv) =
-	ty <- mv#get();
-	case ty of
-		Just t -> finalizeTy [s] ref t
-		Nothing ->
-			i <- ref#get();
-			ref#put(i + 1);
-			mv#assign(FTVar i);
-			return (FTVar i)
-finalizeTy [s] ref (TFun a b) =
-	a' <- finalizeTy [s] ref a;
-	b' <- finalizeTy [s] ref b;
-	return (FTFun a' b')
-
-inferTop : Env -> Term -> Maybe FinalTy
-inferTop [s] env term =
-	handle(s ->
-		new Fail@s {
-			fail () k -> return Nothing
-			return x -> return x
-		} as fail in
-		ty <- infer [s] fail env term;
-		pruned <- prune ty;
-		fty <- finalizeTy pruned;
-		return (Just fty))
 \end{minted}
