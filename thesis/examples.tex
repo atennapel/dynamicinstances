@@ -21,7 +21,7 @@ This definition is exactly the same as the \ident{State} effect definition in Ch
 With the \ident{effect} keyword we declare a new effect called \ident{State} with two operations: \ident{get} and \ident{put}.
 For each operation we give parameter and return types. For \ident{get} we give the unit type \ident{()} as the parameter type, \ident{()} is the unit type, the type with exactly one value: the unit value, also written as \ident{()}. A parameter type of \ident{()} means that \ident{get} does not expect a meaningful argument. As the return type we give \ident{Int}, meaning that calling the \ident{get} operation will return a integer value. For the \ident{put} operation it is the other way around, as the parameter type we have \ident{Int}, meaning that \ident{put} requires an integer value when called, and the return type is \ident{()}, calling \ident{put} will give back the unit value. Having \ident{()} as the return type of an operation means that the operation does not return any meaningful value but calling the operation is only useful for its effect.
 \\\\
-Operations are called on an \emph{effect instance}.
+Operations are always called on an \emph{effect instance}, without an instance we are unable to perform operations.
 As an example consider the following post-increment function:
 \begin{minted}[tabsize=2]{haskell}
 postInc : forall s. Inst s State -> Int!{s}
@@ -38,9 +38,9 @@ We write \ident{instance#operation()} to mean \ident{instance#operation( () )}, 
 In the case of \ident{postInc} we first retrieve the current value from the instance by calling the \ident{get} operation on \ident{inst}.
 This value is named \ident{x}.
 After we increment the value of the instance by calling the \ident{put} operation with \ident{(x + 1)}.
+Finally we return \ident{x}, the old value of the \ident{inst}.
 \\\\
-In order to use an effect we first have to create an instance of it.
-We can do this using the \ident{new} keyword, for example:
+We can create a fresh instance of an effect using the \ident{new} keyword, for example:
 \begin{minted}[tabsize=2]{haskell}
 new State@s {
 	get v k -> k 0
