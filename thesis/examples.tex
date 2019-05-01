@@ -98,11 +98,17 @@ meaning that \ident{callPostInc} is a computation that returns an integer in any
 \\\\
 Now that we have a computation that works on any scope, \ident{callPostInc}, how can we actually run the computation?
 To run \ident{callPostInc} we have to give it a specific scope, this can be done as follows:
+
 \begin{minted}[tabsize=2]{haskell}
 result : Int
 result = handle(s' -> callPostInc [s'])
 \end{minted}
 
+The \ident{handle(s' -> ...)} construct provides a scope, which we named \ident{s'} in our case, to be used in its body.
+Inside \ident{handle} we can create and use instances in this new scope.
+Note that the type of \ident{result} does not have any effects, \ident{handle} will use the handlers defined when creating instances to perform the operations called on the instances in its scope.
+That means the result of \ident{handle(s -> ...)} will not have any effects (operation calls on instances of \ident{s}) in \ident{s}.
+\ident{handle} will not perform any other effects beside the ones in its own scope, any other effects (on other scopes) will be forwarded through and will remain after \ident{handle} is done.
 
 \section{Mutable references}
 Actual implementation of references, explain \ident{[s]} and how the implementation works.
