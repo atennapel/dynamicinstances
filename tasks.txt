@@ -129,5 +129,18 @@ Introductie notes
 - lose type inference example
 - no type polymorphism
 
-- write text for the examples
-- 
+- write text for the examples 
+
+2019-05-02
+- work on calculus in parralel
+- do not need to explain unit type
+- start chapter with listing of new features
+- First example should be figure of all features
+- novel ideas/concepts, stress that
+- be explicit that the state implementation is dumb
+- "in section 3.1 we are going to..."
+	- " insection 3.3 we are going to show scale ..."
+- always show explicit effect scope variables
+
+- syntax text X done
+- examples text done

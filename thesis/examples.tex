@@ -75,7 +75,7 @@ The type of \ident{postInc} can be read as ``For any scope \ident{s}, given a \i
 In order to call \ident{postInc} we have to give both a scope and a \ident{State} instance in that given scope:
 \begin{minted}[tabsize=2]{haskell}
 callPostInc : forall s. Int!{s}
-callPostInc = /\s.
+callPostInc = /\s ->
 	new State@s {
 		get v k -> k 0
 		put v k -> k ()
@@ -86,7 +86,7 @@ callPostInc = /\s.
 	return x
 \end{minted}
 
-The program \ident{callPostInc} uses the syntax \ident{/\s. } to abstract over a scope, we call this construct \emph{scope abstraction}.
+The program \ident{callPostInc} uses the syntax \ident{/\s ->} to abstract over a scope, we call this construct \emph{scope abstraction}.
 We can then create a new \ident{State} instance on this scope \ident{s}, which we call \ident{inst}.
 We now have all the arguments to be able to call \ident{postInc}.
 First we use the syntax \ident{postInc [s]}, called \emph{scope application}, to give the scope variable as an argument to \ident{postInc}.
@@ -94,7 +94,7 @@ We then give our instance \ident{inst} to \ident{postInc}, which typechecks sinc
 After we simply return the result of calling \ident{postInc}.
 Note, again, that the type of the function is universally quantified over any scope \ident{s},
 meaning that \ident{callPostInc} is a computation that returns an integer in any given scope.
-\ident{callPostInc} is given this \ident{forall} type because we used the scope abstraction \ident{/\s. }.
+\ident{callPostInc} is given this \ident{forall} type because we used the scope abstraction \ident{/\s ->}.
 \\\\
 Now that we have a computation that works on any scope, \ident{callPostInc}, how can we actually run the computation?
 To run \ident{callPostInc} we have to give it a specific scope, this can be done as follows:
@@ -109,6 +109,19 @@ Inside \ident{handle} we can create and use instances in this new scope.
 Note that the type of \ident{result} does not have any effects, \ident{handle} will use the handlers defined when creating instances to perform the operations called on the instances in its scope.
 That means the result of \ident{handle(s -> ...)} will not have any effects (operation calls on instances of \ident{s}) in \ident{s}.
 \ident{handle} will not perform any other effects beside the ones in its own scope, any other effects (on other scopes) will be forwarded through and will remain after \ident{handle} is done.
+For example:
+
+\begin{minted}[tabsize=2]{haskell}
+result2 : forall s''. Int!{s''}
+result2 = /\s'' -> handle(s' ->
+	x <- callPostInc [s'];
+	y <- callPostInc [s''];
+	return (x + y))
+\end{minted}
+
+Here we use \ident{callPostInc} on two different scopes (\ident{s'} and \ident{s''}) but we only handle one of the scopes (\ident{s'}).
+We use scope abstraction to leave \ident{s''} unhandled.
+We can also see this in the type, \ident{s'} does not appear while \ident{s''} does. 
 
 \section{Mutable references}
 Actual implementation of references, explain \ident{[s]} and how the implementation works.
