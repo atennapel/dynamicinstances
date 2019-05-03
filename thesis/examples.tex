@@ -1,36 +1,70 @@
 \iffalse
 \fi
 
-In this chapter we will give an introduction to programming with X. We will start with defining mutable references and mutable vectors. After we will show how to implement a list shuffling algorithm that internally uses mutation and we will finish with an example of locally scoped effects.
+In this chapter we will give an introduction to programming with X.
+X is a modification of the algebraic effects system described in Chapter~2.1, extended with a restricted form of the dynamic instances of Chapter~2.3.
+We introduce the novel concept of X.
+When create a new instance we have to give handler, this ensures that the instance is always associated with a handler.
+The handle construct does not handle a single effect but can handle multiple effects at the same time.
+These effects are collected under a notion of \emph{effect scope}, which is used to group instances together.
+When handle is called one such effect scope is handled.
+We introduce \emph{effect scope polymorphism} together with \emph{effect scope abstraction} and {effect scope application}.
+These constructs allows us to write functions which are polymorphic over effect scopes.
 \\\\
-We will use a language reminiscent of Haskell with algebraic data types and pattern matching.
+We start with and example explaining all the novel concepts in Section~3.1.
+After we will show how mutable references can be expressed in X in Section~3.2.
+Then we will how mutable vectors can be defined, followed by an implementation of a list shuffling algorithm in Section~3.3.
+We end the chapter by showing how local effects can be defined in Section~3.4
+\\\\
+We build on the language used in Chapter~2.1.
+We use a language reminiscent of Haskell with algebraic data types and pattern matching.
 Type constructors are uppercase while type variables are lowercase.
-We will always explicitly show \ident{forall} for universally quantified scope variables.
+We will always explicitly show \ident{forall} for universally quantified effect scope variables.
 
 \section{Effects, instances and handlers}
-To start off we will define a \ident{State} effect specialized to \ident{Int}s.
-\begin{minted}[tabsize=2]{haskell}
--- the State effect
+\label{basics}
+
+\begin{figure}
+\caption{Example of the novel constructs}
+\begin{minted}[tabsize=2,frame=single]{haskell}
 effect State {
 	get : () -> Int
 	put : Int -> ()
 }
-\end{minted}
 
+postInc : forall s. Inst s State -> Int!{s}
+postInc [s] inst =
+	x <- inst#get ();
+	inst#put (x + 1);
+	return x
+
+callPostInc : forall s. Int!{s}
+callPostInc [s] =
+	new State@s {
+		get v k -> k 0
+		put v k -> k ()
+		return xr -> return xr
+		finally xf -> return xf
+	} as inst in
+	x <- postInc [s] inst;
+	return x
+
+result : Int
+result = handle(s' -> callPostInc [s'])
+\end{minted}
+\label{fig:example1}
+\end{figure}
+
+In figure~\ref{fig:example1} we give an example containing all the novel constructs of X.
+To start off we define a \ident{State} effect specialized to \ident{Int}s.
+\ident{State} is meant to represent a mutable reference to a single value of type \ident{Int}.
 This definition is exactly the same as the \ident{State} effect definition in Chapter~2.1, in the basic algebraic effects system.
 With the \ident{effect} keyword we declare a new effect called \ident{State} with two operations: \ident{get} and \ident{put}.
 For each operation we give parameter and return types. For \ident{get} we give the unit type \ident{()} as the parameter type, \ident{()} is the unit type, the type with exactly one value: the unit value, also written as \ident{()}. A parameter type of \ident{()} means that \ident{get} does not expect a meaningful argument. As the return type we give \ident{Int}, meaning that calling the \ident{get} operation will return a integer value. For the \ident{put} operation it is the other way around, as the parameter type we have \ident{Int}, meaning that \ident{put} requires an integer value when called, and the return type is \ident{()}, calling \ident{put} will give back the unit value. Having \ident{()} as the return type of an operation means that the operation does not return any meaningful value but calling the operation is only useful for its effect.
 \\\\
+In figure~\ref{fig:example1} the function \ident{postInc} shows how an effect can actually be used.
+Effects are used by calling operations.
 Operations are always called on an \emph{effect instance}, without an instance we are unable to perform operations.
-As an example consider the following post-increment function:
-\begin{minted}[tabsize=2]{haskell}
-postInc : forall s. Inst s State -> Int!{s}
-postInc inst =
-	x <- inst#get ();
-	inst#put (x + 1);
-	return x
-\end{minted}
-
 This function takes an instance of the \ident{State} effect, called \ident{inst}, of type \ident{Inst s State}.
 The meaning of the scope variable \ident{s} will be explained later, but for now you can see it as a heap where the instance ``lives''.
 Operation calls can be done on an instance using the syntax \ident{instance#operation(argument)}.
@@ -75,7 +109,7 @@ The type of \ident{postInc} can be read as ``For any scope \ident{s}, given a \i
 In order to call \ident{postInc} we have to give both a scope and a \ident{State} instance in that given scope:
 \begin{minted}[tabsize=2]{haskell}
 callPostInc : forall s. Int!{s}
-callPostInc = /\s ->
+callPostInc [s] =
 	new State@s {
 		get v k -> k 0
 		put v k -> k ()
@@ -113,7 +147,7 @@ For example:
 
 \begin{minted}[tabsize=2]{haskell}
 result2 : forall s''. Int!{s''}
-result2 = /\s'' -> handle(s' ->
+result2 [s''] = handle(s' ->
 	x <- callPostInc [s'];
 	y <- callPostInc [s''];
 	return (x + y))
