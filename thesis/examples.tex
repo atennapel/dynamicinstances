@@ -179,7 +179,6 @@ twoScopes [s''] = handle(s' ->
 Here we use some function \ident{f} on two different scopes (\ident{s'} and \ident{s''}) but we only handle one of the scopes (\ident{s'}).
 We can also see this in the type, \ident{s'} does not appear while \ident{s''} does. 
 
-\newpage
 \section{Mutable references}
 \begin{figure}[h]
 \caption{Mutable references}
@@ -206,12 +205,11 @@ result = handle(s' ->
 	r1#get())
 -- result is 42
 \end{minted}
-\label{fig:example2}
+\label{fig:references}
 \end{figure}
 
-
 Using the constructs explained in Section~\ref{section:basics} we can now implement mutable references.
-We can create a new mutable reference initialized with some integer using the \ident{ref} function shown in Figure~\ref{fig:example2}.
+We can create a new mutable reference initialized with some integer using the \ident{ref} function shown in Figure~\ref{fig:references}.
 \ident{ref} takes an effect scope and an integer and returns a new \ident{State} instance.
 The handler given in \ident{ref} defines the usual semantics for a mutable reference. 
 The \ident{get} operation returns the current value of the reference and \ident{put} updates the value of the reference.
@@ -226,35 +224,27 @@ We transform the computation to a function that takes the value of the reference
  Now we end up with a function that expects the initial value of the state as the parameter \ident{f} in the \ident{finally} case.
  We run the actual computation by calling this function with the \ident{v} argument of \ident{ref}.
  At the end of \ident{ref} we simply return the newly created instance as the result of the function.
+\\\\
+\ident{result} shows how \ident{ref} can be used.
+Inside \ident{result} we first create two mutable references, \ident{r1} and \ident{r2}, initialized with \ident{0} and \ident{42} respectively.
+Then we retrieve the values from \ident{r1} and \ident{r2} and store these in the variables \ident{x} and \ident{y}.
+We then put the value of \ident{r2} in \ident{r1} and the value of \ident{r1} in \ident{r2}.
+Finally we return the current value of \ident{r1}, which will be \ident{42}.
+The whole computation is wrapped in \ident{handle(s' ->} to actually perform the effects, resulting in \ident{42} without any remaining effects.
+\\\\
+Using \ident{ref} we can fully emulate multiple mutable references.
+We have the added guarantee that the references will not escape their effect scope, they will not escape their corresponding \ident{handle}.
+Adding parametric polymorphism to the effects to give \ident{State t} for any type \ident{t} will enable us to emulate references of any type.
+With references of different types coexisting.
+This is very similar to how the ST monad works in Haskell~\cite{runst}.
+Using mutable references have interesting applications such as meta variables in type inference algorithms and typed logic variables~\cite{typedlogic}.
 
 \section{Mutable vectors}
-\begin{minted}[tabsize=2]{haskell}
--- (linked) list of integer values
-data List = Nil | Cons Int List
+\begin{figure}[h]
+\caption{Mutable vectors}
+\begin{minted}[tabsize=2,frame=single]{haskell}
+-- list of mutable references
 data Vector s = VNil | VCons (Inst s State) Vector
-
--- get the length of a list
-length : List -> Int
-length Nil = 0
-length (Cons _ t) = 1 + (length t)
-
--- transform a list to a vector by replacing each value in the list
--- by a reference initialized with that value
-toVector : forall s. List -> (Vector s)!{s}
-toVector [s] Nil = VNil
-toVector [s] (Cons h t) =
-	h' <- newRef [s] h;
-	t' <- toVector [s] t;
-	return (VCons h' t')
-
--- transform a vector back to a list by getting the
--- current values from the references in the vector
-toList : forall s. Vector s -> List!{s}
-toList [s] VNil = Nil
-toList [s] (VCons h t) =
-	h' <- h#get();
-	t' <- toList [s] t;
-	return (Const h' t')
 
 -- get the value at the index given as the first argument
 -- assumes the index is within range of the vector
@@ -269,9 +259,46 @@ vset : forall s. Int -> Int -> Vector s -> ()!{s}
 vset [s] 0 v (VCons h _) = h#put(v)
 vset [s] n v (VCons _ t) = vset [s] (n - 1) v t
 \end{minted}
+\label{fig:vectors}
+\end{figure}
 
-\section{List shuffle}
-\begin{minted}[tabsize=2]{haskell}
+In the previous section we have defined mutable references.
+We will now build on them to define mutable vectors.
+In Figure~\ref{fig:vectors} we define the \ident{Vector} algebraic datatype.
+\ident{Vector} is a linked list of \ident{State} instances and is indexed by the scope of instances: \ident{s}.
+We define two functions on \ident{Vector}, \ident{vget} and \ident{vset}.
+With \ident{vget} we can retrieve a value from a vector by giving an index.
+We assume the index is within the range of the vector.
+With \ident{vset} we can set an element of a vector by giving an index and a value.
+Again we assume the index is within the range of the vector.
+In order to allow these functions to work for any vector we have to introduce an effect scope variable \ident{s} again.
+We define both functions by recursion on the index.
+\\\\
+As an example application we will write a shuffling algorithm for vectors.
+This simple algorithm will shuffle a vector by randomly swapping two random elements of the vector and repeating this some amount of times.
+In Figure~\ref{fig:shuffle} we show the algorithm.
+First we define an effect \ident{Rng} in order to abstract out the generation random numbers.
+\ident{Rng} has a single operation \ident{rand} which returns a random integer between \ident{0} and \ident{n} given an integer \ident{n}.
+We define a function \ident{vlength} to get the length of the vector.
+\\\\
+We then define the actually shuffling function \ident{shuffleVector}.
+This function takes two scope variables, \ident{s} and \ident{s'}, for the vector and \ident{Rng} instance respectively.
+As arguments we take an instance of \ident{Rng}, in order to generate random numbers, an integer, for the amount of times to shuffle, and the vector we want to shuffle.
+By taking a seperate scope for the \ident{Rng} instance we are more flexible when handling the computation.
+We can handle the effects on the vector while leaving the \ident{Rng} effects to be handled higher up.
+\\\\
+\ident{shuffleVector} proceeds as follows.
+If the amount of times we want to shuffle is \ident{0} we stop and return the vector.
+If not then we first get the length of the vector.
+Then we generate two random numbers, \ident{i} and \ident{j}, between \ident{0} and this length.
+These two numbers will be the two elements we will swap.
+We then get the current values at these indeces.
+And we swap the values at these indeces in the vector.
+We then recurse, subtracting the amount of times to shuffle by one.
+
+\begin{figure}[H]
+\caption{Vector shuffling}
+\begin{minted}[tabsize=2,frame=single]{haskell}
 -- random number generation effect
 -- the operation `rand` gives back a random integer
 -- between 0..n, where n is the argument given (exclusive)
@@ -279,22 +306,20 @@ effect Rng {
 	rand : Int -> Int
 }
 
--- shuffles a list given an instance of Rng
-shuffle : forall s'. Inst s' Rng -> List -> List!{s'}
-shuffle [s'] rng lst =
-	handle(s ->
-		let vec = toVector [s] lst;
-		shuffleVector [s] [s'] rng 100 vec;
-		return (toList vec))
+-- get the length of a vector
+vlength : forall s. Vector s -> Int
+vlength VNil = 0
+vlength (VCons _ tail) = 1 + (vlength tail)
 
 -- shuffles a vector given an instance of Rng
 -- by swapping two random elements of the vector
 -- the second argument to shuffleVector is the amount of times
 -- to swap elements
-shuffleVector : forall s s'. Inst s' Rng -> Int -> Vector s -> ()!{s, s'}
+shuffleVector : forall s s'. Inst s' Rng -> Int
+	-> Vector s -> ()!{s, s'}
 shuffleVector [s] [s'] _ 0 vec = vec
 shuffleVector [s] [s'] rng n vec =
-	let len = length vec;
+	let len = vlength vec;
 	i <- rng#rand(len);
 	j <- rng#rand(len);
 	a <- vget [s] i vec;
@@ -303,6 +328,61 @@ shuffleVector [s] [s'] rng n vec =
 	vset [s] j a vec;
 	shuffleVector [s] [s'] rng (n - 1) vec
 \end{minted}
+\label{fig:shuffle}
+\end{figure}
+
+Using \ident{shuffleVector} we can implement a function to shuffle a list in Figure~\ref{fig:listshuffle}.
+We first define the usual \ident{List} datatype, with \ident{Nil} and \ident{Cons} cases.
+Then we define two functions \ident{toVector} and \ident{toList} to convert between lists and vectors.
+\ident{toVector} simply recurses on the list and creates fresh variables for each element of the list, initialized with the value of the element.
+\ident{toList} converts a vector to a list by getting the current values of each reference in the vector.
+The function \ident{shuffle} implements the actual shuffling.
+It takes an effect scope, a \ident{Rng} instance \ident{rng} in this scope and a list \ident{lst}.
+We first convert the list to a mutable vector.
+Then we use \ident{shuffleVector} to shuffle the vector 100 times, passing \ident{rng} for generating the random numbers.
+Finally we convert the vector back to a list and return this result.
+We wrap this computation in \ident{handle} to handle the effects of the mutable vector.
+The use of mutable vectors is not leaked outside of the function, from the type and behaviour of \ident{shuffleVector} we are unable to find out if mutable vectors are used.
+We say that the use of the \ident{State} effect is completely \emph{encapsulated}.
+The type system ensures that \ident{handle} actually does encapsulate all effects in its scope.
+Note that we do not handle the scope of \ident{rng}, we leave the \ident{Rng} to be handled higher up by the caller of \ident{shuffle}.
+
+\begin{figure}[H]
+\caption{List shuffling}
+\begin{minted}[tabsize=2,frame=single]{haskell}
+-- (linked) list of integer values
+data List = Nil | Cons Int List
+
+-- transform a list to a vector by replacing each value
+-- in the list by a reference initialized with that value
+toVector : forall s. List -> (Vector s)!{s}
+toVector [s] Nil = VNil
+toVector [s] (Cons h t) =
+	h' <- ref [s] h;
+	t' <- toVector [s] t;
+	return (VCons h' t')
+
+-- transform a vector back to a list by getting the
+-- current values from the references in the vector
+toList : forall s. Vector s -> List!{s}
+toList [s] VNil = Nil
+toList [s] (VCons h t) =
+	h' <- h#get();
+	t' <- toList [s] t;
+	return (Const h' t')
+
+-- shuffles a list given an instance of Rng
+-- by converting it to a vector
+-- and shuffling 100 times
+shuffle : forall s'. Inst s' Rng -> List -> List!{s'}
+shuffle [s'] rng lst =
+	handle(s ->
+		let vec = toVector [s] lst;
+		shuffleVector [s] [s'] rng 100 vec;
+		return (toList vec))
+\end{minted}
+\label{fig:listshuffle}
+\end{figure}
 
 \section{Local effects}
 \begin{minted}[tabsize=2]{haskell}
@@ -344,5 +424,3 @@ contains fn list =
 			False
 	) False list
 \end{minted}
-
-References Typed Logical Variables\cite{typedlogic}
