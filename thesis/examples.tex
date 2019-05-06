@@ -3,7 +3,7 @@
 
 In this chapter we will give an introduction to programming with X.
 X is a modification of the algebraic effects system described in Chapter~2.1, extended with a restricted form of the dynamic instances of Chapter~2.3.
-We introduce the novel concept of X.
+We introduce the novel concepts of X.
 When create a new instance we have to give handler, this ensures that the instance is always associated with a handler.
 The handle construct does not handle a single effect but can handle multiple effects at the same time.
 These effects are collected under a notion of \emph{effect scope}, which is used to group instances together.
@@ -18,11 +18,12 @@ We end the chapter by showing how local effects can be defined in Section~3.4
 \\\\
 We build on the language used in Chapter~2.1.
 We use a language reminiscent of Haskell with algebraic data types and pattern matching.
-Type constructors are uppercase while type variables are lowercase.
-We will always explicitly show \ident{forall} for universally quantified effect scope variables.
+Type constructors and effect names are uppercase while type variables are lowercase.
+The language also has parametric polymorphism over effect scopes.
+%We will always explicitly show \ident{forall} for universally quantified effect scope variables.
 
-\section{Effects, instances and handlers}
-\label{basics}
+\section{Effects, effect scopes and instances}
+\label{section:basics}
 
 \begin{figure}
 \caption{Example of the novel constructs}
@@ -34,58 +35,95 @@ effect State {
 
 postInc : forall s. Inst s State -> Int!{s}
 postInc [s] inst =
-	x <- inst#get ();
-	inst#put (x + 1);
+	x <- inst#get();
+	inst#put(x + 1);
 	return x
 
-callPostInc : forall s. Int!{s}
-callPostInc [s] =
-	new State@s {
+result : Int
+result = handle(s' ->
+	new State@s' {
 		get v k -> k 0
 		put v k -> k ()
 		return xr -> return xr
 		finally xf -> return xf
 	} as inst in
-	x <- postInc [s] inst;
-	return x
-
-result : Int
-result = handle(s' -> callPostInc [s'])
+	x <- postInc [s'] inst;
+	return x)
+-- result is 0
 \end{minted}
 \label{fig:example1}
 \end{figure}
 
-In figure~\ref{fig:example1} we give an example containing all the novel constructs of X.
+In Figure~\ref{fig:example1} we give an example containing all the novel constructs of X.
+
+\subsection{Effects}
+
 To start off we define a \ident{State} effect specialized to \ident{Int}s.
 \ident{State} is meant to represent a mutable reference to a single value of type \ident{Int}.
 This definition is exactly the same as the \ident{State} effect definition in Chapter~2.1, in the basic algebraic effects system.
 With the \ident{effect} keyword we declare a new effect called \ident{State} with two operations: \ident{get} and \ident{put}.
-For each operation we give parameter and return types. For \ident{get} we give the unit type \ident{()} as the parameter type, \ident{()} is the unit type, the type with exactly one value: the unit value, also written as \ident{()}. A parameter type of \ident{()} means that \ident{get} does not expect a meaningful argument. As the return type we give \ident{Int}, meaning that calling the \ident{get} operation will return a integer value. For the \ident{put} operation it is the other way around, as the parameter type we have \ident{Int}, meaning that \ident{put} requires an integer value when called, and the return type is \ident{()}, calling \ident{put} will give back the unit value. Having \ident{()} as the return type of an operation means that the operation does not return any meaningful value but calling the operation is only useful for its effect.
-\\\\
-In figure~\ref{fig:example1} the function \ident{postInc} shows how an effect can actually be used.
-Effects are used by calling operations.
-Operations are always called on an \emph{effect instance}, without an instance we are unable to perform operations.
+For each operation we give parameter and return types. For \ident{get} we give the unit type \ident{()} as the parameter type.
+As the return type we give \ident{Int}, meaning that calling the \ident{get} operation will return a integer value.
+For the \ident{put} operation it is the other way around.
+As the parameter type we have \ident{Int}, meaning that \ident{put} requires an integer value when called, and the return type is \ident{()}, calling \ident{put} will give back the unit value.
+
+\subsection{Effect scopes}
+In Figure~\ref{fig:example1} the function \ident{postInc} shows how an effect can actually be used.
+We show the type of the function again for convenience:
+
+\begin{minted}[tabsize=2]{haskell}
+postInc : forall s. Inst s State -> Int!{s}
+\end{minted}
+
 This function takes an instance of the \ident{State} effect, called \ident{inst}, of type \ident{Inst s State}.
-The meaning of the scope variable \ident{s} will be explained later, but for now you can see it as a heap where the instance ``lives''.
-Operation calls can be done on an instance using the syntax \ident{instance#operation(argument)}.
-We write \ident{instance#operation()} to mean \ident{instance#operation( () )}, when the unit value \ident{()} is given as the argument.
-In the case of \ident{postInc} we first retrieve the current value from the instance by calling the \ident{get} operation on \ident{inst}.
-This value is named \ident{x}.
-After we increment the value of the instance by calling the \ident{put} operation with \ident{(x + 1)}.
-Finally we return \ident{x}, the old value of the \ident{inst}.
-\newpage
-We can create a fresh instance of an effect using the \ident{new} keyword, for example:
+The type variable \ident{s} here is an \emph{effect scope variable}.
+An effect scope variable can be seen as the name of a collection of instances that we call an \emph{effect scope}.
+Such a scope can contain zero or more instances, where each instance can be of any effect.
+A scope restricts instances in such a way that they cannot escape that scope and instances from one scope cannot be used in another.
+This also means that we can never get a runtime error because of an unhandled operation call.
+The type of \ident{postInc} can be read as ``For any scope \ident{s}, given a \ident{State} instance in \ident{s}, return an value of type \ident{Int} possibly by calling operations on instances in \ident{s}''.
+Note that because of the \ident{forall} we universally quantify over any scope \ident{s}, this means that \ident{postInc} does not choose a specific scope but that the functions can work on any scope.
+The \ident{forall} is introduced by the \ident{[s]} syntax, which introduces an effect scope variable \ident{s}.
+In order to call \ident{postInc} we have to explicitly give a specific effect scope for the parameter \ident{s}.
+The return type of \ident{postInc} is \ident{Int}.
+The \ident{!{s}} after the return type is the \emph{effect annotation}, which shows which scopes may be used by the function.
+
+\subsection{Effect instances and handlers}
+\label{subsection:instances}
+Effects can be used by calling operations.
+Operations are always called on an \emph{effect instance}.
+Without an instance we are unable to perform operations.
+In the case of \ident{postInc} we get an instance as an argument to the function.
+Operation can be called on an instance using the syntax \ident{instance\#operation(argument)}.
+We write \ident{instance\#operation()} to mean \ident{instance\#operation(())}, when the unit value \ident{()} is given as the argument.
+In the case of \ident{postInc} we first call the \ident{get} operation on \ident{inst}.
+We get back a value of type \ident{Int}, which we name \ident{x}.
+Then we call \ident{put} on \ident{inst} with the argument \ident{(x + 1)}.
+Finally we return \ident{x}.
+
+We can create a fresh instance of an effect using the \ident{new} keyword.
+In Figure~\ref{fig:example1} we do this in the function \ident{callPostInc}:
 \begin{minted}[tabsize=2]{haskell}
 new State@s {
 	get v k -> k 0
 	put v k -> k ()
 	return xr -> return xr
 	finally xf -> return xf
-} as inst in e
+} as inst in ...
 \end{minted}
-Here we create a new instance of the \ident{State} effect at scope \ident{s} (the meaning of which we will explain later), the newly-created instance is available in the expressions \ident{e}, as the variable \ident{inst}.
-When creating an instance we have to give an \emph{handler}, the handler specifies what should happen when the operations are called.
+The construct \ident{new State@s { ... }} can be read as ``Create a fresh \ident{State} instance in the scope \ident{s}''.
+Here we have to give a specific scope \ident{s} to create the instance on.
+The instance can only be used within this given scope.
+The newly-created instance is available in the body of the \ident{new} construct.
+When creating an instance we have to give an \emph{handler}.
+The handler specifies what should happen when the operations are called.
 The handler is defined within curly braces and consists of a case for each operation of the effect, plus a \ident{return} case and a \ident{finally} case.
+The handler given here is dummy handler which will always return \ident{0} when \ident{get} is called and which does nothing besides returning \ident{()} when \ident{put} is called.
+Note that this is different from the system with dynamic instances from Chapter~2.3.
+There we do not give a handler when creating instances, but handlers are a seperate construct.
+This change is needed in order to ensure the instances do not escape their scope.
+Our type system will make sure that the handler given when creating an instance is \emph{complete}.
+Meaning that all the operation calls on the specific instance are handled.
 \\\\
 In each operation case, \ident{get} and \ident{put} in the above example, we have access to two arguments.
 The first variable, \ident{v} above, refers to the argument given when the operation was called.
@@ -94,86 +132,100 @@ By calling \ident{k} with a value we can continue the computation at the point w
 In the example above we continue with \ident{0} every time \ident{get} on the instance \ident{inst} is called, and we continue with \ident{()} (without performing any other effects) whenever \ident{put} is called.
 \\\\
 The \ident{return} case gets called at the end of the computation \ident{e}.
-The variable \ident{xf} contains the final value of the computation, which can be transformed in the case branch.
+The variable \ident{xr} contains the final value of the computation, which can be transformed in the case branch.
 It is not required for the computation returned from the case to have the same type as \ident{xr}, and other operations are also allowed to be called.
 Finally the \ident{finally} case is wrapped around the whole computation \ident{e} after the \ident{return} computation has been performed.
 The variable \ident{xf} contains the transformed value returned from the \ident{return} case.
-This case may not seem that useful, but we will see it is necessary in order to define mutable references later.
-\\\\
-We now turn our attention to the \emph{scope} variable \ident{s} in the type of \ident{postInc} and in the instance creation example above.
-A scope variable can be seen as the name of a collection of instances that we call a \emph{scope}.
-Such a scope can contain zero or more instance, where each instance can be of any effect type.
-A scope restricts instances in such a way that they cannot escape that scope, instances from one scope cannot be used in another.
-The type of \ident{postInc} can be read as ``For any scope \ident{s}, given a \ident{State} instance in \ident{s}, return an value of type \ident{Int} possibly by calling operations on instances in \ident{s}''. Note that because of the \ident{forall} we universally quantify over any scope \ident{s}, this means that \ident{postInc} does not choose a specific scope but that the functions can work on any scope. The construct \ident{new State@s { ... }} can be read as ``Create a fresh \ident{State} instance in the scope \ident{s}''. Here we have to give a specific scope \ident{s} to create the instance on. The instance can only be used within this given scope.
-\\\\
-In order to call \ident{postInc} we have to give both a scope and a \ident{State} instance in that given scope:
+The finally case is useful in situations where we need to perform a final transformation on the return value of a computation.
+We will make use of it when define mutable references in Section~3.2.
+
+\subsection{Handling instances}
+The definition \ident{result} shows how the effects in a computation can be performed.
+We show its definition here again for convenience:
+
 \begin{minted}[tabsize=2]{haskell}
-callPostInc : forall s. Int!{s}
-callPostInc [s] =
-	new State@s {
+result : Int
+result = handle(s' ->
+	new State@s' {
 		get v k -> k 0
 		put v k -> k ()
 		return xr -> return xr
 		finally xf -> return xf
 	} as inst in
-	x <- postInc [s] inst;
-	return x
+	x <- postInc [s'] inst;
+	return x)
 \end{minted}
 
-The program \ident{callPostInc} uses the syntax \ident{/\s ->} to abstract over a scope, we call this construct \emph{scope abstraction}.
-We can then create a new \ident{State} instance on this scope \ident{s}, which we call \ident{inst}.
-We now have all the arguments to be able to call \ident{postInc}.
-First we use the syntax \ident{postInc [s]}, called \emph{scope application}, to give the scope variable as an argument to \ident{postInc}.
-We then give our instance \ident{inst} to \ident{postInc}, which typechecks since \ident{inst} is in the scope \ident{s}.
-After we simply return the result of calling \ident{postInc}.
-Note, again, that the type of the function is universally quantified over any scope \ident{s},
-meaning that \ident{callPostInc} is a computation that returns an integer in any given scope.
-\ident{callPostInc} is given this \ident{forall} type because we used the scope abstraction \ident{/\s ->}.
-\\\\
-Now that we have a computation that works on any scope, \ident{callPostInc}, how can we actually run the computation?
-To run \ident{callPostInc} we have to give it a specific scope, this can be done as follows:
-
-\begin{minted}[tabsize=2]{haskell}
-result : Int
-result = handle(s' -> callPostInc [s'])
-\end{minted}
-
-The \ident{handle(s' -> ...)} construct provides a scope, which we named \ident{s'} in our case, to be used in its body.
-Inside \ident{handle} we can create and use instances in this new scope.
+The \ident{handle(s' -> ...)} construct provides a new scope, which we named \ident{s'} in our case, which can be used in its body.
+Inside \ident{handle} we can create and use instances in this new scope \ident{s'}.
+\ident{handle} will make sure that any instances that are created on its scope will actually be created and that any operation calls on these instances will be handled.
+In the case of \ident{result} we create a new \ident{State} instance on \ident{s'} using the same handler as in Section~\ref{subsection:instances}.
+We name this new instance \ident{inst}.
+Then we call \ident{postInc}, passing \ident{s'} and the new instance as its arguments.
+Finally we return the result of \ident{postInc} as the result of the \ident{handle} construct.
 Note that the type of \ident{result} does not have any effects, \ident{handle} will use the handlers defined when creating instances to perform the operations called on the instances in its scope.
-That means the result of \ident{handle(s -> ...)} will not have any effects (operation calls on instances of \ident{s}) in \ident{s}.
+That means the result of \ident{handle(s -> ...)} will not have any effects in \ident{s} (no operation calls on instances of \ident{s}).
 \ident{handle} will not perform any other effects beside the ones in its own scope, any other effects (on other scopes) will be forwarded through and will remain after \ident{handle} is done.
 For example:
 
 \begin{minted}[tabsize=2]{haskell}
-result2 : forall s''. Int!{s''}
-result2 [s''] = handle(s' ->
-	x <- callPostInc [s'];
-	y <- callPostInc [s''];
-	return (x + y))
+twoScopes : forall s''. Int!{s''}
+twoScopes [s''] = handle(s' ->
+	x <- f [s'];
+	y <- f [s''];
+	...)
 \end{minted}
 
-Here we use \ident{callPostInc} on two different scopes (\ident{s'} and \ident{s''}) but we only handle one of the scopes (\ident{s'}).
-We use scope abstraction to leave \ident{s''} unhandled.
+Here we use some function \ident{f} on two different scopes (\ident{s'} and \ident{s''}) but we only handle one of the scopes (\ident{s'}).
 We can also see this in the type, \ident{s'} does not appear while \ident{s''} does. 
 
+\newpage
 \section{Mutable references}
-Actual implementation of references, explain \ident{[s]} and how the implementation works.
-
-\begin{minted}[tabsize=2]{haskell}
--- create a fresh reference initialized with the integer value v
-newRef : forall s. t -> (Inst s State)!{s}
-newRef [s] v =
+\begin{figure}[h]
+\caption{Mutable references}
+\begin{minted}[tabsize=2,frame=single]{haskell}
+-- create a fresh reference initialized
+-- with the integer value v
+ref : forall s. Int -> (Inst s State)!{s}
+ref [s] v =
 	new State@s {
-		get () k -> \s -> k s s
-		put s' k -> \s -> k () s'
-		return x -> \s -> return x
+		get () k -> \st -> k st st
+		put st' k -> \st -> k () st'
+		return x -> \st -> return x
 		finally f -> f v
 	} as x in return x
+
+result : Int
+result = handle(s' ->
+	r1 <- ref [s'] 0;
+	r2 <- ref [s'] 42;
+	x <- r1#get();
+	y <- r2#get();
+	r1#put(y);
+	r2#put(x)
+	r1#get())
+-- result is 42
 \end{minted}
-explanation.
-\\\\
-Example of using references
+\label{fig:example2}
+\end{figure}
+
+
+Using the constructs explained in Section~\ref{section:basics} we can now implement mutable references.
+We can create a new mutable reference initialized with some integer using the \ident{ref} function shown in Figure~\ref{fig:example2}.
+\ident{ref} takes an effect scope and an integer and returns a new \ident{State} instance.
+The handler given in \ident{ref} defines the usual semantics for a mutable reference. 
+The \ident{get} operation returns the current value of the reference and \ident{put} updates the value of the reference.
+We implement the operations using a technique called \emph{parameter-passing}\cite{algtutorial}.
+We transform the computation to a function that takes the value of the reference.
+ For \ident{get} we return a function that takes the value of the state (\ident{st}) and passes this value to the continuation, which will give us back another function that expects the state value. We give this function the same state value as we are given, since \ident{get} does not change the state.
+ For \ident{put} we ignore the given state value and call the continuation with the unit value.
+ Again we get another function back from the continuation, which expects the state value.
+ We call this function with the argument of \ident{put} (\ident{st'}), since that is the new value of the state.
+ In the case of \ident{return} we simple ignore the state value (\ident{st}) and return the final value of the computation: \ident{x}.
+ We could also have chosen to return the state value instead or both the state value and the final computation value.
+ Now we end up with a function that expects the initial value of the state as the parameter \ident{f} in the \ident{finally} case.
+ We run the actual computation by calling this function with the \ident{v} argument of \ident{ref}.
+ At the end of \ident{ref} we simply return the newly created instance as the result of the function.
 
 \section{Mutable vectors}
 \begin{minted}[tabsize=2]{haskell}
