@@ -5,7 +5,7 @@
 % effects
 \newcommand\Eff[0]{E}
 \newcommand\eff[0]{\varepsilon}
-\newcommand\Op[0]{O}
+\newcommand\Op[1]{O^{#1}}
 \newcommand\op[0]{op}
 \newcommand\inst[0]{\iota}
 
@@ -68,14 +68,33 @@
 % add substitution to type application
 % more brackets in semantics
 
+In this chapter we give a formal account of X.
+We give the syntax, typing rules and a small-step operation semantics.
+We end the chapter with a type soundness theorem.
+The system builds on the formal system with algebraic effects, handlers and static instances of Chapter~4.3.
+We add constructs to handle effect scope polymorphism.
+We also add a construct to dynamically create new instances.
+Finally we add constructs to handle effect scopes.
+\\\\
+In Section~\ref{sec:syntax} we give the syntax of the terms and types of X.
+In Section~\ref{sec:subtyping} we give subtyping rules for the types.
+In Section~\ref{sec:wellformedness} we give well-formedness rules for the types.
+In Section~\ref{sec:typingrules} we give the typing rules.
+In Section~\ref{sec:semantics} we give a small-step operation semantics for X.
+Finally in Section~\ref{sec:theorems} we give a type-soundness theorem.
+
 \section{Syntax}
-We assume there is set of effect names $\Eff = \{ \eff_1, ..., \eff_n \}$.
-Each effect has a set of operation names $\Op_\eff = \{ \op_1, ..., \op_n \}$.
+\label{sec:syntax}
+Just like in the formal systems of algebraic effects of Chapter~4.2 and Chapter~4.3
+we assume there is set of effect names $\mathsf{EffName}$ with $\Eff \subseteq \mathsf{EffName}$.
+For example $\Eff = \{ \mathsf{Flip}, \mathsf{State}, \mathsf{Exc}, ... \}$.
+Each effect $\eff$ has a non-empty set of operation names $\Op{\eff}$.
+For example $\Op{\mathsf{Flip}} = \{\mathsf{flip}\}$ and $\Op{\mathsf{State}} = \{\mathsf{get}, \mathsf{put}\}$.
 Every operation name only corresponds to a single effect.
-Each operation has a parameter type $\pty{\op}$ and a return type $\rty{\op}$.
-We have scope variables $s$ modeled by some countable infinite set.
-And we have locations $l$ modeled by some countable infinite set.
-Annotations $r$ are sets of pairs of an effect name with a scope variable: $\{ \Eff_1@s_1, ..., \Eff_n@s_n \}$.
+Each operation $\op$ has a parameter type $\pty{\op}$ and a return type $\rty{\op}$.
+We have effect scope variables $s$ modeled by some countable infinite set.
+And we have locations $l$ also modeled by some countable infinite set.
+Annotations $r$ are sets of effect scope variables like $\{ s_1, ..., s_n \}$.
 \\
 \begin{figure}
 \caption{Syntax}
@@ -83,15 +102,9 @@ Annotations $r$ are sets of pairs of an effect name with a scope variable: $\{ \
 \fbox{
 \begin{minipage}{14 cm}
 \begin{align*}
-	s 	\Coloneqq		&																		\tag{scopes} \\
-									& s_{var}														\tag{scope variable} \\
-									& s_{loc}														\tag{scope location} \\
-	\ty \Coloneqq 	& 																	\tag{value types} \\
-									& \tinst{s}{\eff}										\tag{instance type} \\
-									& \tarr{\ty}{\cty}									\tag{type of functions} \\
-									& \tforall{s_{var}}{\cty}						\tag{universally quantified type over scope $s$}\\
-	\cty \Coloneqq 	& 																	\tag{computation types} \\
-									& \aty{\ty}{r}											\tag{annotated type} \\
+	s \Coloneqq	& s_{var} \;|\; s_{loc} \\
+	\ty \Coloneqq 	& \tinst{s}{\eff} \;|\; \tarr{\ty}{\cty} \;|\; \tforall{s_{var}}{\cty} \\
+	\cty \Coloneqq 	& \aty{\ty}{r} \\
 	\val \Coloneqq	&																		\tag{values} \\
 									& x, y, z, k												\tag{variables} \\
 									& \vinst{s, \loc}										\tag{instance values (for semantics)} \\
@@ -120,18 +133,11 @@ Annotations $r$ are sets of pairs of an effect name with a scope variable: $\{ \
 \caption{Environments}
 \centering
 \fbox{
-\begin{minipage}{14 cm}
+\begin{minipage}{8 cm}
 \begin{align*}
-	\Gamma 	\Coloneqq		&																\tag{typing environment} \\
-									& \cdot															\tag{empty} \\
-									& \Gamma, x : \ty										\tag{extended with variable} \\
-	\Delta \Coloneqq 	& 																\tag{scope variable environment} \\
-									& \cdot															\tag{empty} \\
-									& \Delta, s_{var}										\tag{extended with scope variable} \\
-	\Sigma \Coloneqq 	& 																\tag{dynamic environment} \\
-									& \cdot															\tag{empty} \\
-									& \Sigma, s_{loc}										\tag{extended with scope location} \\
-									& \Sigma, l := (s_{loc}, \eff)			\tag{extended with instance location} \\
+	\Gamma \Coloneqq 	& \cdot \;|\; \Gamma, x : \ty \\
+	\Delta \Coloneqq 	& \cdot \;|\; \Delta, s_{var} \\
+	\Sigma \Coloneqq  	& \cdot \;|\; \Sigma, s_{loc} \;|\; \Sigma, l := (s_{loc}, \eff) \\
 \end{align*}
 \label{fig:contexts}
 \end{minipage}
@@ -143,7 +149,7 @@ Before looking at the different judgments, we will introduce the three environme
 The syntax for the environment are shown in figure \ref{fig:contexts}.
 \begin{itemize}
 \item $\Gamma$ is the typing enviroment which assigns variables $x$ to value types $\ty$.
-\item $\Delta$ is the scope variable environment which keeps track of the scope variables $s_{var}$ that are in use.
+\item $\Delta$ is the effect scope variable environment which keeps track of the scope variables $s_{var}$ that are in use.
 \item $\Sigma$ is the dynamic environment which keeps track of scope location $s_{loc}$ and instance locations $l$. Instance locations are assigned a tuple of a scope location and an effect $(s_{loc}, \eff)$. $\Sigma$ is used in both the typing rules and the operational semantics.
 \end{itemize}
 
@@ -178,6 +184,7 @@ Lastly there are three typing judgments:
 \end{itemize}
 
 \section{Subtyping}
+\label{sec:subtyping}
 \begin{figure}
 \caption{Subtyping}
 \centering
@@ -218,6 +225,7 @@ $$
 \end{figure}
 
 \section{Well-formedness}
+\label{sec:wellformedness}
 \begin{figure}
 \caption{Well-formedness}
 \centering
@@ -273,6 +281,7 @@ $$
 \end{figure}
 
 \section{Typing rules}
+\label{sec:typingrules}
 \begin{figure}
 \caption{Value typing rules}
 \centering
@@ -357,7 +366,7 @@ $$
 $$
 \inferrule{
 	\Delta;\Sigma;\Gamma \vdash \val_1 : \tinst{s}{\eff} \\
-	\op \in \Op_\eff \\
+	\op \in \Op{\eff} \\
 	\Delta;\Sigma;\Gamma \vdash \val_2 : \pty{\op} \\
 }{
 	\Delta;\Sigma;\Gamma \vdash \cop{\val_1}{\op}{\val_2} : \aty{\rty{\op}}{\{\eff@s\}}
@@ -366,7 +375,7 @@ $$
 $$
 \inferrule{
 	\Delta;\Sigma \vdash s \\
-	\op \in \Op_\eff \iff \op \in \handler \\
+	\op \in \Op{\eff} \iff \op \in \handler \\
 	\Delta;\Sigma;\Gamma,x:\tinst{s}{\eff} \vdash \comp : \aty{\ty_1}{r} \\
 	\Delta;\Sigma;\Gamma \vdash^{\ty_1} \handler : \aty{\ty_2}{r} \\
 	\eff@s \in r \\
@@ -397,7 +406,7 @@ $$
 $$
 \inferrule{
 	\Sigma(\loc) = (s_{loc}, \eff) \\
-	\op \in \Op_\eff \iff \op \in \handler \\
+	\op \in \Op{\eff} \iff \op \in \handler \\
 	\Delta;\Sigma;\Gamma \vdash^{\ty_1} \handler : \aty{\ty_2}{r} \\
 	\Delta;\Sigma;\Gamma \vdash \comp : \aty{\ty_1}{r} \\
 	\eff@s_{loc} \in r
@@ -445,6 +454,7 @@ $$
 \end{figure}
 
 \section{Semantics}
+\label{sec:semantics}
 \begin{figure}
 \caption{Semantics}
 \centering
@@ -609,32 +619,8 @@ $$
 }
 \end{figure}
 
-\section{Evaluation Contexts}
-\begin{figure}
-\caption{Evaluation Contexts}
-\centering
-\fbox{
-\begin{minipage}{14 cm}
-\begin{align*}
-	E \Coloneqq 			& 														\tag{computation contexts} \\
-										& \msquare										\tag{hole} \\
-										& \cdo{x}{E}{\comp}						\tag{sequencing} \\
-										& \chandlec{s}{E}							\tag{computation handler} \\
-										& \chandlei{\loc}{h}{E}				\tag{instance handler} \\
-	H^s \Coloneqq 		& 														\tag{handler contexts} \\
-										& \msquare										\tag{hole} \\
-										& \cdo{x}{H^s}{\comp}					\tag{sequencing} \\
-										& \chandlec{s'}{H^s} \hspace{30pt} (s \neq s') \tag{computation handler} \\
-										& \chandlei{\loc}{h}{H^s}			\tag{instance handler} \\
-	H^{\loc} \Coloneqq 		& 														\tag{instance handler contexts} \\
-										& \msquare										\tag{hole} \\
-										& \cdo{x}{H^{\loc}}{\comp}					\tag{sequencing} \\
-										& \chandlec{s}{H^{\loc}} \tag{computation handler} \\
-										& \chandlei{\loc'}{h}{H^{\loc}} \hspace{30pt} (\loc \neq \loc')			\tag{instance handler} \\
-\end{align*}
-\label{fig:evalcontext-calc}
-\end{minipage}
-}
-\end{figure}
+\section{Type soundness}
+\label{sec:theorems}
+
 
 }
