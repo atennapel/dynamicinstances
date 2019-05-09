@@ -77,6 +77,7 @@ We also add a construct to dynamically create new instances.
 Finally we add constructs to handle effect scopes.
 \\\\
 In Section~\ref{sec:syntax} we give the syntax of the terms and types of X.
+In Section~\ref{sec:contexts} we give the environments and judgments used in the typing rules and semantics.
 In Section~\ref{sec:subtyping} we give subtyping rules for the types.
 In Section~\ref{sec:wellformedness} we give well-formedness rules for the types.
 In Section~\ref{sec:typingrules} we give the typing rules.
@@ -92,42 +93,67 @@ Each effect $\eff$ has a non-empty set of operation names $\Op{\eff}$.
 For example $\Op{\mathsf{Flip}} = \{\mathsf{flip}\}$ and $\Op{\mathsf{State}} = \{\mathsf{get}, \mathsf{put}\}$.
 Every operation name only corresponds to a single effect.
 Each operation $\op$ has a parameter type $\pty{\op}$ and a return type $\rty{\op}$.
-We have effect scope variables $s$ modeled by some countable infinite set.
-And we have locations $l$ also modeled by some countable infinite set.
-Annotations $r$ are sets of effect scope variables like $\{ s_1, ..., s_n \}$.
-\\
+Locations $\loc$ are modeled by some countable infinite set.
+
 \begin{figure}
 \caption{Syntax}
 \centering
 \fbox{
-\begin{minipage}{14 cm}
+\begin{minipage}{10 cm}
 \begin{align*}
-	s \Coloneqq	& s_{var} \;|\; s_{loc} \\
-	\ty \Coloneqq 	& \tinst{s}{\eff} \;|\; \tarr{\ty}{\cty} \;|\; \tforall{s_{var}}{\cty} \\
-	\cty \Coloneqq 	& \aty{\ty}{r} \\
-	\val \Coloneqq	&																		\tag{values} \\
-									& x, y, z, k												\tag{variables} \\
-									& \vinst{s, \loc}										\tag{instance values (for semantics)} \\
-									& \vabs{x}{\comp}										\tag{abstraction} \\
-									& \vabst{s_{var}}{\comp}						\tag{scope abstraction} \\
-	\comp \Coloneqq	&																		\tag{computations} \\
-									& \creturn{\val}										\tag{return value as computation} \\
-									& \capp{\val}{\val}									\tag{application} \\
-									& \cappt{\val}{s}										\tag{scope application} \\
-									& \cdo{x}{\comp}{\comp}							\tag{sequencing} \\
-									& \cop{\val}{\op}{\val}							\tag{operation call} \\
-									& \cnew{\eff}{s}{\handler ; \hfinally{x}{\comp}}{x}{\comp}		\tag{instance creation} \\
-									& \chandlen{s_{var}}{\comp}										\tag{handle scoped computation} \\
-									& \chandlec{s_{loc}}{\comp}								\tag{handle computation (for semantics)} \\
-									& \chandlei{\loc}{\handler}{\comp}	\tag{handle instance (for semantics)} \\
-	\handler \Coloneqq 		&															\tag{handlers} \\
-									& \hop{\op}{x}{k}{\comp}{\handler}	\tag{operation case} \\
-									& \hreturn{x}{\comp}								\tag{return/finally case} \\
+	s \Coloneqq		&\; s_{var} \;|\; s_{loc} \\
+	\ty \Coloneqq 		&\; \tinst{s}{\eff} \;|\; \tarr{\ty}{\cty} \;|\; \tforall{s_{var}}{\cty} \\
+	\cty \Coloneqq 		&\; \aty{\ty}{r} \\
+	\val \Coloneqq		&\; x, y, z, k \;|\; \vinst{\loc} \;|\; \vabs{x}{\comp} \;|\; \vabst{s_{var}}{\comp} \\
+	\comp \Coloneqq	&\; \creturn{\val} \;|\; \capp{\val}{\val} \;|\; \cdo{x}{\comp}{\comp} \;|\; \cop{\val}{\op}{\val} \;|\; \cappt{\val}{s} \\
+					&\;|\; \cnew{\eff}{s}{\handler ; \hfinally{x}{\comp}}{x}{\comp}	\\
+					&\;|\; \chandlen{s_{var}}{\comp}							\\
+					&\;|\; \chandlec{s_{loc}}{\comp}							\\
+					&\;|\; \chandlei{\loc}{\handler}{\comp}						\\
+	\handler \Coloneqq	&\; \hop{\op}{x}{k}{\comp}{\handler} \;|\; \hreturn{x}{\comp} 	\\
 \end{align*}
 \label{fig:syntax-calc}
 \end{minipage}
 }
 \end{figure}
+
+In Figure~\ref{fig:syntax-calc} we show the syntax of the types and terms of X.
+An effect scope $s$ is either a scope variable $s_{var}$ or a scope location $s_{loc}$.
+Effect scope variables $s_{var}$ and effects scope locations $s_{loc}$ are both modeled by countable infinite sets.
+\\\\
+Like in the systems in Chapter~4 terms and types are both split between values and computations, and value types and computation types.
+Values are typed by value types and computations are typed by computation types.
+\\\\
+Value types $\ty$ are either an instance type $\tinst{s}{\eff}$, indexed by an effect scope $s$ and an effect $\eff$.
+Or a function type $\tarr{\ty}{\cty}$ where the paramter type is a value type and the return type is a computation type.
+Or an universally quantified computation type $\tforall{s_{var}}{\cty}$, where the domain of quantification are effect scopes.
+\\\\
+A computation type $\cty$ is always an annotated value type of the form $\aty{\ty}{r}$.
+Annotations $r$ are sets of effect scopes $\{ s_1, ..., s_n \}$.
+\\\\
+Values are either variables $x$, $k$, where we always use $k$ do denote variables that refer to continuations.
+Or instances $\vinst{\loc}$, indexed by some location $\loc$.
+Instances would not appear in the surface language, but are introduced by the semantics.
+Or lambda abstractions $\vabs{x}{\comp}$, where the body is a computation.
+Or effect scope abstractions $\vabst{s_{var}}{\comp}$, where we abstract over a computation $\comp$, with the domain of the quantification being effect scopes.
+\\\\
+For computations we have $\creturn{\val}$, to lift a value $\val$ in to a computation.
+We have application $\capp{\val}{\val}$ and sequencing $\cdo{x}{\comp}{\comp}$.
+We have operation calls $\cop{\val}{\op}{\val}$.
+The new constructs are as follows.
+We have effect scope application $\cappt{\val}{s}$.
+We can create new instances with $\cnew{\eff}{s}{\handler ; \hfinally{x}{\comp}}{x}{\comp}$, where $\handler$ is a handler.
+We can handle computations with $\chandlen{s_{var}}{\comp}$.
+Finally we have two more constructs which would not appear in the surface language, but are introduced by the semantics.
+Effect scope handlers $\chandlec{s_{loc}}{\comp}$ handle a specific scope $s_{loc}$ in the computation $\comp$.
+Instance handlers $\chandlei{\loc}{\handler}{\comp}$ handle the operations of a single instance of the location $\loc$ in the computation $\comp$.
+\\\\
+Finally we have handlers $\handler$ which are lists of operation cases ending with a return case.
+Operation cases are of the form $\hop{\op}{x}{k}{\comp}{\handler}$, where $\handler$ is the rest of the handler.
+Return cases are of the form $\hreturn{x}{\comp}$.
+
+\section{Environments and judgments}
+\label{sec:contexts}
 
 \begin{figure}
 \caption{Environments}
