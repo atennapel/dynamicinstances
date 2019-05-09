@@ -144,3 +144,16 @@ Introductie notes
 
 - syntax text X done
 - examples text done
+
+2019-05-09
+- untyped -> now typed in introduction
+	- effect scopes allows for typing
+	- effects are handled in one go
+	- some things need to change, list but in abstract terms
+	- explain what it was before and what it is now
+- line numbers
+- merge state explanations
+- show that types of creating/using references similar to ST
+- show multiple s-es in page 31 (actual example instead of twoScopes). 
+- move vlength to vector figure
+- actually implement RNG (use dumb RNG generation) (using State again)
