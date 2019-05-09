@@ -155,7 +155,7 @@ Return cases are of the form $\hreturn{x}{\comp}$.
 \section{Environments and judgments}
 \label{sec:contexts}
 
-\begin{figure}
+\begin{figure}[h]
 \caption{Environments}
 \centering
 \fbox{
@@ -211,7 +211,10 @@ Lastly there are three typing judgments:
 
 \section{Subtyping}
 \label{sec:subtyping}
-\begin{figure}
+
+In Figure~\ref{fig:subtyping-calc} we give the subtyping rules for both the value and the computation types.
+
+\begin{figure}[h]
 \caption{Subtyping}
 \centering
 \fbox{
@@ -252,7 +255,10 @@ $$
 
 \section{Well-formedness}
 \label{sec:wellformedness}
-\begin{figure}
+
+In Figure~\ref{fig:wf-calc} we give the well-formedness rules for the value and computation types.
+
+\begin{figure}[h]
 \caption{Well-formedness}
 \centering
 \fbox{
@@ -308,7 +314,11 @@ $$
 
 \section{Typing rules}
 \label{sec:typingrules}
-\begin{figure}
+
+We now give the typing rules of our calculus.
+We split them up in three figures: Figure~\ref{fig:val-typing-calc} for the values, Figure~\ref{fig:comp-typing-calc} for the computations, and Figure~\ref{fig:handler-typing-calc} for the handlers.
+
+\begin{figure}[h]
 \caption{Value typing rules}
 \centering
 \fbox{
@@ -354,7 +364,7 @@ $$
 }
 \end{figure}
 
-\begin{figure}
+\begin{figure}[h]
 \caption{Computation typing rules}
 \centering
 \fbox{
@@ -454,7 +464,7 @@ $$
 }
 \end{figure}
 
-\begin{figure}
+\begin{figure}[h]
 \caption{Handler typing rules}
 \centering
 \fbox{
@@ -481,7 +491,13 @@ $$
 
 \section{Semantics}
 \label{sec:semantics}
-\begin{figure}
+
+Finally we give a small-step operation semantics for X.
+In Figure~\ref{fig:semantics1-calc} we give the semantics for every construct except the effect scope and instance handlers.
+In Figure~\ref{fig:semantics2-calc} we give the semantics for the effect scope handlers.
+Lastly in Figure~\ref{fig:semantics3-calc} we give the semantics for the instance handlers.
+
+\begin{figure}[h]
 \caption{Semantics}
 \centering
 \fbox{
@@ -537,8 +553,8 @@ $$
 }
 \end{figure}
 
-\begin{figure}
-\caption{Semantics of new handlers}
+\begin{figure}[h]
+\caption{Semantics of effect scope handlers}
 \centering
 \fbox{
 \begin{minipage}{17 cm}
@@ -591,7 +607,7 @@ $$
 }
 \end{figure}
 
-\begin{figure}
+\begin{figure}[h]
 \caption{Semantics of instance handlers}
 \centering
 \fbox{
@@ -647,6 +663,8 @@ $$
 
 \section{Type soundness}
 \label{sec:theorems}
+
+blablablabla.
 
 
 }
