@@ -347,7 +347,7 @@ We say that the use of the \ident{State} effect is completely \emph{encapsulated
 The type system ensures that \ident{handle} actually does encapsulate all effects in its scope.
 Note that we do not handle the scope of \ident{rng}, we leave the \ident{Rng} to be handled higher up by the caller of \ident{shuffle}.
 
-\begin{figure}[H]
+\begin{figure}[h]
 \caption{List shuffling}
 \begin{minted}[tabsize=2,frame=single]{haskell}
 -- (linked) list of integer values
@@ -385,10 +385,19 @@ shuffle [s'] rng lst =
 \end{figure}
 
 \section{Local effects}
-\begin{minted}[tabsize=2]{haskell}
+When writing higher-order functions it's important that effects used in the function definition does not interfere with the function given as an argument.
+This means we want to have \emph{local effects} in those functions.
+Effects which do not leak outside of the functions and which do not interfere with any other effects used.
+Using effect instances we can generate effects which are local and unique.
+\\\\
+In Figure~\ref{fig:localeffects} we 
+
+\begin{figure}[h]
+\caption{Folding with early exit}
+\begin{minted}[tabsize=2,frame=single]{haskell}
 -- folding with early exit
 effect Done {
-	done : T -> ()
+	done : Bool -> ()
 }
 
 -- foldr creates a new instance of Done
@@ -397,8 +406,8 @@ effect Done {
 -- then foldr stops and returns the value given
 -- note: nested uses of foldr do not interfere because
 -- new instances are created with each call
-foldr : (forall s. Inst s Done -> Int -> T -> T!{s}) ->
-	T -> List -> T
+foldr : (forall s. Inst s Done -> Int -> Bool -> Bool!{s}) ->
+	Bool -> List -> Bool
 foldr fn initial list =
 	handle(s ->
 		new Done@s {
@@ -408,12 +417,13 @@ foldr fn initial list =
 		foldrRec [s] (fn [s] inst) initial list)
 
 -- recursive foldr implementation
-foldrRec : forall s. (Int -> r -> r!{s}) ->
-	r -> List -> r!{s}
+foldrRec : forall s. (Int -> Bool -> Bool!{s}) ->
+	Bool -> List -> Bool!{s}
 foldRec fn initial Nil = initial
 foldRec fn initial (Cons h t) = fn h (foldRec fn initial t)
 
--- does the list have any element satifying the predicate function
+-- does the list have any element satifying
+-- the predicate function
 -- returns early if the predicate function returns True
 contains : (Int -> Bool) -> List -> Bool
 contains fn list =
@@ -424,3 +434,5 @@ contains fn list =
 			False
 	) False list
 \end{minted}
+\label{fig:localeffects}
+\end{figure}
