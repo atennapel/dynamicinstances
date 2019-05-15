@@ -212,17 +212,16 @@ Lastly there are three typing judgments:
 \section{Subtyping}
 \label{sec:subtyping}
 
-In Figure~\ref{fig:subtyping-calc} we give the subtyping rules for both the value and the computation types.
-
 \begin{figure}[h]
 \caption{Subtyping}
 \centering
 \fbox{
 \begin{minipage}{14 cm}
-$$\inferrule{
+\[
+\inferrule{
 }{
 	\subty{ \tinst{s}{\eff} }{ \tinst{s}{\eff} } 
-}
+}\quad(\footnotesize\textsc{Sub-Inst})
 \hspace{3em}
 \mprset{vskip=0 ex}
 \inferrule{
@@ -230,16 +229,16 @@ $$\inferrule{
 	\subty{\cty_1}{\cty_2} \\
 }{
 	\subty{ \tarr{\ty_1}{\cty_1} }{ \tarr{\ty_2}{\cty_2} }
-}
+}\quad(\footnotesize\textsc{Sub-Arr})
 \hspace{3em}
 \mprset{vskip=0 ex}
-$$
-$$
+\]
+\[
 \inferrule{
 	\subty{ \cty_1 }{ \cty_2 }
 }{
 	\subty{ \tforall{s_{var}}{\cty_1} }{ \tforall{s_{var}}{\cty_2} }
-}
+}\quad(\footnotesize\textsc{Sub-Forall})
 \hspace{3em}
 \mprset{vskip=0 ex}
 \inferrule{
@@ -247,16 +246,21 @@ $$
 	r_1 \subseteq r_2
 }{
 	\subty{ \aty{\ty_1}{r_1} }{ \aty{\ty_2}{r_2} }
-}$$
+}\quad(\footnotesize\textsc{Sub-Annot})
+\]
 \label{fig:subtyping-calc}
 \end{minipage}
 }
 \end{figure}
 
+In Figure~\ref{fig:subtyping-calc} we give the subtyping rules for both the value and the computation types.
+An instance type $\tinst{s}{\eff}$ is a subtype of another instance type if they are structurally equal, shown in the rule \textsc{Sub-Inst}.
+Function types $\tarr{\ty}{\cty}$ are compared by subtyping the parameter types contravariantly and subtyping the return types covariantly, shown in the rule \textsc{Sub-Arr}.
+Universally quantified types $\tforall{s_{var}}{\cty}$ are structurally recursed upon, given they the quantified variables are equal (\textsc{Sub-Forall}).
+Lastly annotated types $\aty{\ty}{r}$ are compared by comparing the value types and checking that the annotation on the left type is a subtype of the annotation on the right type (\textsc{Sub-Annot}).
+
 \section{Well-formedness}
 \label{sec:wellformedness}
-
-In Figure~\ref{fig:wf-calc} we give the well-formedness rules for the value and computation types.
 
 \begin{figure}[h]
 \caption{Well-formedness}
@@ -311,6 +315,8 @@ $$
 \end{minipage}
 }
 \end{figure}
+
+In Figure~\ref{fig:wf-calc} we give the well-formedness rules for the value and computation types.
 
 \section{Typing rules}
 \label{sec:typingrules}

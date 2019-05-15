@@ -151,9 +151,12 @@ Introductie notes
 	- effects are handled in one go
 	- some things need to change, list but in abstract terms
 	- explain what it was before and what it is now
-- line numbers
+X line numbers
 - merge state explanations
 - show that types of creating/using references similar to ST
 - show multiple s-es in page 31 (actual example instead of twoScopes). 
-- move vlength to vector figure
+X move vlength to vector figure
 - actually implement RNG (use dumb RNG generation) (using State again)
+- give diferent handlers different names (handle and handler)
+
+X process Caspers feedback (smaller stylistic stuff)

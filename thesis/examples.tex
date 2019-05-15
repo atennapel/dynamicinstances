@@ -27,7 +27,7 @@ The language also has parametric polymorphism over effect scopes.
 
 \begin{figure}
 \caption{Example of the novel constructs}
-\begin{minted}[tabsize=2,frame=single]{haskell}
+\begin{minted}[tabsize=2,frame=single,linenos]{haskell}
 effect State {
 	get : () -> Int
 	put : Int -> ()
@@ -81,7 +81,7 @@ An effect scope variable can be seen as the name of a collection of instances th
 Such a scope can contain zero or more instances, where each instance can be of any effect.
 A scope restricts instances in such a way that they cannot escape that scope and instances from one scope cannot be used in another.
 This also means that we can never get a runtime error because of an unhandled operation call.
-The type of \ident{postInc} can be read as ``For any scope \ident{s}, given a \ident{State} instance in \ident{s}, return an value of type \ident{Int} possibly by calling operations on instances in \ident{s}''.
+The type of \ident{postInc} can be read as ``For any scope \ident{s}, given a \ident{State} instance in \ident{s}, return a value of type \ident{Int} possibly by calling operations on instances in \ident{s}''.
 Note that because of the \ident{forall} we universally quantify over any scope \ident{s}, this means that \ident{postInc} does not choose a specific scope but that the functions can work on any scope.
 The \ident{forall} is introduced by the \ident{[s]} syntax, which introduces an effect scope variable \ident{s}.
 In order to call \ident{postInc} we have to explicitly give a specific effect scope for the parameter \ident{s}.
@@ -115,12 +115,12 @@ The construct \ident{new State@s { ... }} can be read as ``Create a fresh \ident
 Here we have to give a specific scope \ident{s} to create the instance on.
 The instance can only be used within this given scope.
 The newly-created instance is available in the body of the \ident{new} construct.
-When creating an instance we have to give an \emph{handler}.
+When creating an instance we have to give a \emph{handler}.
 The handler specifies what should happen when the operations are called.
 The handler is defined within curly braces and consists of a case for each operation of the effect, plus a \ident{return} case and a \ident{finally} case.
 The handler given here is dummy handler which will always return \ident{0} when \ident{get} is called and which does nothing besides returning \ident{()} when \ident{put} is called.
 Note that this is different from the system with dynamic instances from Chapter~2.3.
-There we do not give a handler when creating instances, but handlers are a seperate construct.
+There we do not give a handler when creating instances, but handlers are a separate construct.
 This change is needed in order to ensure the instances do not escape their scope.
 Our type system will make sure that the handler given when creating an instance is \emph{complete}.
 Meaning that all the operation calls on the specific instance are handled.
@@ -163,6 +163,7 @@ In the case of \ident{result} we create a new \ident{State} instance on \ident{s
 We name this new instance \ident{inst}.
 Then we call \ident{postInc}, passing \ident{s'} and the new instance as its arguments.
 Finally we return the result of \ident{postInc} as the result of the \ident{handle} construct.
+\\\\
 Note that the type of \ident{result} does not have any effects, \ident{handle} will use the handlers defined when creating instances to perform the operations called on the instances in its scope.
 That means the result of \ident{handle(s -> ...)} will not have any effects in \ident{s} (no operation calls on instances of \ident{s}).
 \ident{handle} will not perform any other effects beside the ones in its own scope, any other effects (on other scopes) will be forwarded through and will remain after \ident{handle} is done.
@@ -182,7 +183,7 @@ We can also see this in the type, \ident{s'} does not appear while \ident{s''} d
 \section{Mutable references}
 \begin{figure}[h]
 \caption{Mutable references}
-\begin{minted}[tabsize=2,frame=single]{haskell}
+\begin{minted}[tabsize=2,frame=single,linenos]{haskell}
 -- create a fresh reference initialized
 -- with the integer value v
 ref : forall s. Int -> (Inst s State)!{s}
@@ -242,9 +243,14 @@ Using mutable references have interesting applications such as meta variables in
 \section{Mutable vectors}
 \begin{figure}[h]
 \caption{Mutable vectors}
-\begin{minted}[tabsize=2,frame=single]{haskell}
+\begin{minted}[tabsize=2,frame=single,linenos]{haskell}
 -- list of mutable references
 data Vector s = VNil | VCons (Inst s State) Vector
+
+-- get the length of a vector
+vlength : forall s. Vector s -> Int
+vlength VNil = 0
+vlength (VCons _ tail) = 1 + (vlength tail)
 
 -- get the value at the index given as the first argument
 -- assumes the index is within range of the vector
@@ -264,7 +270,7 @@ vset [s] n v (VCons _ t) = vset [s] (n - 1) v t
 
 In the previous section we have defined mutable references.
 We will now build on them to define mutable vectors.
-In Figure~\ref{fig:vectors} we define the \ident{Vector} algebraic datatype.
+In Figure~\ref{fig:vectors} we define the \ident{Vector} datatype.
 \ident{Vector} is a linked list of \ident{State} instances and is indexed by the scope of instances: \ident{s}.
 We define two functions on \ident{Vector}, \ident{vget} and \ident{vset}.
 With \ident{vget} we can retrieve a value from a vector by giving an index.
@@ -298,18 +304,13 @@ We then recurse, subtracting the amount of times to shuffle by one.
 
 \begin{figure}[H]
 \caption{Vector shuffling}
-\begin{minted}[tabsize=2,frame=single]{haskell}
+\begin{minted}[tabsize=2,frame=single,linenos]{haskell}
 -- random number generation effect
 -- the operation `rand` gives back a random integer
 -- between 0..n, where n is the argument given (exclusive)
 effect Rng {
 	rand : Int -> Int
 }
-
--- get the length of a vector
-vlength : forall s. Vector s -> Int
-vlength VNil = 0
-vlength (VCons _ tail) = 1 + (vlength tail)
 
 -- shuffles a vector given an instance of Rng
 -- by swapping two random elements of the vector
@@ -349,7 +350,7 @@ Note that we do not handle the scope of \ident{rng}, we leave the \ident{Rng} to
 
 \begin{figure}[h]
 \caption{List shuffling}
-\begin{minted}[tabsize=2,frame=single]{haskell}
+\begin{minted}[tabsize=2,frame=single,linenos]{haskell}
 -- (linked) list of integer values
 data List = Nil | Cons Int List
 
@@ -394,7 +395,7 @@ In Figure~\ref{fig:localeffects} we
 
 \begin{figure}[h]
 \caption{Folding with early exit}
-\begin{minted}[tabsize=2,frame=single]{haskell}
+\begin{minted}[tabsize=2,frame=single,linenos]{haskell}
 -- folding with early exit
 effect Done {
 	done : Bool -> ()
