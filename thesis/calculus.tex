@@ -254,6 +254,7 @@ Lastly there are three typing judgments:
 \end{figure}
 
 In Figure~\ref{fig:subtyping-calc} we give the subtyping rules for both the value and the computation types.
+The subtyping checks that that the effects mentioned in the type on the right are the same or more general than the type on the left.
 An instance type $\tinst{s}{\eff}$ is a subtype of another instance type if they are structurally equal, shown in the rule \textsc{Sub-Inst}.
 Function types $\tarr{\ty}{\cty}$ are compared by subtyping the parameter types contravariantly and subtyping the return types covariantly, shown in the rule \textsc{Sub-Arr}.
 Universally quantified types $\tforall{s_{var}}{\cty}$ are structurally recursed upon, given they the quantified variables are equal (\textsc{Sub-Forall}).
@@ -266,26 +267,26 @@ Lastly annotated types $\aty{\ty}{r}$ are compared by comparing the value types 
 \caption{Well-formedness}
 \centering
 \fbox{
-\begin{minipage}{14 cm}
+\begin{minipage}{15 cm}
 $$
 \inferrule{
 	s_{var} \in \Delta
 }{
 	\Delta;\Sigma \vdash s_{var}
-}
+}\quad(\footnotesize\textsc{WF-SVar})
 \hspace{3em}
 \mprset{vskip=0 ex}
 \inferrule{
 	s_{loc} \in \Sigma
 }{
 	\Delta;\Sigma \vdash s_{loc}
-}
+}\quad(\footnotesize\textsc{WF-SLoc})
 $$
 $$\inferrule{
 	\Delta;\Sigma \vdash s \\
 }{
 	\Delta;\Sigma \vdash \tinst{s}{\eff}
-}
+}\quad(\footnotesize\textsc{WF-Inst})
 \hspace{3em}
 \mprset{vskip=0 ex}
 \inferrule{
@@ -293,7 +294,7 @@ $$\inferrule{
 	\Delta;\Sigma \vdash \cty \\
 }{
 	\Delta;\Sigma \vdash \tarr{\ty}{\cty}
-}
+}\quad(\footnotesize\textsc{WF-Arr})
 \hspace{3em}
 \mprset{vskip=0 ex}
 $$
@@ -302,27 +303,32 @@ $$
 	\Delta,s_{var};\Sigma \vdash \cty 
 }{
 	\Delta;\Sigma \vdash \tforall{s_{var}}{\cty}
-}
+}\quad(\footnotesize\textsc{WF-Forall})
 \hspace{3em}
 \mprset{vskip=0 ex}
 \inferrule{
 	\Delta;\Sigma \vdash \ty \\
-	\forall (\eff@s \in r) \Rightarrow \Delta;\Sigma \vdash s \\
+	\forall (s \in r) \Rightarrow \Delta;\Sigma \vdash s \\
 }{
 	\Delta;\Sigma \vdash \aty{\ty}{r}
-}$$
+}\quad(\footnotesize\textsc{WF-Annot})
+$$
 \label{fig:wf-calc}
 \end{minipage}
 }
 \end{figure}
 
 In Figure~\ref{fig:wf-calc} we give the well-formedness rules for the value and computation types.
+Well-formedness checks that the effect scopes in the type are accounted for in the environments.
+The rules \textsc{WF-SVar} and \textsc{WF-SLoc} check that the effect scope variables $s_{var}$ and locations $s_{loc}$ are valid by checking that they are contained in the scope and dynamic environments respectively.
+For instance types we check that the mentioned effect scope is valid (\textsc{WF-Inst}).
+For function types $\tarr{\ty}{\cty}$ we check that both the paramter and return type is valid.
+For universally quantified types $\tforall{s_{var}}{\cty}$ we check that the computation type $\cty$ is valid, after adding the variable $s_{var}$ to the environment.
+Lastly for annotated types $\aty{\ty}{r}$ we first check that that the value type $\ty$ is valid.
+Then we check that each effect scope in the annotation $r$ is valid.
 
 \section{Typing rules}
 \label{sec:typingrules}
-
-We now give the typing rules of our calculus.
-We split them up in three figures: Figure~\ref{fig:val-typing-calc} for the values, Figure~\ref{fig:comp-typing-calc} for the computations, and Figure~\ref{fig:handler-typing-calc} for the handlers.
 
 \begin{figure}[h]
 \caption{Value typing rules}
@@ -333,42 +339,49 @@ $$\inferrule{
 	\Gamma[x] = \ty
 }{
 	\Delta;\Sigma;\Gamma \vdash x : \ty
-}
+}\quad(\footnotesize\textsc{T-Var})
 \hspace{3em}
 \mprset{vskip=0 ex}
 \inferrule{
 	\Sigma(\loc) = (s_{loc}, \eff)
 }{
 	\Delta;\Sigma;\Gamma \vdash \vinst{\loc} : \tinst{s_{loc}}{\eff}
-}
-\hspace{3em}
-\mprset{vskip=0 ex}
+}\quad(\footnotesize\textsc{T-Inst})
+$$
+$$
 \inferrule{
 	\Delta;\Sigma;\Gamma, x : \ty \vdash \comp : \cty
 }{
 	\Delta;\Sigma;\Gamma \vdash \vabs{x}{\comp} : \tarr{\ty}{\cty}
-}
-$$
-$$
+}\quad(\footnotesize\textsc{T-Abs})
+\hspace{3em}
+\mprset{vskip=0 ex}
 \inferrule{
 	\Delta,s_{var};\Sigma;\Gamma \vdash \comp : \cty
 }{
 	\Delta;\Sigma;\Gamma \vdash \vabst{s_{var}}{\comp} : \tforall{s_{var}}{\cty}
-}
-\hspace{3em}
-\mprset{vskip=0 ex}
+}\quad(\footnotesize\textsc{T-TAbs})
+$$
+$$
 \inferrule{
 	\Delta;\Sigma;\Gamma \vdash \val : \ty_1 \\
 	\Delta;\Sigma \vdash \ty_2 \\
 	\subty{\ty_1}{\ty_2}
 }{
 	\Delta;\Sigma;\Gamma \vdash \val : \ty_2
-}
+}\quad(\footnotesize\textsc{T-SubVal})
 $$
 \label{fig:val-typing-calc}
 \end{minipage}
 }
 \end{figure}
+
+The typing rules for the values are given in Figure~\ref{fig:val-typing-calc}.
+Variables $x$ are simply looked up in the typing environment $\Gamma$ (\textsc{T-Var}).
+Instances $\vinst{l}$ are assigned instance types, with the scope location and effect looked up in the dynamic environment $\Sigma$ using the location $l$ (\textsc{T-Inst}).
+Abstractions $\vabs{x}{\comp}$ are assigned a function type $\tarr{\ty}{\cty}$, by typing the body with $\cty$ after adding $x : \ty$ to the typing environment $\Gamma$ (\textsc{T-Abs}).
+Similar to abstractions, effect scope abstractions are assigned a universally quantified type $\tforall{s_{var}}{\cty}$, by typing the body with $\cty$ after adding $s_{var}$ to the scope environment $\Delta$ (\textsc{T-TAbs}).
+Values can be assigned a more general type if that type is valid and a supertype of the type of the value (\textsc{T-SubVal}).
 
 \begin{figure}[h]
 \caption{Computation typing rules}
@@ -379,15 +392,15 @@ $$\inferrule{
 	\Delta;\Sigma;\Gamma \vdash \val : \ty
 }{
 	\Delta;\Sigma;\Gamma \vdash \creturn{\val} : \aty{\ty}{\varnothing}
-}
-\hspace{3em}
-\mprset{vskip=0 ex}
+}\quad(\footnotesize\textsc{T-Return})
+$$
+$$
 \inferrule{
 	\Delta;\Sigma;\Gamma \vdash \val_1 : \tarr{\ty}{\cty} \\
 	\Delta;\Sigma;\Gamma \vdash \val_2 : \ty \\
 }{
 	\Delta;\Sigma;\Gamma \vdash \capp{\val_1}{\val_2} : \cty
-}
+}\quad(\footnotesize\textsc{T-App})
 $$
 $$
 \inferrule{
@@ -395,7 +408,7 @@ $$
 	\Delta;\Sigma;\Gamma \vdash \val : \tforall{s'_{var}}{\cty}
 }{
 	\Delta;\Sigma;\Gamma \vdash \cappt{\val}{s} : \cty[s'_{var} := s]
-}
+}\quad(\footnotesize\textsc{T-TApp})
 $$
 $$
 \inferrule{
@@ -403,7 +416,7 @@ $$
 	\Delta;\Sigma;\Gamma,x:\ty_1 \vdash \comp_2 : \aty{\ty_2}{r} \\
 }{
 	\Delta;\Sigma;\Gamma \vdash (\cdo{x}{\comp_1}{\comp_2}) : \aty{\ty_2}{r}
-}
+}\quad(\footnotesize\textsc{T-Seq})
 $$
 $$
 \inferrule{
@@ -411,8 +424,8 @@ $$
 	\op \in \Op{\eff} \\
 	\Delta;\Sigma;\Gamma \vdash \val_2 : \pty{\op} \\
 }{
-	\Delta;\Sigma;\Gamma \vdash \cop{\val_1}{\op}{\val_2} : \aty{\rty{\op}}{\{\eff@s\}}
-}
+	\Delta;\Sigma;\Gamma \vdash \cop{\val_1}{\op}{\val_2} : \aty{\rty{\op}}{\{s\}}
+}\quad(\footnotesize\textsc{T-Op})
 $$
 $$
 \inferrule{
@@ -420,30 +433,28 @@ $$
 	\op \in \Op{\eff} \iff \op \in \handler \\
 	\Delta;\Sigma;\Gamma,x:\tinst{s}{\eff} \vdash \comp : \aty{\ty_1}{r} \\
 	\Delta;\Sigma;\Gamma \vdash^{\ty_1} \handler : \aty{\ty_2}{r} \\
-	\eff@s \in r \\
+	s \in r \\
 	\Delta;\Sigma;\Gamma,y : \ty_2 \vdash \comp' : \aty{\ty_3}{r} \\
 }{
 	\Delta;\Sigma;\Gamma \vdash \cnew{\eff}{s}{\handler; \hfinally{y}{\comp'}}{x}{\comp} : \aty{\ty_3}{r}
-}
+}\quad(\footnotesize\textsc{T-New})
 $$
 $$
 \inferrule{
 	\Delta,s_{var};\Sigma;\Gamma \vdash \comp : \aty{\ty}{r} \\
-	s_{var} \notin \ty \\
-	r' = \{ \eff@s' \;|\; \eff@s' \in r \wedge s' \neq s_{var} \}
+	s_{var} \notin \ty
 }{
-	\Delta;\Sigma;\Gamma \vdash \chandlen{s_{var}}{\comp} : \aty{\ty}{r'}
-}
+	\Delta;\Sigma;\Gamma \vdash \chandlen{s_{var}}{\comp} : \aty{\ty}{(r \setminus \{ s_{var} \})}
+}\quad(\footnotesize\textsc{T-Handle})
 $$
 $$
 \inferrule{
 	s_{loc} \in \Sigma \\
 	\Delta;\Sigma;\Gamma \vdash \comp : \aty{\ty}{r} \\
-	s_{loc} \notin \ty \\
-	r' = \{ \eff@s' \;|\; \eff@s' \in r \wedge s' \neq s_{loc} \}
+	s_{loc} \notin \ty
 }{
-	\Delta;\Sigma;\Gamma \vdash \chandlec{s_{loc}}{\comp} : \aty{\ty}{r'}
-}
+	\Delta;\Sigma;\Gamma \vdash \chandlec{s_{loc}}{\comp} : \aty{\ty}{(r \setminus \{ s_{loc} \})}
+}\quad(\footnotesize\textsc{T-HandleScope})
 $$
 $$
 \inferrule{
@@ -451,10 +462,10 @@ $$
 	\op \in \Op{\eff} \iff \op \in \handler \\
 	\Delta;\Sigma;\Gamma \vdash^{\ty_1} \handler : \aty{\ty_2}{r} \\
 	\Delta;\Sigma;\Gamma \vdash \comp : \aty{\ty_1}{r} \\
-	\eff@s_{loc} \in r
+	s_{loc} \in r
 }{
 	\Delta;\Sigma;\Gamma \vdash \chandlei{\loc}{\handler}{\comp} : \aty{\ty_2}{r}
-}
+}\quad(\footnotesize\textsc{T-HandleInst})
 $$
 $$
 \inferrule{
@@ -463,32 +474,34 @@ $$
 	\subty{\cty_1}{\cty_2}
 }{
 	\Delta;\Sigma;\Gamma \vdash \comp : \cty_2
-}
+}\quad(\footnotesize\textsc{T-SubComp})
 $$
 \label{fig:comp-typing-calc}
 \end{minipage}
 }
 \end{figure}
 
+The typing rule for the computations are given in Figure~\ref{fig:comp-typing-calc}.
+
 \begin{figure}[h]
 \caption{Handler typing rules}
 \centering
 \fbox{
-\begin{minipage}{14 cm}
+\begin{minipage}{16 cm}
 $$
 \inferrule{
 	\Delta;\Sigma;\Gamma,x:\pty{\op},k:\tarr{\rty{\op}}{\aty{\ty_2}{r}} \vdash \comp : \aty{\ty_2}{r} \\
 	\Delta;\Sigma;\Gamma \vdash^{\ty_1} \handler : \aty{\ty_2}{r} \\
 }{
 	\Delta;\Sigma;\Gamma \vdash^{\ty_1} (\hop{\op}{x}{k}{\comp}{\handler}) : \aty{\ty_2}{r}
-}
+}\quad(\footnotesize\textsc{T-HandlerOp})
 $$
 $$
 \inferrule{
 	\Delta;\Sigma;\Gamma,x : \ty_1 \vdash \comp : \aty{\ty_2}{r} \\
 }{
 	\Delta;\Sigma;\Gamma \vdash^{\ty_1} (\hreturn{x}{\comp}) : \aty{\ty_2}{r}
-}
+}\quad(\footnotesize\textsc{T-HandlerReturn})
 $$
 \label{fig:handler-typing-calc}
 \end{minipage}
