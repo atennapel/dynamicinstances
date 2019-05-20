@@ -377,17 +377,15 @@ $$
 \end{figure}
 
 The typing rules for the values are given in Figure~\ref{fig:val-typing-calc}.
-Variables $x$ are simply looked up in the typing environment $\Gamma$ (\textsc{T-Var}).
+The rules \textsc{T-Var}, \textsc{T-Abs} and \textsc{T-SubVal} are practically unchanged from the corresponding rules in the algebraic effects type system from Chapter~4.2.
 Instances $\vinst{l}$ are assigned instance types, with the scope location and effect looked up in the dynamic environment $\Sigma$ using the location $l$ (\textsc{T-Inst}).
-Abstractions $\vabs{x}{\comp}$ are assigned a function type $\tarr{\ty}{\cty}$, by typing the body with $\cty$ after adding $x : \ty$ to the typing environment $\Gamma$ (\textsc{T-Abs}).
 Similar to abstractions, effect scope abstractions are assigned a universally quantified type $\tforall{s_{var}}{\cty}$, by typing the body with $\cty$ after adding $s_{var}$ to the scope environment $\Delta$ (\textsc{T-TAbs}).
-Values can be assigned a more general type if that type is valid and a supertype of the type of the value (\textsc{T-SubVal}).
 
-\begin{figure}[h]
+\begin{figure}[H]
 \caption{Computation typing rules}
 \centering
 \fbox{
-\begin{minipage}{14 cm}
+\begin{minipage}{12.2 cm}
 $$\inferrule{
 	\Delta;\Sigma;\Gamma \vdash \val : \ty
 }{
@@ -460,9 +458,9 @@ $$
 \inferrule{
 	\Sigma(\loc) = (s_{loc}, \eff) \\
 	\op \in \Op{\eff} \iff \op \in \handler \\
-	\Delta;\Sigma;\Gamma \vdash^{\ty_1} \handler : \aty{\ty_2}{r} \\
 	\Delta;\Sigma;\Gamma \vdash \comp : \aty{\ty_1}{r} \\
-	s_{loc} \in r
+	\Delta;\Sigma;\Gamma \vdash^{\ty_1} \handler : \aty{\ty_2}{r} \\
+	% s_{loc} \in r
 }{
 	\Delta;\Sigma;\Gamma \vdash \chandlei{\loc}{\handler}{\comp} : \aty{\ty_2}{r}
 }\quad(\footnotesize\textsc{T-HandleInst})
@@ -482,6 +480,50 @@ $$
 \end{figure}
 
 The typing rule for the computations are given in Figure~\ref{fig:comp-typing-calc}.
+The rules \textsc{T-Return}, \textsc{T-App}, \textsc{T-Seq} and \textsc{T-SubComp} are practically unchanged from the corresponding rules in the algebraic effects type system from Chapter~4.2.
+\\\\
+The rule for effect scope application (\textsc{T-TApp}) checks that, in the application $\cappt{\val}{s}$, the scope $s$ is well-formed.
+Then we check that $\val$ is a universally quantified type $\tforall{s'}{\cty}$.
+Finally we substitute the given scope $s$ for the quantified variable $s'$ in $\cty$.
+\\\\
+For operation calls (\textsc{T-Op}) $\cop{\val_1}{op}{\val_2}$ we first check that the type of $\val_1$ is an instance type $\tinst{s}{\eff}$.
+We then check that the operation $op$ is an operation of the effect of the instance $\eff$ ($op \in \Op{\eff}$).
+Lastly we check that the given value $\val_2$ matches the parameter type of the operation $op$ ($\pty{op}$).
+The type given to the operation call is the return type of the operation $\rty{op}$ with the scope of the instance, $s$, in the annotation.
+\\\\
+The rule \textsc{T-New} types the creation of new instance: $\cnew{\eff}{s}{\handler; \hfinally{y}{\comp'}}{x}{\comp}$.
+We are creating a new instance $x$ of effect $\eff$ in the effect scope $s$.
+First we check that the given effect scope $s$ is valid.
+Then we check that the operations in the handler $h$ are exactly the operations of the effect of the new instance $\eff$.
+This means it is not valid to either omit operations or to have operations of other effects in the handler.
+This way we can ensure that every operation is accounted for.
+We then typecheck the computation $\comp$ with the new instance added the to the environment as $x$, with the type $\aty{\ty_1}{r}$.
+Then we typecheck the handler $h$, passing the type $\ty_1$ of $\comp$ to the handler typing judgement.
+The handler can transform the return type $\ty_1$ to another type $\ty_2$, but note that the effects annotation $r$ has to be the same.
+We check that the scope $s$ is contained in $r$.
+The reason for this is because the creation of an instance in $s$ is also an effect and so we have to account for this effect in the annotation by adding $s$ to $r$.
+Lastly we check the $\mathsf{finally}$ case.
+We add $\ty_2$ to the environment as $y$ and typecheck the computation $\comp'$ as $\aty{\ty_3}{r}$.
+The $\mathsf{finally}$ case is allowed to transform the return type of the handler $\ty_2$ to another type $\ty_3$.
+Finally the type of the whole instance creation is $\aty{\ty_3}{r}$.
+Where $\ty_3$ is the final type of the $\mathsf{finally}$ case and $r$ is the effects from $\comp$, the handler $h$ and the $\mathsf{finally}$ case.
+\\\\
+The rule \textsc{T-Handle} types handling computations: $\chandlen{s_{var}}{\comp}$.
+We typecheck the body $\comp$ with the effect scope variable $s_{var}$ added to the scope environment.
+Then we check that the effects do not escape their scope by checking that that $s_{var}$ is not contained in the return type $\ty$.
+We then type the whole computation as $\aty{\ty}{(r \setminus \{ s_{var} \})}$.
+Knowing that $s_{var}$ does not escape we can safely remove it from the effect annotation.
+\\\\
+The rule \textsc{T-HandleScope} deals with the handling of a specific scope $s_{loc}$ and is very similar to the previous rule \textsc{T-Handle}.
+Instead of the effect scope \emph{variable} $s_{var}$ we now deal with an effect scope \emph{location} $s_{loc}$.
+We have to check that the location actually exists, by checking that it is contained in the dynamic environment $\Sigma$.
+We can then proceed like in \textsc{T-Handle}, checking that $s_{loc}$ does not escape.
+\\\\
+\textsc{T-HandleInst} typechecks the handling of an instance at location $l$ using a handler $h$.
+First we check that the $location$ is contained in the dynamic environment $\Sigma$
+We retrieve the scope location $s_{loc}$ and effect $\eff$ of the instance from $\Sigma$.
+We check that the operations in the handler match the operations of the effect.
+We then typecheck the computation $\comp$ and the handler $h$ like in \textsc{T-New}.
 
 \begin{figure}[h]
 \caption{Handler typing rules}
@@ -490,8 +532,8 @@ The typing rule for the computations are given in Figure~\ref{fig:comp-typing-ca
 \begin{minipage}{16 cm}
 $$
 \inferrule{
-	\Delta;\Sigma;\Gamma,x:\pty{\op},k:\tarr{\rty{\op}}{\aty{\ty_2}{r}} \vdash \comp : \aty{\ty_2}{r} \\
 	\Delta;\Sigma;\Gamma \vdash^{\ty_1} \handler : \aty{\ty_2}{r} \\
+	\Delta;\Sigma;\Gamma,x:\pty{\op},k:\tarr{\rty{\op}}{\aty{\ty_2}{r}} \vdash \comp : \aty{\ty_2}{r} \\
 }{
 	\Delta;\Sigma;\Gamma \vdash^{\ty_1} (\hop{\op}{x}{k}{\comp}{\handler}) : \aty{\ty_2}{r}
 }\quad(\footnotesize\textsc{T-HandlerOp})
@@ -508,10 +550,26 @@ $$
 }
 \end{figure}
 
+Finally we discuss the typing rules for the handlers, given in Figure~\ref{fig:handler-typing-calc}.
+\textsc{T-HandlerReturn} types the $\mathsf{return}$ case of a handler.
+We typecheck the body $\comp$ after adding the variable $x$ with type $\ty_1$ to the environment.
+The type $\ty_1$ is passed with the handler typing judgement in the typing rules \textsc{T-New} and \textsc{T-HandleInst}.
+It is the return type of the computation we are handling.
+The computation $\comp$ can transform this type to another type $\ty_2$ with some effect annotation $r$, which is the return type of the $\mathsf{return}$ case.
+\\\\
+The rule \textsc{T-HandlerOp} shows the typing of an operation case.
+We first typecheck the rest of handler $h$, passing along the return type $\ty_1$ of the computation we are handling.
+We typecheck the rest of the handler as $\aty{\ty_2}{r}$, this is the return type of the whole handler.
+Then we typecheck the body of the operation case $\comp$.
+We add the operation call argument $x$ with the parameter type $\pty{op}$ of the operation to the environment.
+We also add the continuation $k$ to the environment.
+This is a function from the return type $\rty{op}$ of the operation, to the return type of the whole handler $\aty{\ty_2}{r}$.
+We check that the body of the case $\comp$ returns a computation of the same type.
+
 \section{Semantics}
 \label{sec:semantics}
 
-Finally we give a small-step operation semantics for X.
+Finally we give a small-step operational semantics for X.
 In Figure~\ref{fig:semantics1-calc} we give the semantics for every construct except the effect scope and instance handlers.
 In Figure~\ref{fig:semantics2-calc} we give the semantics for the effect scope handlers.
 Lastly in Figure~\ref{fig:semantics3-calc} we give the semantics for the instance handlers.
