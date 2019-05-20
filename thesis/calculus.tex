@@ -570,65 +570,76 @@ We check that the body of the case $\comp$ returns a computation of the same typ
 \label{sec:semantics}
 
 Finally we give a small-step operational semantics for X.
-In Figure~\ref{fig:semantics1-calc} we give the semantics for every construct except the effect scope and instance handlers.
-In Figure~\ref{fig:semantics2-calc} we give the semantics for the effect scope handlers.
-Lastly in Figure~\ref{fig:semantics3-calc} we give the semantics for the instance handlers.
+\\\\
+The rule $\comp_1 \;|\; \Sigma_1 \rightsquigarrow \comp_2 \;|\; \Sigma_2$ takes a step from the computation $\comp_1$ to $\comp_2$ in the dynamic environment $\Sigma_1$.
+$\Sigma_1$ might be updated with new effect scope locations or instance locations resulting in $\Sigma_2$.
 
 \begin{figure}[h]
 \caption{Semantics}
 \centering
 \fbox{
-\begin{minipage}{17 cm}
+\begin{minipage}{15 cm}
 $$
 \inferrule{
 }{
 	\capp{(\vabs{x}{\comp})}{\val} \;|\; \Sigma \rightsquigarrow \comp[x := \val] \;|\; \Sigma
-}
-\hspace{3em}
-\mprset{vskip=0 ex}
+}\quad(\footnotesize\textsc{S-App})
+$$
+$$
 \inferrule{
 }{
-	\cappt{(\vabst{s}{\comp})}{s'} \;|\; \Sigma \rightsquigarrow \comp[s := s'] \;|\; \Sigma
-}
+	\cappt{(\vabst{s_{var}}{\comp})}{s'} \;|\; \Sigma \rightsquigarrow \comp[s_{var} := s'] \;|\; \Sigma
+}\quad(\footnotesize\textsc{S-TApp})
 $$
 $$
 \inferrule{
 	\comp_1 ; \Sigma \rightsquigarrow \comp'_1 ; \Sigma'
 }{
 	(\cdo{x}{\comp_1}{\comp_2}) \;|\; \Sigma \rightsquigarrow (\cdo{x}{\comp'_1}{\comp_2}) \;|\; \Sigma'
-}
-\hspace{3em}
-\mprset{vskip=0 ex}
+}\quad(\footnotesize\textsc{S-Seq})
+$$
+$$
 \inferrule{
 }{
 	(\cdo{x}{(\creturn{\val})}{\comp}) \;|\; \Sigma \rightsquigarrow \comp[x := \val] \;|\; \Sigma
-}
+}\quad(\footnotesize\textsc{S-SeqReturn})
 $$
 $$
 \inferrule{
 }{
 	(\cdo{y}{(\cdo{x}{\comp_1}{\comp_2})}{\comp_3} \;|\; \Sigma \rightsquigarrow
 	(\cdo{x}{\comp_1}{\cdo{y}{\comp_2}{\comp_3}}) \;|\; \Sigma
-}
+}\quad(\footnotesize\textsc{S-Flatten})
 $$
 $$
 \inferrule{
 }{
 	(\cdo{x}{(\cnew{\eff}{s}{\handler ; \hfinally{z}{\comp_3}}{y}{\comp_1})}{\comp_2}) \;|\; \Sigma \rightsquigarrow \\
 	 \cnew{\eff}{s}{\handler ; \hfinally{z}{\comp_3}}{y}{(\cdo{x}{\comp_1}{\comp_2})} \;|\; \Sigma
-}
+}\quad(\footnotesize\textsc{S-LiftNew})
 $$
 $$
 \inferrule{
 	s_{loc} \notin \Sigma
 }{
 	\chandlen{s_{var}}{\comp} \;|\; \Sigma \rightsquigarrow \chandlec{s_{loc}}{\comp[s_{var} := s_{loc}]} \;|\; \Sigma,s_{loc}
-}
+}\quad(\footnotesize\textsc{S-FreshScope})
 $$
 \label{fig:semantics1-calc}
 \end{minipage}
 }
 \end{figure}
+
+In Figure~\ref{fig:semantics1-calc} we give the semantics for every construct except the effect scope and instance handlers.
+The rules \textsc{S-App}, \textsc{S-Seq}, \textsc{S-SeqReturn} and \textsc{S-Flatten} are the same as the corresponding rules in the
+algebraic effects system of Chapter~4.2.
+The rule \textsc{S-TApp} handles an effect scope application similarly to a normal application, by substituting the effect scope $s'$ for the scope variable $s_{var}$ of the scope abstraction.
+\textsc{S-LiftNew} lifts the creation of an instance out and over sequencing.
+By repeatedly applying this rule we can bubble up the instance creation until we hit an effect scope handler
+The rule \textsc{S-FreshScope} creates a fresh scope location with which to handle instances.
+A fresh scope location $s_{loc}$ is created and added to the environment $\Sigma$.
+This new scope location is substituted in the body $\comp$.
+We wrap the computation with an effect scope handler for new scope location $s_{loc}$.
 
 \begin{figure}[h]
 \caption{Semantics of effect scope handlers}
@@ -640,7 +651,7 @@ $$
 	\comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma'
 }{
 	\chandlec{s_{loc}}{\comp} \;|\; \Sigma \rightsquigarrow \chandlec{s_{loc}}{\comp'} \;|\; \Sigma'
-}
+}\quad(\footnotesize\textsc{S-FreshScope})
 $$
 $$
 \inferrule{
@@ -683,6 +694,8 @@ $$
 \end{minipage}
 }
 \end{figure}
+
+In Figure~\ref{fig:semantics2-calc} we give the semantics for the effect scope handlers.
 
 \begin{figure}[h]
 \caption{Semantics of instance handlers}
@@ -737,6 +750,8 @@ $$
 \end{minipage}
 }
 \end{figure}
+
+Lastly in Figure~\ref{fig:semantics3-calc} we give the semantics for the instance handlers.
 
 \section{Type soundness}
 \label{sec:theorems}
