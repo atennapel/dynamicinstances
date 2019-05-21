@@ -792,6 +792,10 @@ We define a computation $\comp$ to be a value if $\comp$ is of the form $\cretur
 \]
 \end{theorem}
 
+The type soundness theorem states that if a computation typechecks with no effects in the annotation and we take some amount of steps, then either the computation is a value or we can take another step.
+This means that if a computation typechecks with no effects then we cannot get stuck on an operation call.
+\\\\
+
 \begin{lemma}[Progress]
 \[
 	\mathsf{if}\;
@@ -802,6 +806,8 @@ We define a computation $\comp$ to be a value if $\comp$ is of the form $\cretur
 		(\exists \comp' \; \Sigma'.\; \comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma')
 \]
 \end{lemma}
+
+
 
 \begin{lemma}[Preservation]
 \[
