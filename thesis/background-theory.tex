@@ -755,5 +755,43 @@ For both \textsc{T-OP} and \textsc{T-Handle} we just have to check that the adde
 
 \textbf{Type soundness}
 TODO, same as algebraic effects
+TODO \\
+We define a computation $\comp$ to be a value if $\comp$ is of the form $\creturn{\val}$ for some value $\val$.
+	\[ \mathsf{value}(\comp) \;\mathsf{if}\; \exists \val. \comp = \creturn{\val} \]
+
+\begin{theorem}[Type soundness]
+\[
+	\mathsf{if}\;
+		\cdot \vdash \comp : \aty{\ty}{\varnothing}
+		\;\land\;
+		\comp \rightsquigarrow^* \comp'
+	\;\mathsf{then}\;
+		\mathsf{value}(\comp')
+		\lor
+		(\exists \comp''.\; \comp' \rightsquigarrow \comp'')
+\]
+\end{theorem}
+
+\begin{lemma}[Progress]
+\[
+	\mathsf{if}\;
+		\cdot \vdash \comp : \aty{\ty}{\varnothing}
+	\;\mathsf{then}\;
+		\mathsf{value}(\comp)
+		\lor
+		(\exists \comp'.\; \comp \rightsquigarrow \comp')
+\]
+\end{lemma}
+
+\begin{lemma}[Preservation]
+\[
+	\mathsf{if}\;
+		\Gamma \vdash \comp : \cty
+		\;\land\;
+		\comp \rightsquigarrow \comp'
+	\;\mathsf{then}\;
+		\Gamma \vdash \comp' : \cty
+\]
+\end{lemma}
 
 }

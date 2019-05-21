@@ -61,6 +61,8 @@
 \newcommand\sep[0]{\;;\;}
 \newcommand\sss[4]{#1 \; | \; #2 \rightsquigarrow #3 \; | \; #4}
 
+\newenvironment{lines}{}{}
+
 % locations modelled by some countably infnite set.
 % mathpartir
 % explicit free variables fn FIV
@@ -651,28 +653,28 @@ $$
 	\comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma'
 }{
 	\chandlec{s_{loc}}{\comp} \;|\; \Sigma \rightsquigarrow \chandlec{s_{loc}}{\comp'} \;|\; \Sigma'
-}\quad(\footnotesize\textsc{S-FreshScope})
+}\quad(\footnotesize\textsc{S-HandleScopeCong})
 $$
 $$
 \inferrule{
 }{
 	\chandlec{s_{loc}}{\creturn{\val}} \;|\; \Sigma \rightsquigarrow
 	\creturn{\val} \;|\; \Sigma
-}
+}\quad(\footnotesize\textsc{S-HandleScopeReturn})
 $$
 $$
 \inferrule{
 }{
 	\chandlec{s_{loc}}{\cop{\val_1}{\op}{\val_2}} \;|\; \Sigma \rightsquigarrow
 	\cop{\val_1}{\op}{\val_2} \;|\; \Sigma
-}
+}\quad(\footnotesize\textsc{S-HandleScopeOp})
 $$
 $$
 \inferrule{
 }{
 	\chandlec{s_{loc}}{\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\comp}} \;|\; \Sigma \rightsquigarrow
 	(\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\chandlec{s_{loc}}{\comp}}) \;|\; \Sigma
-}
+}\quad(\footnotesize\textsc{S-HandleScopeSeqOp})
 $$
 $$
 \inferrule{
@@ -680,7 +682,7 @@ $$
 }{
 	\chandlec{s_{loc}}{\cnew{\eff}{s'_{loc}}{\handler ; \hfinally{y}{\comp'}}{x}{\comp}} \;|\; \Sigma \rightsquigarrow \\
 	\cnew{\eff}{s'_{loc}}{\handler ; \hfinally{y}{\comp'}}{x}{\chandlec{s_{loc}}{\comp}} \;|\; \Sigma
-}
+}\quad(\footnotesize\textsc{S-HandleScopeNewSkip})
 $$
 $$
 \inferrule{
@@ -688,7 +690,7 @@ $$
 }{
 	\chandlec{s_{loc}}{\cnew{\eff}{s_{loc}}{\handler; \hfinally{y}{\comp'}}{x}{\comp}} \;|\; \Sigma \rightsquigarrow \\
 	\chandlec{s_{loc}}{\cdo{y}{\chandlei{\loc}{\handler}{\comp[x := \vinst{\loc}]}}{\comp'}} \;|\; \Sigma,\loc := (s_{loc}, \eff)
-}
+}\quad(\footnotesize\textsc{S-HandleScopeNew})
 $$
 \label{fig:semantics2-calc}
 \end{minipage}
@@ -696,55 +698,62 @@ $$
 \end{figure}
 
 In Figure~\ref{fig:semantics2-calc} we give the semantics for the effect scope handlers.
+An effect scope handler for a specific effect scope location will create fresh instances when a $\mathsf{new}$ construct is encountered (\textsc{S-HandleScopeNew}).
+An instance handler with the handler of the $\mathsf{new}$ construct is wrapped around the computation and the $\mathsf{finally}$ case is wrapped around that.
+The newly created location $l$ is added to the dynamic environment together with the scope location and the effect.
+If a $\mathsf{new}$ is encountered with a different effect scope we skip it and nest the scope handler inside (\textsc{T-HandleScopeNewSkip}).
+Using the rule \textsc{S-HandleScopeCong} to reduce a computation inside a scope handler.
+We can remove a scope handler if we encounter either a return or operation call (\textsc{S-HandleScopeReturn} and \textsc{S-HandleScopeOp}).
+Effect scope handlers can be pushed inside sequencing, lifting an operation call over it (\textsc{S-HandleScopeSeqOp}).
 
 \begin{figure}[h]
 \caption{Semantics of instance handlers}
 \centering
 \fbox{
-\begin{minipage}{17 cm}
+\begin{minipage}{13 cm}
 $$
 \inferrule{
 	\comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma'
 }{
 	\chandlei{\loc}{\handler}{\comp} \;|\; \Sigma \rightsquigarrow \chandlei{\loc}{\handler}{\comp'} \;|\; \Sigma'
-}
+}\quad(\footnotesize\textsc{S-HandleInstCong})
 $$
 $$
 \inferrule{
 }{
 	\chandlei{\loc}{\handler}{\cnew{\eff}{s}{\handler' ; \hfinally{y}{\comp'}}{x}{\comp}} \;|\; \Sigma \rightsquigarrow \\
 	\cnew{\eff}{s}{\handler' ; \hfinally{y}{\comp'}}{x}{\chandlei{\loc}{\handler}{\comp}} \;|\; \Sigma
-}
+}\quad(\footnotesize\textsc{S-HandleInstNew})
 $$
 $$
 \inferrule{
 }{
-	\chandlei{\loc}{\handler}{\cop{\val_1}{\op}{\val_2}} \;|\; \Sigma \rightsquigarrow
+	\chandlei{\loc}{\handler}{\cop{\val_1}{\op}{\val_2}} \;|\; \Sigma \rightsquigarrow\\
 	\chandlei{\loc}{\handler}{\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\creturn{x}}} \;|\; \Sigma
-}
+}\quad(\footnotesize\textsc{S-HandleInstOpPrepare})
 $$
 $$
 \inferrule{
 	\loc \neq \loc'
 }{
-	\chandlei{\loc}{\handler}{\cdo{x}{\cop{\vinst{\loc'}}{\op}{\val}}{\comp}} \;|\; \Sigma \rightsquigarrow
+	\chandlei{\loc}{\handler}{\cdo{x}{\cop{\vinst{\loc'}}{\op}{\val}}{\comp}} \;|\; \Sigma \rightsquigarrow\\
 	(\cdo{x}{\cop{\vinst{\loc'}}{\op}{\val}}{\chandlei{\loc}{\handler}{{\comp}}}) \;|\; \Sigma
-}
+}\quad(\footnotesize\textsc{S-HandleInstOpSkip})
 $$
 $$
 \inferrule{
 	\handler[\op] = (x, k, \comp_{\op})
 }{
-	\chandlei{\loc}{\handler}{\cdo{y}{\cop{\vinst{\loc}}{\op}{\val}}{\comp}} \;|\; \Sigma \rightsquigarrow 
+	\chandlei{\loc}{\handler}{\cdo{y}{\cop{\vinst{\loc}}{\op}{\val}}{\comp}} \;|\; \Sigma \rightsquigarrow\\
 	\comp_{\op}[x := \val, k := (\vabs{y}{\chandlei{\loc}{\handler}{\comp}})] \;|\; \Sigma
-}
+}\quad(\footnotesize\textsc{S-HandleInstOp})
 $$
 $$
 \inferrule{
 }{
 	\chandlei{\loc}{\handler; \hreturn{x_r}{\comp_r}}{\creturn{\val}} \;|\; \Sigma \rightsquigarrow
 	\comp_r[x_r := \val] \;|\; \Sigma
-}
+}\quad(\footnotesize\textsc{S-HandleInstReturn})
 $$
 \label{fig:semantics3-calc}
 \end{minipage}
@@ -752,11 +761,57 @@ $$
 \end{figure}
 
 Lastly in Figure~\ref{fig:semantics3-calc} we give the semantics for the instance handlers.
+Instance handlers handle operation calls on instances with the same location as the handler.
+To be able to handle operation calls with one rule we first have to transform operation calls that are not being sequenced to the sequencing form (\textsc{S-HandleInstOpPrepare}).
+When an operation call is encountered on an instance with the same location as the instance handler, the operation is handled (\textsc{S-HandleInstOp}).
+The operation is looked up in the handler $h$ and the computation $c_{op}$ in the operation case is performed.
+If a $\mathsf{return}$ is encountered the computation $c_r$ in the $\mathsf{return}$ case is performed (\textsc{S-HandleInstReturn}).
+Operation calls on instances with a different location $l'$ are skipped, nesting the instance handler inside (\textsc{S-HandleInstOpSkip}).
+Similarly $\mathsf{new}$ calls are also skipped, again nesting the instance handler inside (\textsc{S-HandleInstNew}).
+Lastly, computations inside instance handlers can be reduced further (\textsc{S-HandleInstCong}).
+
+TODO: add example derivation
 
 \section{Type soundness}
 \label{sec:theorems}
 
-blablablabla.
+TODO \\
+We define a computation $\comp$ to be a value if $\comp$ is of the form $\creturn{\val}$ for some value $\val$.
+	\[ \mathsf{value}(\comp) \;\mathsf{if}\; \exists \val. \comp = \creturn{\val} \]
 
+\begin{theorem}[Type soundness]
+\[
+	\mathsf{if}\;
+		(\cdot;\Sigma;\cdot \vdash \comp : \aty{\ty}{\varnothing})
+		\;\land\;
+		(\comp \;|\; \Sigma \rightsquigarrow^* \comp' \;|\; \Sigma')
+	\;\mathsf{then}\;
+		\mathsf{value}(\comp')
+		\;\lor\;
+		(\exists \comp'' \; \Sigma''.\; \comp' \;|\; \Sigma' \rightsquigarrow \comp'' \;|\; \Sigma'')
+\]
+\end{theorem}
+
+\begin{lemma}[Progress]
+\[
+	\mathsf{if}\;
+		\cdot;\Sigma;\cdot \vdash \comp : \aty{\ty}{\varnothing}
+	\;\mathsf{then}\;
+		\mathsf{value}(\comp)
+		\lor
+		(\exists \comp' \; \Sigma'.\; \comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma')
+\]
+\end{lemma}
+
+\begin{lemma}[Preservation]
+\[
+	\mathsf{if}\;
+		(\Delta;\Sigma;\Gamma \vdash \comp : \cty)
+		\;\land\;
+		(\comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma')
+	\;\mathsf{then}\;
+		\Delta;\Sigma';\Gamma \vdash \comp' : \cty
+\]
+\end{lemma}
 
 }
