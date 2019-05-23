@@ -40,12 +40,21 @@ Type constructors and effect names are uppercase while type variables are lowerc
 \label{section:basics}
 
 \begin{figure}
-\caption{Example of the novel constructs}
+\caption{Example of all the novel constructs}
 \begin{minted}[tabsize=2,frame=single,linenos]{haskell}
 effect State {
 	get : () -> Int
 	put : Int -> ()
 }
+
+ref : forall s. Int -> (Inst s State)!{s}
+ref [s] v =
+	new State@s {
+		get () k -> \st -> k st st
+		put st' k -> \st -> k () st'
+		return x -> \st -> return x
+		finally f -> f v
+	} as x in return x
 
 postInc : forall s. Inst s State -> Int!{s}
 postInc [s] inst =
@@ -54,16 +63,16 @@ postInc [s] inst =
 	return x
 
 result : Int
-result = runscope(s' ->
-	new State@s' {
-		get v k -> k 0
-		put v k -> k ()
-		return xr -> return xr
-		finally xf -> return xf
-	} as inst in
-	x <- postInc [s'] inst;
-	return x)
--- result is 0
+result =
+	runscope(s1 ->
+		r1 <- ref [s1] 10;
+		runscope(s2 ->
+			r2 <- ref [s2] 20;
+			x <- postInc [s2] r2;
+			r1#put(x);
+			return x);
+		y <- r1#get ();
+		return y) -- result is 20
 \end{minted}
 \label{fig:example1}
 \end{figure}
@@ -194,6 +203,7 @@ twoScopes [s''] = runscope(s' ->
 Here we use some function \ident{f} on two different scopes (\ident{s'} and \ident{s''}) but we only handle one of the scopes (\ident{s'}).
 We can also see this in the type, \ident{s'} does not appear while \ident{s''} does. 
 
+\iffalse
 \section{Mutable references}
 \begin{figure}[h]
 \caption{Mutable references}
@@ -253,6 +263,7 @@ Adding parametric polymorphism to the effects to give \ident{State t} for any ty
 With references of different types coexisting.
 This is very similar to how the ST monad works in Haskell~\cite{runst}.
 Using mutable references have interesting applications such as meta variables in type inference algorithms and typed logic variables~\cite{typedlogic}.
+\fi
 
 \section{Mutable vectors}
 \begin{figure}[h]
