@@ -166,4 +166,29 @@ X process Caspers feedback (smaller stylistic stuff)
 - update calculus to correct text mention handle instead of runscope
 
 2019-05-23
+- In "intro to alg effect" put long code on it's own (not inline)
+- try to get rule name above rule instead of to the right
+	- write a good macro for this
+	- use \begin{array} with @
+- in Chapter 5 introduction remind where "stuff" comes from
+- scope location and instance location (not just location)
+- no store with values needed
+	- sigma needed for type system
+	- operational semantics for fresh generation
+- as usual we have Gamma and now we also have
+- theorem for Sigma extension
+	- operational semantics will do a valid extension (monotonic extensions)
+- theorem:
+	if G;S |- e : t and S <= S' then G;S' |- e : t
+- fix theorem with non-empty annotation
+	- operation call is possible if non-empty
+- maybe mention that I formalize some stuff
+- point of type soundness
+	- point of lemmas
+- categorize related work and future work
+- is lifting relevant
+- related work
+	- compare and contrast
 
+- finish example
+- 
