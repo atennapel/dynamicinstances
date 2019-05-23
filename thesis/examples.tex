@@ -1,26 +1,40 @@
 \iffalse
-\fi
-
 In this chapter we will give an introduction to programming with X.
 X is a modification of the algebraic effects system described in Chapter~2.1, extended with a restricted form of the dynamic instances of Chapter~2.3.
 We introduce the novel concepts of X.
 When create a new instance we have to give handler, this ensures that the instance is always associated with a handler.
-The handle construct does not handle a single effect but can handle multiple effects at the same time.
+The $\mathsf{runscope}$ construct can handle multiple effects at the same time.
 These effects are collected under a notion of \emph{effect scope}, which is used to group instances together.
-When handle is called one such effect scope is handled.
+When runscope is called one such effect scope is handled.
 We introduce \emph{effect scope polymorphism} together with \emph{effect scope abstraction} and {effect scope application}.
 These constructs allows us to write functions which are polymorphic over effect scopes.
+\fi
+
+In Chapter~2.3 we saw how dynamic instances allow us to implement mutable references in a system with algebraic effects.
+This system is untyped however, meaning that you can get runtime errors if an operation is unhandled.
+This can happen if an operation is called on a dynamic instance outside of a handler.
+In this chapter we introduce X, which combines algebraic effects and dynamic instances while still remaining typeable.
+In order to achieve this we introduce the notion of an \emph{effect scope}.
+An effect scope groups together instances.
+When creating an instance we give an effect scope to create the instance in.
+Every instance belongs to a specific effect scope.
+Different from the system with dynamic instances from Chapter~2.3, we always have to specify a handler when creating an instance.
+This to make sure every instance has a handler associated with it.
+Performing effects is done with a new $\mathsf{runscope}$ construct, similar to how the $\mathsf{handle}$ construct performed effects in Chapter~2.
+$\mathsf{runscope}$ creates a fresh scope and makes it available for use in a given computation.
+After all the instances created on this new scope will actually be instantiated and all the operations called on these instances will be handled.
+In order to allow computations to be polymorphic over effect scopes we also introduce \emph{effect scope polymorpishm} together with \emph{effect scope abstraction} and \emph{effect scope application}.
 \\\\
-We start with and example explaining all the novel concepts in Section~3.1.
-After we will show how mutable references can be expressed in X in Section~3.2.
-Then we will how mutable vectors can be defined, followed by an implementation of a list shuffling algorithm in Section~3.3.
-We end the chapter by showing how local effects can be defined in Section~3.4
+We start with explaining all the novel concepts in Section~3.1, using the example of mutable references.
+% After we will show how mutable references can be expressed in X in Section~3.2.
+Then we will show how mutable vectors can be defined, followed by an implementation of a list shuffling algorithm in Section~3.2.
+We end the chapter by showing how our system allows for local effects in Section~3.3.
 \\\\
 We build on the language used in Chapter~2.1.
 We use a language reminiscent of Haskell with algebraic data types and pattern matching.
 Type constructors and effect names are uppercase while type variables are lowercase.
-The language also has parametric polymorphism over effect scopes.
-%We will always explicitly show \ident{forall} for universally quantified effect scope variables.
+% The language also has parametric polymorphism over effect scopes.
+% We will always explicitly show \ident{forall} for universally quantified effect scope variables.
 
 \section{Effects, effect scopes and instances}
 \label{section:basics}
@@ -40,7 +54,7 @@ postInc [s] inst =
 	return x
 
 result : Int
-result = handle(s' ->
+result = runscope(s' ->
 	new State@s' {
 		get v k -> k 0
 		put v k -> k ()
@@ -77,7 +91,7 @@ postInc : forall s. Inst s State -> Int!{s}
 
 This function takes an instance of the \ident{State} effect, called \ident{inst}, of type \ident{Inst s State}.
 The type variable \ident{s} here is an \emph{effect scope variable}.
-An effect scope variable can be seen as the name of a collection of instances that we call an \emph{effect scope}.
+An effect scope variable can be seen as the name of a collection of instances that we call an effect scope.
 Such a scope can contain zero or more instances, where each instance can be of any effect.
 A scope restricts instances in such a way that they cannot escape that scope and instances from one scope cannot be used in another.
 This also means that we can never get a runtime error because of an unhandled operation call.
@@ -91,7 +105,7 @@ The \ident{!{s}} after the return type is the \emph{effect annotation}, which sh
 \subsection{Effect instances and handlers}
 \label{subsection:instances}
 Effects can be used by calling operations.
-Operations are always called on an \emph{effect instance}.
+Operations are always called on an effect instance.
 Without an instance we are unable to perform operations.
 In the case of \ident{postInc} we get an instance as an argument to the function.
 Operation can be called on an instance using the syntax \ident{instance\#operation(argument)}.
@@ -145,7 +159,7 @@ We show its definition here again for convenience:
 
 \begin{minted}[tabsize=2]{haskell}
 result : Int
-result = handle(s' ->
+result = runscope(s' ->
 	new State@s' {
 		get v k -> k 0
 		put v k -> k ()
@@ -156,22 +170,22 @@ result = handle(s' ->
 	return x)
 \end{minted}
 
-The \ident{handle(s' -> ...)} construct provides a new scope, which we named \ident{s'} in our case, which can be used in its body.
-Inside \ident{handle} we can create and use instances in this new scope \ident{s'}.
-\ident{handle} will make sure that any instances that are created on its scope will actually be created and that any operation calls on these instances will be handled.
+The \ident{runscope(s' -> ...)} construct provides a new scope, which we named \ident{s'} in our case, which can be used in its body.
+Inside \ident{runscope} we can create and use instances in this new scope \ident{s'}.
+\ident{runscope} will make sure that any instances that are created on its scope will actually be created and that any operation calls on these instances will be handled.
 In the case of \ident{result} we create a new \ident{State} instance on \ident{s'} using the same handler as in Section~\ref{subsection:instances}.
 We name this new instance \ident{inst}.
 Then we call \ident{postInc}, passing \ident{s'} and the new instance as its arguments.
 Finally we return the result of \ident{postInc} as the result of the \ident{handle} construct.
 \\\\
-Note that the type of \ident{result} does not have any effects, \ident{handle} will use the handlers defined when creating instances to perform the operations called on the instances in its scope.
-That means the result of \ident{handle(s -> ...)} will not have any effects in \ident{s} (no operation calls on instances of \ident{s}).
-\ident{handle} will not perform any other effects beside the ones in its own scope, any other effects (on other scopes) will be forwarded through and will remain after \ident{handle} is done.
+Note that the type of \ident{result} does not have any effects, \ident{runscope} will use the handlers defined when creating instances to perform the operations called on the instances in its scope.
+That means the result of \ident{runscope(s -> ...)} will not have any effects in \ident{s} (no operation calls on instances of \ident{s}).
+\ident{runscope} will not perform any other effects beside the ones in its own scope, any other effects (on other scopes) will be forwarded through and will remain after \ident{runscope} is done.
 For example:
 
 \begin{minted}[tabsize=2]{haskell}
 twoScopes : forall s''. Int!{s''}
-twoScopes [s''] = handle(s' ->
+twoScopes [s''] = runscope(s' ->
 	x <- f [s'];
 	y <- f [s''];
 	...)
@@ -231,10 +245,10 @@ Inside \ident{result} we first create two mutable references, \ident{r1} and \id
 Then we retrieve the values from \ident{r1} and \ident{r2} and store these in the variables \ident{x} and \ident{y}.
 We then put the value of \ident{r2} in \ident{r1} and the value of \ident{r1} in \ident{r2}.
 Finally we return the current value of \ident{r1}, which will be \ident{42}.
-The whole computation is wrapped in \ident{handle(s' ->} to actually perform the effects, resulting in \ident{42} without any remaining effects.
+The whole computation is wrapped in \ident{runscope(s' ->} to actually perform the effects, resulting in \ident{42} without any remaining effects.
 \\\\
 Using \ident{ref} we can fully emulate multiple mutable references.
-We have the added guarantee that the references will not escape their effect scope, they will not escape their corresponding \ident{handle}.
+We have the added guarantee that the references will not escape their effect scope, they will not escape their corresponding \ident{runscope}.
 Adding parametric polymorphism to the effects to give \ident{State t} for any type \ident{t} will enable us to emulate references of any type.
 With references of different types coexisting.
 This is very similar to how the ST monad works in Haskell~\cite{runst}.
@@ -342,10 +356,10 @@ It takes an effect scope, a \ident{Rng} instance \ident{rng} in this scope and a
 We first convert the list to a mutable vector.
 Then we use \ident{shuffleVector} to shuffle the vector 100 times, passing \ident{rng} for generating the random numbers.
 Finally we convert the vector back to a list and return this result.
-We wrap this computation in \ident{handle} to handle the effects of the mutable vector.
+We wrap this computation in \ident{runscope} to handle the effects of the mutable vector.
 The use of mutable vectors is not leaked outside of the function, from the type and behaviour of \ident{shuffleVector} we are unable to find out if mutable vectors are used.
 We say that the use of the \ident{State} effect is completely \emph{encapsulated}.
-The type system ensures that \ident{handle} actually does encapsulate all effects in its scope.
+The type system ensures that \ident{runscope} actually does encapsulate all effects in its scope.
 Note that we do not handle the scope of \ident{rng}, we leave the \ident{Rng} to be handled higher up by the caller of \ident{shuffle}.
 
 \begin{figure}[h]
@@ -377,7 +391,7 @@ toList [s] (VCons h t) =
 -- and shuffling 100 times
 shuffle : forall s'. Inst s' Rng -> List -> List!{s'}
 shuffle [s'] rng lst =
-	handle(s ->
+	runscope(s ->
 		let vec = toVector [s] lst;
 		shuffleVector [s] [s'] rng 100 vec;
 		return (toList vec))
@@ -410,7 +424,7 @@ effect Done {
 foldr : (forall s. Inst s Done -> Int -> Bool -> Bool!{s}) ->
 	Bool -> List -> Bool
 foldr fn initial list =
-	handle(s ->
+	runscope(s ->
 		new Done@s {
 			done v k -> return v
 			return x -> return x

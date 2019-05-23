@@ -132,31 +132,38 @@ Introductie notes
 - write text for the examples 
 
 2019-05-02
-- work on calculus in parralel
-- do not need to explain unit type
-- start chapter with listing of new features
-- First example should be figure of all features
-- novel ideas/concepts, stress that
-- be explicit that the state implementation is dumb
-- "in section 3.1 we are going to..."
-	- " insection 3.3 we are going to show scale ..."
-- always show explicit effect scope variables
+X work on calculus in parralel
+X do not need to explain unit type
+X start chapter with listing of new features
+X First example should be figure of all features
+X novel ideas/concepts, stress that
+X be explicit that the state implementation is dumb
+X "in section 3.1 we are going to..."
+	X " insection 3.3 we are going to show scale ..."
+X always show explicit effect scope variables
 
-- syntax text X done
+/ syntax text X done
 - examples text done
 
 2019-05-09
-- untyped -> now typed in introduction
+X untyped -> now typed in introduction
 	- effect scopes allows for typing
 	- effects are handled in one go
 	- some things need to change, list but in abstract terms
 	- explain what it was before and what it is now
 X line numbers
+X move vlength to vector figure
+X give diferent handlers different names (handle and handler)
+X process Caspers feedback (smaller stylistic stuff)
+
 - merge state explanations
 - show that types of creating/using references similar to ST
 - show multiple s-es in page 31 (actual example instead of twoScopes). 
-X move vlength to vector figure
 - actually implement RNG (use dumb RNG generation) (using State again)
-- give diferent handlers different names (handle and handler)
 
-X process Caspers feedback (smaller stylistic stuff)
+- rename handle everywhere to runscope
+- update calculus to correct text mention handle instead of runscope
+
+2019-05-23
+
+

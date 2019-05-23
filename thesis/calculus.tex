@@ -45,10 +45,10 @@
 \newcommand\cop[3]{#1 \# #2(#3)}
 \newcommand\cfresh[2]{\mathsf{fresh} \; #1 ;\; #2}
 \newcommand\cnew[5]{\mathsf{new} \; #1 @ #2 \; \{ #3 \} \; \mathsf{as} \; #4 \;\mathsf{in}\; #5}
-\newcommand\chandle[1]{\mathsf{handle} ( #1 )}
-\newcommand\chandlen[2]{\mathsf{handle} ( #1 \rightarrow #2 )}
-\newcommand\chandlec[2]{\mathsf{handle}^{#1} ( #2 )}
-\newcommand\chandlei[3]{\mathsf{handle}^{#1} \{ #2 \} ( #3 )}
+\newcommand\chandle[1]{\mathsf{runscope} ( #1 )}
+\newcommand\chandlen[2]{\mathsf{runscope} ( #1 \rightarrow #2 )}
+\newcommand\chandlec[2]{\mathsf{runscope}^{#1} ( #2 )}
+\newcommand\chandlei[3]{\mathsf{runinst}^{#1} \{ #2 \} ( #3 )}
 
 % handlers
 \newcommand\handler[0]{h}
