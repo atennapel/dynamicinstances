@@ -156,14 +156,14 @@ X move vlength to vector figure
 X give diferent handlers different names (handle and handler)
 X process Caspers feedback (smaller stylistic stuff)
 
-/ merge state explanations
-	/ show multiple s-es in page 31 (actual example instead of twoScopes)
-	- update explanation to match
-- show that types of creating/using references similar to ST
+X merge state explanations
+	X show multiple s-es in page 31 (actual example instead of twoScopes)
+	X update explanation to match
+X show that types of creating/using references similar to ST
 - actually implement RNG (use dumb RNG generation) (using State again)
 
-- rename handle everywhere to runscope
-- update calculus to correct text mention handle instead of runscope
+/ rename handle everywhere to runscope
+/ update calculus to correct text mention handle instead of runscope
 
 2019-05-23
 - In "intro to alg effect" put long code on it's own (not inline)
