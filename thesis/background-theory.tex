@@ -229,7 +229,11 @@ printRange a b =
 \end{minted}
 Here we use a lambda abstraction (\mintinline{haskell}{(\a b -> ())}) in order to simulate sequencing.
 Knowing the evaluation order is very important when evaluating the call \mintinline{haskell}{(printRange 1 10)}.
-In the expression \mintinline{haskell}{(\a b -> ()) (print a) (printRange (a + 1) b)} the arguments can be either evaluated left-to-right or right-to-left, corresponding to (1) and (2) in the list above respectively.
+In the expression
+\\
+\mintinline{haskell}{(\a b -> ()) (print a) (printRange (a + 1) b)}
+\\
+the arguments can be either evaluated left-to-right or right-to-left, corresponding to (1) and (2) in the list above respectively.
 This makes a big difference in the output of the program, in left-to-right order the numbers 1 to 10 will be printed in increasing order while using a right-to-left evaluation strategy will print the numbers 10 to 1 in decreasing order.
 A third option is to first evaluation \mintinline{haskell}{(print a)} then the call \mintinline{haskell}{(\a b -> ()) (print a)}, resulting in \mintinline{haskell}{(\b -> ()) (printRange (a + 1) b)}, after which this application is reduced. This corresponds to (3) in the list above, but has the same result as (1) in this example.
 From the syntax of the language we are not able to deduce which evaluation order will be used, even worse it may be left undefined in the language definition.

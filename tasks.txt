@@ -166,7 +166,7 @@ X rename handle everywhere to runscope
 / update calculus to correct text mention handle instead of runscope
 
 2019-05-23
-- In "intro to alg effect" put long code on it's own (not inline)
+X In "intro to alg effect" put long code on it's own (not inline)
 - try to get rule name above rule instead of to the right
 	- write a good macro for this
 	- use \begin{array} with @
@@ -189,4 +189,5 @@ X rename handle everywhere to runscope
 - is lifting relevant
 - related work
 	- compare and contrast
+- fix theorems in background theory
 
