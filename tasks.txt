@@ -160,9 +160,9 @@ X merge state explanations
 	X show multiple s-es in page 31 (actual example instead of twoScopes)
 	X update explanation to match
 X show that types of creating/using references similar to ST
-- actually implement RNG (use dumb RNG generation) (using State again)
+X actually implement RNG (use dumb RNG generation) (using State again)
 
-/ rename handle everywhere to runscope
+X rename handle everywhere to runscope
 / update calculus to correct text mention handle instead of runscope
 
 2019-05-23
@@ -190,5 +190,3 @@ X show that types of creating/using references similar to ST
 - related work
 	- compare and contrast
 
-- finish example
-- 

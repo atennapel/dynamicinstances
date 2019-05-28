@@ -28,7 +28,9 @@ In order to allow computations to be polymorphic over effect scopes we also intr
 We start with explaining all the novel concepts in Section~3.1, using the example of mutable references.
 % After we will show how mutable references can be expressed in X in Section~3.2.
 Then we will show how mutable vectors can be defined, followed by an implementation of a list shuffling algorithm in Section~3.2.
+\iffalse
 We end the chapter by showing how our system allows for local effects in Section~3.3.
+\fi
 \\\\
 We build on the language used in Chapter~2.1.
 We use a language reminiscent of Haskell with algebraic data types and pattern matching.
@@ -209,7 +211,7 @@ result : Int!{}
 result =
 	runscope(s1 ->
 		r1 <- ref [s1] 10;
-		runscope(s2 ->
+		ret <- runscope(s2 ->
 			r2 <- ref [s2] 20;
 			x <- postInc [s2] r2;
 			r1#put(x);
@@ -225,26 +227,27 @@ In the future we will omit writing \ident{!{}} if a computation does not have an
 The \ident{runscope(s' -> ...)} construct provides a new scope, which we named \ident{s1} and \ident{s2} in our case, which can be used in its body.
 Inside \ident{runscope} we can create and use instances in this new scope.
 \ident{runscope} will make sure that any instances that are created on its scope will actually be created and that any operation calls on these instances will be handled.
-In the case of \ident{result} we create a new \ident{State} instance on \ident{s'} using the same handler as in Section~\ref{subsection:instances}.
-We name this new instance \ident{inst}.
-Then we call \ident{postInc}, passing \ident{s'} and the new instance as its arguments.
-Finally we return the result of \ident{postInc} as the result of the \ident{handle} construct.
 \\\\
-Note that the type of \ident{result} does not have any effects, \ident{runscope} will use the handlers defined when creating instances to perform the operations called on the instances in its scope.
-That means the result of \ident{runscope(s -> ...)} will not have any effects in \ident{s} (no operation calls on instances of \ident{s}).
-\ident{runscope} will not perform any other effects beside the ones in its own scope, any other effects (on other scopes) will be forwarded through and will remain after \ident{runscope} is done.
-For example:
-
-\begin{minted}[tabsize=2]{haskell}
-twoScopes : forall s''. Int!{s''}
-twoScopes [s''] = runscope(s' ->
-	x <- f [s'];
-	y <- f [s''];
-	...)
-\end{minted}
-
-Here we use some function \ident{f} on two different scopes (\ident{s'} and \ident{s''}) but we only handle one of the scopes (\ident{s'}).
-We can also see this in the type, \ident{s'} does not appear while \ident{s''} does. 
+In \ident{result} we use two nested scope.
+First we create a scope called \ident{s1}.
+On this scope we call \ident{ref} to create a mutable reference \ident{r1} with \ident{10} as its initial value.
+Then we create another scope called \ident{s2}.
+In \ident{s2} we create another mutable reference \ident{r2} with \ident{20} as its initial value.
+We then call \ident{postInc} on \ident{r2} and store the return value in \ident{x} (\ident{20}).
+Then we call \ident{r1#put(x)}, setting \ident{r1} to \indent{20}.
+We then return \ident{x} as the return value of the \ident{s2} scope, storing this value in \ident{ret} in the \ident{s1} scope.
+At this point the \ident{s2} scope is gone and any effects in it will be handled.
+The type system will make sure that no instances created in \ident{s2} can escape \ident{s2}.
+\\\\
+Note that we also used \ident{r1} inside \ident{s2}.
+Since \ident{r1} belongs to \indent{s1}, all the operations called on it will not be handled inside \ident{s2} but these will be \emph{forwarded} instead.
+This means that these operations will remain unhandled until \ident{s2} is done.
+Because of this forwarding behaviour we can combine effects from multiple scopes, giving us fine-grained control over where effects may happen.
+\\\\
+Continuing in \ident{result} we get the current value of \ident{r1} and return from \ident{s1}.
+This value is \ident{20} which was set in scope \ident{s2}.
+After this the scope \ident{s1} is done and any effect in it will be handled.
+This leaves us with a computation of type \ident{Int!{}} with no remaining effects.
 
 \section{Mutable vectors}
 \begin{figure}[h]
@@ -274,11 +277,12 @@ vset [s] n v (VCons _ t) = vset [s] (n - 1) v t
 \label{fig:vectors}
 \end{figure}
 
-In the previous section we have defined mutable references.
+In the previous section we have defined mutable references using the \ident{ref} function.
 We will now build on them to define mutable vectors.
 In Figure~\ref{fig:vectors} we define the \ident{Vector} datatype.
-\ident{Vector} is a linked list of \ident{State} instances and is indexed by the scope of instances: \ident{s}.
-We define two functions on \ident{Vector}, \ident{vget} and \ident{vset}.
+\ident{Vector} is a list of \ident{State} instances and is indexed by the scope of instances: \ident{s}.
+We define three functions on \ident{Vector}: \ident{vlength}, \ident{vget}, and \ident{vset}.
+With \ident{vlength} we can get the length of a vector.
 With \ident{vget} we can retrieve a value from a vector by giving an index.
 We assume the index is within the range of the vector.
 With \ident{vset} we can set an element of a vector by giving an index and a value.
@@ -289,7 +293,7 @@ We define both functions by recursion on the index.
 As an example application we will write a shuffling algorithm for vectors.
 This simple algorithm will shuffle a vector by randomly swapping two random elements of the vector and repeating this some amount of times.
 In Figure~\ref{fig:shuffle} we show the algorithm.
-First we define an effect \ident{Rng} in order to abstract out the generation random numbers.
+First we define an effect \ident{Rng} in order to abstract out the generation of random numbers.
 \ident{Rng} has a single operation \ident{rand} which returns a random integer between \ident{0} and \ident{n} given an integer \ident{n}.
 We define a function \ident{vlength} to get the length of the vector.
 \\\\
@@ -341,7 +345,7 @@ shuffleVector [s] [s'] rng n vec =
 Using \ident{shuffleVector} we can implement a function to shuffle a list in Figure~\ref{fig:listshuffle}.
 We first define the usual \ident{List} datatype, with \ident{Nil} and \ident{Cons} cases.
 Then we define two functions \ident{toVector} and \ident{toList} to convert between lists and vectors.
-\ident{toVector} simply recurses on the list and creates fresh variables for each element of the list, initialized with the value of the element.
+\ident{toVector} simply recurses on the list and creates fresh mutable references for each element of the list, initialized with the value of the element.
 \ident{toList} converts a vector to a list by getting the current values of each reference in the vector.
 The function \ident{shuffle} implements the actual shuffling.
 It takes an effect scope, a \ident{Rng} instance \ident{rng} in this scope and a list \ident{lst}.
@@ -354,7 +358,7 @@ We say that the use of the \ident{State} effect is completely \emph{encapsulated
 The type system ensures that \ident{runscope} actually does encapsulate all effects in its scope.
 Note that we do not handle the scope of \ident{rng}, we leave the \ident{Rng} to be handled higher up by the caller of \ident{shuffle}.
 
-\begin{figure}[h]
+\begin{figure}
 \caption{List shuffling}
 \begin{minted}[tabsize=2,frame=single,linenos]{haskell}
 -- (linked) list of integer values
@@ -391,6 +395,42 @@ shuffle [s'] rng lst =
 \label{fig:listshuffle}
 \end{figure}
 
+\begin{figure}
+\caption{List shuffling}
+\begin{minted}[tabsize=2,frame=single,linenos]{haskell}
+runshuffle : List -> List
+runshuffle lst =
+	runscope(s ->
+		seedref <- ref [s] 123456789;
+		rng <- new Rng@s {
+			rand n k ->
+				currentseed <- seedref#get();
+				let newseed = (1103515245 * currentseed + 12345) % n;
+				seedref#put(newseed);
+				k newseed
+			return x -> return x
+			finally x -> return x
+		};
+		shuffle [s] rng lst)
+\end{minted}
+\label{fig:rng}
+\end{figure}
+
+In Figure~\ref{fig:rng} we define the function \ident{runshuffle} which can shuffle a list \ident{lst}.
+We use a naive implementation of random number generation using a linear congruential generator.
+Inside of a new scope \ident{s} we first create a mutable reference called \ident{seedref}, which we set to a random intial seed value.
+This reference will store the current state of the random number generator, which we call the seed.
+We then create a fresh \ident{Rng} instance called \ident{rng}.
+We implement the \ident{rand} operation by first getting the current seed value from \ident{seedref}.
+Then we calculate a new seed value using arbitrarily chosen numbers, store this in \ident{seedref} and call the continuation with it.
+The $\mathsf{return}$ and $\mathsf{finally}$ cases do not do anything special.
+Finally we call \ident{shuffle} with our \ident{Rng} instance and \ident{lst}.
+In this example we can see how we can use other effects in the handler of an instance.
+The \ident{Rng} uses an instance of \ident{State} to implement the \ident{rand} operation.
+Both of these effects exist and are handled in the same scope \ident{s}.
+From the type of \ident{runshuffle} (\ident{List -> List}) we can see that all the effects are encapsulated and that the function is pure.
+
+\iffalse
 \section{Local effects}
 When writing higher-order functions it's important that effects used in the function definition does not interfere with the function given as an argument.
 This means we want to have \emph{local effects} in those functions.
@@ -443,3 +483,4 @@ contains fn list =
 \end{minted}
 \label{fig:localeffects}
 \end{figure}
+\fi
