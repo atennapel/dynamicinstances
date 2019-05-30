@@ -167,9 +167,10 @@ X rename handle everywhere to runscope
 
 2019-05-23
 X In "intro to alg effect" put long code on it's own (not inline)
-- try to get rule name above rule instead of to the right
-	- write a good macro for this
-	- use \begin{array} with @
+X try to get rule name above rule instead of to the right
+	X write a good macro for this
+	X use \begin{array} with @
+- try to get rule references to have links
 - in Chapter 5 introduction remind where "stuff" comes from
 - scope location and instance location (not just location)
 - no store with values needed
