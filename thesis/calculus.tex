@@ -112,7 +112,7 @@ Locations $\loc$ are modeled by some countable infinite set.
 					&\;|\; \chandlen{s_{var}}{\comp}							\\
 					&\;|\; \chandlec{s_{loc}}{\comp}							\\
 					&\;|\; \chandlei{\loc}{\handler}{\comp}						\\
-	\handler \Coloneqq	&\; \hop{\op}{x}{k}{\comp}{\handler} \;|\; \hreturn{x}{\comp} 	\\
+	\handler \Coloneqq	&\; \hop{\op}{x}{k}{\comp}{\handler} \;|\; \hreturn{x}{\comp}
 \end{align*}
 \label{fig:syntax-calc}
 \end{minipage}
@@ -165,7 +165,7 @@ Return cases are of the form $\hreturn{x}{\comp}$.
 \begin{align*}
 	\Gamma \Coloneqq 	& \cdot \;|\; \Gamma, x : \ty \\
 	\Delta \Coloneqq 	& \cdot \;|\; \Delta, s_{var} \\
-	\Sigma \Coloneqq  	& \cdot \;|\; \Sigma, s_{loc} \;|\; \Sigma, l := (s_{loc}, \eff) \\
+	\Sigma \Coloneqq  	& \cdot \;|\; \Sigma, s_{loc} \;|\; \Sigma, l := (s_{loc}, \eff)
 \end{align*}
 \label{fig:contexts}
 \end{minipage}
@@ -213,43 +213,37 @@ Lastly there are three typing judgments:
 
 \section{Subtyping}
 \label{sec:subtyping}
-
 \begin{figure}[h]
 \caption{Subtyping}
 \centering
 \fbox{
-\begin{minipage}{14 cm}
-\[
-\inferrule{
+\begin{minipage}{12 cm}
+\begin{mathpar}
+\inferH{Sub-Inst}{
 }{
 	\subty{ \tinst{s}{\eff} }{ \tinst{s}{\eff} } 
-}\quad(\footnotesize\textsc{Sub-Inst})
-\hspace{3em}
-\mprset{vskip=0 ex}
-\inferrule{
+}
+\and
+\inferH{Sub-Arr}{
 	\subty{\ty_2}{\ty_1} \\
 	\subty{\cty_1}{\cty_2} \\
 }{
 	\subty{ \tarr{\ty_1}{\cty_1} }{ \tarr{\ty_2}{\cty_2} }
-}\quad(\footnotesize\textsc{Sub-Arr})
-\hspace{3em}
-\mprset{vskip=0 ex}
-\]
-\[
-\inferrule{
+}
+\and
+\inferH{Sub-Forall}{
 	\subty{ \cty_1 }{ \cty_2 }
 }{
 	\subty{ \tforall{s_{var}}{\cty_1} }{ \tforall{s_{var}}{\cty_2} }
-}\quad(\footnotesize\textsc{Sub-Forall})
-\hspace{3em}
-\mprset{vskip=0 ex}
-\inferrule{
+}
+\and
+\inferH{Sub-Annot}{
 	\subty{ \ty_1 }{ \ty_2 } \\
 	r_1 \subseteq r_2
 }{
 	\subty{ \aty{\ty_1}{r_1} }{ \aty{\ty_2}{r_2} }
-}\quad(\footnotesize\textsc{Sub-Annot})
-\]
+}
+\end{mathpar}
 \label{fig:subtyping-calc}
 \end{minipage}
 }
@@ -269,52 +263,46 @@ Lastly annotated types $\aty{\ty}{r}$ are compared by comparing the value types 
 \caption{Well-formedness}
 \centering
 \fbox{
-\begin{minipage}{15 cm}
-$$
-\inferrule{
+\begin{minipage}{12 cm}
+\begin{mathpar}
+\inferH{WF-SVar}{
 	s_{var} \in \Delta
 }{
 	\Delta;\Sigma \vdash s_{var}
-}\quad(\footnotesize\textsc{WF-SVar})
-\hspace{3em}
-\mprset{vskip=0 ex}
-\inferrule{
+}
+\and
+\inferH{WF-SLoc}{
 	s_{loc} \in \Sigma
 }{
 	\Delta;\Sigma \vdash s_{loc}
-}\quad(\footnotesize\textsc{WF-SLoc})
-$$
-$$\inferrule{
+}
+\and
+\inferH{WF-Inst}{
 	\Delta;\Sigma \vdash s \\
 }{
 	\Delta;\Sigma \vdash \tinst{s}{\eff}
-}\quad(\footnotesize\textsc{WF-Inst})
-\hspace{3em}
-\mprset{vskip=0 ex}
-\inferrule{
+}
+\and
+\inferH{WF-Arr}{
 	\Delta;\Sigma \vdash \ty \\
 	\Delta;\Sigma \vdash \cty \\
 }{
 	\Delta;\Sigma \vdash \tarr{\ty}{\cty}
-}\quad(\footnotesize\textsc{WF-Arr})
-\hspace{3em}
-\mprset{vskip=0 ex}
-$$
-$$
-\inferrule{
+}
+\and
+\inferH{WF-Forall}{
 	\Delta,s_{var};\Sigma \vdash \cty 
 }{
 	\Delta;\Sigma \vdash \tforall{s_{var}}{\cty}
-}\quad(\footnotesize\textsc{WF-Forall})
-\hspace{3em}
-\mprset{vskip=0 ex}
-\inferrule{
+}
+\and
+\inferH{WF-Annot}{
 	\Delta;\Sigma \vdash \ty \\
 	\forall (s \in r) \Rightarrow \Delta;\Sigma \vdash s \\
 }{
 	\Delta;\Sigma \vdash \aty{\ty}{r}
-}\quad(\footnotesize\textsc{WF-Annot})
-$$
+}
+\end{mathpar}
 \label{fig:wf-calc}
 \end{minipage}
 }
@@ -336,43 +324,40 @@ Then we check that each effect scope in the annotation $r$ is valid.
 \caption{Value typing rules}
 \centering
 \fbox{
-\begin{minipage}{14 cm}
-$$\inferrule{
+\begin{minipage}{12 cm}
+\begin{mathpar}
+\inferH{T-Var}{
 	\Gamma[x] = \ty
 }{
 	\Delta;\Sigma;\Gamma \vdash x : \ty
-}\quad(\footnotesize\textsc{T-Var})
-\hspace{3em}
-\mprset{vskip=0 ex}
-\inferrule{
+}
+\and
+\inferH{T-Inst}{
 	\Sigma(\loc) = (s_{loc}, \eff)
 }{
 	\Delta;\Sigma;\Gamma \vdash \vinst{\loc} : \tinst{s_{loc}}{\eff}
-}\quad(\footnotesize\textsc{T-Inst})
-$$
-$$
-\inferrule{
+}
+\and
+\inferH{T-Abs}{
 	\Delta;\Sigma;\Gamma, x : \ty \vdash \comp : \cty
 }{
 	\Delta;\Sigma;\Gamma \vdash \vabs{x}{\comp} : \tarr{\ty}{\cty}
-}\quad(\footnotesize\textsc{T-Abs})
-\hspace{3em}
-\mprset{vskip=0 ex}
-\inferrule{
+}
+\and
+\inferH{T-TAbs}{
 	\Delta,s_{var};\Sigma;\Gamma \vdash \comp : \cty
 }{
 	\Delta;\Sigma;\Gamma \vdash \vabst{s_{var}}{\comp} : \tforall{s_{var}}{\cty}
-}\quad(\footnotesize\textsc{T-TAbs})
-$$
-$$
-\inferrule{
+}
+\and
+\inferH{T-SubVal}{
 	\Delta;\Sigma;\Gamma \vdash \val : \ty_1 \\
 	\Delta;\Sigma \vdash \ty_2 \\
 	\subty{\ty_1}{\ty_2}
 }{
 	\Delta;\Sigma;\Gamma \vdash \val : \ty_2
-}\quad(\footnotesize\textsc{T-SubVal})
-$$
+}
+\end{mathpar}
 \label{fig:val-typing-calc}
 \end{minipage}
 }
@@ -382,105 +367,7 @@ The typing rules for the values are given in Figure~\ref{fig:val-typing-calc}.
 The rules \textsc{T-Var}, \textsc{T-Abs} and \textsc{T-SubVal} are practically unchanged from the corresponding rules in the algebraic effects type system from Chapter~4.2.
 Instances $\vinst{l}$ are assigned instance types, with the scope location and effect looked up in the dynamic environment $\Sigma$ using the location $l$ (\textsc{T-Inst}).
 Similar to abstractions, effect scope abstractions are assigned a universally quantified type $\tforall{s_{var}}{\cty}$, by typing the body with $\cty$ after adding $s_{var}$ to the scope environment $\Delta$ (\textsc{T-TAbs}).
-
-\begin{figure}[H]
-\caption{Computation typing rules}
-\centering
-\fbox{
-\begin{minipage}{12.2 cm}
-$$\inferrule{
-	\Delta;\Sigma;\Gamma \vdash \val : \ty
-}{
-	\Delta;\Sigma;\Gamma \vdash \creturn{\val} : \aty{\ty}{\varnothing}
-}\quad(\footnotesize\textsc{T-Return})
-$$
-$$
-\inferrule{
-	\Delta;\Sigma;\Gamma \vdash \val_1 : \tarr{\ty}{\cty} \\
-	\Delta;\Sigma;\Gamma \vdash \val_2 : \ty \\
-}{
-	\Delta;\Sigma;\Gamma \vdash \capp{\val_1}{\val_2} : \cty
-}\quad(\footnotesize\textsc{T-App})
-$$
-$$
-\inferrule{
-	\Delta;\Sigma \vdash s \\
-	\Delta;\Sigma;\Gamma \vdash \val : \tforall{s'_{var}}{\cty}
-}{
-	\Delta;\Sigma;\Gamma \vdash \cappt{\val}{s} : \cty[s'_{var} := s]
-}\quad(\footnotesize\textsc{T-TApp})
-$$
-$$
-\inferrule{
-	\Delta;\Sigma;\Gamma \vdash \comp_1 : \aty{\ty_1}{r} \\
-	\Delta;\Sigma;\Gamma,x:\ty_1 \vdash \comp_2 : \aty{\ty_2}{r} \\
-}{
-	\Delta;\Sigma;\Gamma \vdash (\cdo{x}{\comp_1}{\comp_2}) : \aty{\ty_2}{r}
-}\quad(\footnotesize\textsc{T-Seq})
-$$
-$$
-\inferrule{
-	\Delta;\Sigma;\Gamma \vdash \val_1 : \tinst{s}{\eff} \\
-	\op \in \Op{\eff} \\
-	\Delta;\Sigma;\Gamma \vdash \val_2 : \pty{\op} \\
-}{
-	\Delta;\Sigma;\Gamma \vdash \cop{\val_1}{\op}{\val_2} : \aty{\rty{\op}}{\{s\}}
-}\quad(\footnotesize\textsc{T-Op})
-$$
-$$
-\inferrule{
-	\Delta;\Sigma \vdash s \\
-	\op \in \Op{\eff} \iff \op \in \handler \\
-	\Delta;\Sigma;\Gamma,x:\tinst{s}{\eff} \vdash \comp : \aty{\ty_1}{r} \\
-	\Delta;\Sigma;\Gamma \vdash^{\ty_1} \handler : \aty{\ty_2}{r} \\
-	s \in r \\
-	\Delta;\Sigma;\Gamma,y : \ty_2 \vdash \comp' : \aty{\ty_3}{r} \\
-}{
-	\Delta;\Sigma;\Gamma \vdash \cnew{\eff}{s}{\handler; \hfinally{y}{\comp'}}{x}{\comp} : \aty{\ty_3}{r}
-}\quad(\footnotesize\textsc{T-New})
-$$
-$$
-\inferrule{
-	\Delta,s_{var};\Sigma;\Gamma \vdash \comp : \aty{\ty}{r} \\
-	s_{var} \notin \ty
-}{
-	\Delta;\Sigma;\Gamma \vdash \chandlen{s_{var}}{\comp} : \aty{\ty}{(r \setminus \{ s_{var} \})}
-}\quad(\footnotesize\textsc{T-Handle})
-$$
-$$
-\inferrule{
-	s_{loc} \in \Sigma \\
-	\Delta;\Sigma;\Gamma \vdash \comp : \aty{\ty}{r} \\
-	s_{loc} \notin \ty
-}{
-	\Delta;\Sigma;\Gamma \vdash \chandlec{s_{loc}}{\comp} : \aty{\ty}{(r \setminus \{ s_{loc} \})}
-}\quad(\footnotesize\textsc{T-HandleScope})
-$$
-$$
-\inferrule{
-	\Sigma(\loc) = (s_{loc}, \eff) \\
-	\op \in \Op{\eff} \iff \op \in \handler \\
-	\Delta;\Sigma;\Gamma \vdash \comp : \aty{\ty_1}{r} \\
-	\Delta;\Sigma;\Gamma \vdash^{\ty_1} \handler : \aty{\ty_2}{r} \\
-	% s_{loc} \in r
-}{
-	\Delta;\Sigma;\Gamma \vdash \chandlei{\loc}{\handler}{\comp} : \aty{\ty_2}{r}
-}\quad(\footnotesize\textsc{T-HandleInst})
-$$
-$$
-\inferrule{
-	\Delta;\Sigma;\Gamma \vdash \comp : \cty_1 \\
-	\Delta;\Sigma \vdash \cty_2 \\
-	\subty{\cty_1}{\cty_2}
-}{
-	\Delta;\Sigma;\Gamma \vdash \comp : \cty_2
-}\quad(\footnotesize\textsc{T-SubComp})
-$$
-\label{fig:comp-typing-calc}
-\end{minipage}
-}
-\end{figure}
-
+\\\\
 The typing rule for the computations are given in Figure~\ref{fig:comp-typing-calc}.
 The rules \textsc{T-Return}, \textsc{T-App}, \textsc{T-Seq} and \textsc{T-SubComp} are practically unchanged from the corresponding rules in the algebraic effects type system from Chapter~4.2.
 \\\\
@@ -492,7 +379,97 @@ For operation calls (\textsc{T-Op}) $\cop{\val_1}{op}{\val_2}$ we first check th
 We then check that the operation $op$ is an operation of the effect of the instance $\eff$ ($op \in \Op{\eff}$).
 Lastly we check that the given value $\val_2$ matches the parameter type of the operation $op$ ($\pty{op}$).
 The type given to the operation call is the return type of the operation $\rty{op}$ with the scope of the instance, $s$, in the annotation.
-\\\\
+
+\begin{figure}[H]
+\caption{Computation typing rules}
+\centering
+\fbox{
+\begin{minipage}{13 cm}
+\begin{mathpar}
+\inferH{T-Return}{
+	\Delta;\Sigma;\Gamma \vdash \val : \ty
+}{
+	\Delta;\Sigma;\Gamma \vdash \creturn{\val} : \aty{\ty}{\varnothing}
+}
+\and
+\inferH{T-App}{
+	\Delta;\Sigma;\Gamma \vdash \val_1 : \tarr{\ty}{\cty} \\
+	\Delta;\Sigma;\Gamma \vdash \val_2 : \ty \\
+}{
+	\Delta;\Sigma;\Gamma \vdash \capp{\val_1}{\val_2} : \cty
+}
+\and
+\inferH{T-TApp}{
+	\Delta;\Sigma \vdash s \\
+	\Delta;\Sigma;\Gamma \vdash \val : \tforall{s'_{var}}{\cty}
+}{
+	\Delta;\Sigma;\Gamma \vdash \cappt{\val}{s} : \cty[s'_{var} := s]
+}
+\and
+\inferH{T-Seq}{
+	\Delta;\Sigma;\Gamma \vdash \comp_1 : \aty{\ty_1}{r} \\
+	\Delta;\Sigma;\Gamma,x:\ty_1 \vdash \comp_2 : \aty{\ty_2}{r} \\
+}{
+	\Delta;\Sigma;\Gamma \vdash (\cdo{x}{\comp_1}{\comp_2}) : \aty{\ty_2}{r}
+}
+\and
+\inferH{T-Op}{
+	\Delta;\Sigma;\Gamma \vdash \val_1 : \tinst{s}{\eff} \\
+	\op \in \Op{\eff} \\
+	\Delta;\Sigma;\Gamma \vdash \val_2 : \pty{\op} \\
+}{
+	\Delta;\Sigma;\Gamma \vdash \cop{\val_1}{\op}{\val_2} : \aty{\rty{\op}}{\{s\}}
+}
+\and
+\inferH{T-New}{
+	\Delta;\Sigma \vdash s \\
+	\op \in \Op{\eff} \iff \op \in \handler \\
+	\Delta;\Sigma;\Gamma,x:\tinst{s}{\eff} \vdash \comp : \aty{\ty_1}{r} \\
+	\Delta;\Sigma;\Gamma \vdash^{\ty_1} \handler : \aty{\ty_2}{r} \\
+	s \in r \\
+	\Delta;\Sigma;\Gamma,y : \ty_2 \vdash \comp' : \aty{\ty_3}{r} \\
+}{
+	\Delta;\Sigma;\Gamma \vdash \cnew{\eff}{s}{\handler; \hfinally{y}{\comp'}}{x}{\comp} : \aty{\ty_3}{r}
+}
+\and
+\inferH{T-Handle}{
+	\Delta,s_{var};\Sigma;\Gamma \vdash \comp : \aty{\ty}{r} \\
+	s_{var} \notin \ty
+}{
+	\Delta;\Sigma;\Gamma \vdash \chandlen{s_{var}}{\comp} : \aty{\ty}{(r \setminus \{ s_{var} \})}
+}
+\and
+\inferH{T-HandleScope}{
+	s_{loc} \in \Sigma \\
+	\Delta;\Sigma;\Gamma \vdash \comp : \aty{\ty}{r} \\
+	s_{loc} \notin \ty
+}{
+	\Delta;\Sigma;\Gamma \vdash \chandlec{s_{loc}}{\comp} : \aty{\ty}{(r \setminus \{ s_{loc} \})}
+}
+\and
+\inferH{T-HandleInst}{
+	\Sigma(\loc) = (s_{loc}, \eff) \\
+	\op \in \Op{\eff} \iff \op \in \handler \\
+	\Delta;\Sigma;\Gamma \vdash \comp : \aty{\ty_1}{r} \\
+	\Delta;\Sigma;\Gamma \vdash^{\ty_1} \handler : \aty{\ty_2}{r} \\
+	% s_{loc} \in r
+}{
+	\Delta;\Sigma;\Gamma \vdash \chandlei{\loc}{\handler}{\comp} : \aty{\ty_2}{r}
+}
+\and
+\inferH{T-SubComp}{
+	\Delta;\Sigma;\Gamma \vdash \comp : \cty_1 \\
+	\Delta;\Sigma \vdash \cty_2 \\
+	\subty{\cty_1}{\cty_2}
+}{
+	\Delta;\Sigma;\Gamma \vdash \comp : \cty_2
+}
+\end{mathpar}
+\label{fig:comp-typing-calc}
+\end{minipage}
+}
+\end{figure}
+
 The rule \textsc{T-New} types the creation of new instance: $\cnew{\eff}{s}{\handler; \hfinally{y}{\comp'}}{x}{\comp}$.
 We are creating a new instance $x$ of effect $\eff$ in the effect scope $s$.
 First we check that the given effect scope $s$ is valid.
@@ -531,22 +508,21 @@ We then typecheck the computation $\comp$ and the handler $h$ like in \textsc{T-
 \caption{Handler typing rules}
 \centering
 \fbox{
-\begin{minipage}{16 cm}
-$$
-\inferrule{
+\begin{minipage}{13 cm}
+\begin{mathpar}
+\inferH{T-HandlerOp}{
 	\Delta;\Sigma;\Gamma \vdash^{\ty_1} \handler : \aty{\ty_2}{r} \\
 	\Delta;\Sigma;\Gamma,x:\pty{\op},k:\tarr{\rty{\op}}{\aty{\ty_2}{r}} \vdash \comp : \aty{\ty_2}{r} \\
 }{
 	\Delta;\Sigma;\Gamma \vdash^{\ty_1} (\hop{\op}{x}{k}{\comp}{\handler}) : \aty{\ty_2}{r}
-}\quad(\footnotesize\textsc{T-HandlerOp})
-$$
-$$
-\inferrule{
+}
+\and
+\inferH{T-HandlerReturn}{
 	\Delta;\Sigma;\Gamma,x : \ty_1 \vdash \comp : \aty{\ty_2}{r} \\
 }{
 	\Delta;\Sigma;\Gamma \vdash^{\ty_1} (\hreturn{x}{\comp}) : \aty{\ty_2}{r}
-}\quad(\footnotesize\textsc{T-HandlerReturn})
-$$
+}
+\end{mathpar}
 \label{fig:handler-typing-calc}
 \end{minipage}
 }
@@ -580,53 +556,47 @@ $\Sigma_1$ might be updated with new effect scope locations or instance location
 \caption{Semantics}
 \centering
 \fbox{
-\begin{minipage}{15 cm}
-$$
-\inferrule{
+\begin{minipage}{13 cm}
+\begin{mathpar}
+\inferH{S-App}{
 }{
 	\capp{(\vabs{x}{\comp})}{\val} \;|\; \Sigma \rightsquigarrow \comp[x := \val] \;|\; \Sigma
-}\quad(\footnotesize\textsc{S-App})
-$$
-$$
-\inferrule{
+}
+\and
+\inferH{S-TApp}{
 }{
 	\cappt{(\vabst{s_{var}}{\comp})}{s'} \;|\; \Sigma \rightsquigarrow \comp[s_{var} := s'] \;|\; \Sigma
-}\quad(\footnotesize\textsc{S-TApp})
-$$
-$$
-\inferrule{
+}
+\and
+\inferH{S-Seq}{
 	\comp_1 ; \Sigma \rightsquigarrow \comp'_1 ; \Sigma'
 }{
 	(\cdo{x}{\comp_1}{\comp_2}) \;|\; \Sigma \rightsquigarrow (\cdo{x}{\comp'_1}{\comp_2}) \;|\; \Sigma'
-}\quad(\footnotesize\textsc{S-Seq})
-$$
-$$
-\inferrule{
+}
+\and
+\inferH{S-SeqReturn}{
 }{
 	(\cdo{x}{(\creturn{\val})}{\comp}) \;|\; \Sigma \rightsquigarrow \comp[x := \val] \;|\; \Sigma
-}\quad(\footnotesize\textsc{S-SeqReturn})
-$$
-$$
-\inferrule{
+}
+\and
+\inferH{S-Flatten}{
 }{
 	(\cdo{y}{(\cdo{x}{\comp_1}{\comp_2})}{\comp_3} \;|\; \Sigma \rightsquigarrow
 	(\cdo{x}{\comp_1}{\cdo{y}{\comp_2}{\comp_3}}) \;|\; \Sigma
-}\quad(\footnotesize\textsc{S-Flatten})
-$$
-$$
-\inferrule{
+}
+\and
+\inferH{S-LiftNew}{
 }{
 	(\cdo{x}{(\cnew{\eff}{s}{\handler ; \hfinally{z}{\comp_3}}{y}{\comp_1})}{\comp_2}) \;|\; \Sigma \rightsquigarrow \\
 	 \cnew{\eff}{s}{\handler ; \hfinally{z}{\comp_3}}{y}{(\cdo{x}{\comp_1}{\comp_2})} \;|\; \Sigma
-}\quad(\footnotesize\textsc{S-LiftNew})
-$$
-$$
-\inferrule{
+}
+\and
+\inferH{S-FreshScope}{
 	s_{loc} \notin \Sigma
 }{
 	\chandlen{s_{var}}{\comp} \;|\; \Sigma \rightsquigarrow \chandlec{s_{loc}}{\comp[s_{var} := s_{loc}]} \;|\; \Sigma,s_{loc}
-}\quad(\footnotesize\textsc{S-FreshScope})
-$$
+}
+\end{mathpar}
 \label{fig:semantics1-calc}
 \end{minipage}
 }
@@ -642,61 +612,7 @@ The rule \textsc{S-FreshScope} creates a fresh scope location with which to hand
 A fresh scope location $s_{loc}$ is created and added to the environment $\Sigma$.
 This new scope location is substituted in the body $\comp$.
 We wrap the computation with an effect scope handler for new scope location $s_{loc}$.
-
-\begin{figure}[h]
-\caption{Semantics of effect scope handlers}
-\centering
-\fbox{
-\begin{minipage}{17 cm}
-$$
-\inferrule{
-	\comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma'
-}{
-	\chandlec{s_{loc}}{\comp} \;|\; \Sigma \rightsquigarrow \chandlec{s_{loc}}{\comp'} \;|\; \Sigma'
-}\quad(\footnotesize\textsc{S-HandleScopeCong})
-$$
-$$
-\inferrule{
-}{
-	\chandlec{s_{loc}}{\creturn{\val}} \;|\; \Sigma \rightsquigarrow
-	\creturn{\val} \;|\; \Sigma
-}\quad(\footnotesize\textsc{S-HandleScopeReturn})
-$$
-$$
-\inferrule{
-}{
-	\chandlec{s_{loc}}{\cop{\val_1}{\op}{\val_2}} \;|\; \Sigma \rightsquigarrow
-	\cop{\val_1}{\op}{\val_2} \;|\; \Sigma
-}\quad(\footnotesize\textsc{S-HandleScopeOp})
-$$
-$$
-\inferrule{
-}{
-	\chandlec{s_{loc}}{\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\comp}} \;|\; \Sigma \rightsquigarrow
-	(\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\chandlec{s_{loc}}{\comp}}) \;|\; \Sigma
-}\quad(\footnotesize\textsc{S-HandleScopeSeqOp})
-$$
-$$
-\inferrule{
-	s_{loc} \neq s'_{loc}
-}{
-	\chandlec{s_{loc}}{\cnew{\eff}{s'_{loc}}{\handler ; \hfinally{y}{\comp'}}{x}{\comp}} \;|\; \Sigma \rightsquigarrow \\
-	\cnew{\eff}{s'_{loc}}{\handler ; \hfinally{y}{\comp'}}{x}{\chandlec{s_{loc}}{\comp}} \;|\; \Sigma
-}\quad(\footnotesize\textsc{S-HandleScopeNewSkip})
-$$
-$$
-\inferrule{
-	\loc \notin \mathsf{Dom}(\Sigma)
-}{
-	\chandlec{s_{loc}}{\cnew{\eff}{s_{loc}}{\handler; \hfinally{y}{\comp'}}{x}{\comp}} \;|\; \Sigma \rightsquigarrow \\
-	\chandlec{s_{loc}}{\cdo{y}{\chandlei{\loc}{\handler}{\comp[x := \vinst{\loc}]}}{\comp'}} \;|\; \Sigma,\loc := (s_{loc}, \eff)
-}\quad(\footnotesize\textsc{S-HandleScopeNew})
-$$
-\label{fig:semantics2-calc}
-\end{minipage}
-}
-\end{figure}
-
+\\\\
 In Figure~\ref{fig:semantics2-calc} we give the semantics for the effect scope handlers.
 An effect scope handler for a specific effect scope location will create fresh instances when a $\mathsf{new}$ construct is encountered (\textsc{S-HandleScopeNew}).
 An instance handler with the handler of the $\mathsf{new}$ construct is wrapped around the computation and the $\mathsf{finally}$ case is wrapped around that.
@@ -705,61 +621,7 @@ If a $\mathsf{new}$ is encountered with a different effect scope we skip it and 
 Using the rule \textsc{S-HandleScopeCong} to reduce a computation inside a scope handler.
 We can remove a scope handler if we encounter either a return or operation call (\textsc{S-HandleScopeReturn} and \textsc{S-HandleScopeOp}).
 Effect scope handlers can be pushed inside sequencing, lifting an operation call over it (\textsc{S-HandleScopeSeqOp}).
-
-\begin{figure}[h]
-\caption{Semantics of instance handlers}
-\centering
-\fbox{
-\begin{minipage}{13 cm}
-$$
-\inferrule{
-	\comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma'
-}{
-	\chandlei{\loc}{\handler}{\comp} \;|\; \Sigma \rightsquigarrow \chandlei{\loc}{\handler}{\comp'} \;|\; \Sigma'
-}\quad(\footnotesize\textsc{S-HandleInstCong})
-$$
-$$
-\inferrule{
-}{
-	\chandlei{\loc}{\handler}{\cnew{\eff}{s}{\handler' ; \hfinally{y}{\comp'}}{x}{\comp}} \;|\; \Sigma \rightsquigarrow \\
-	\cnew{\eff}{s}{\handler' ; \hfinally{y}{\comp'}}{x}{\chandlei{\loc}{\handler}{\comp}} \;|\; \Sigma
-}\quad(\footnotesize\textsc{S-HandleInstNew})
-$$
-$$
-\inferrule{
-}{
-	\chandlei{\loc}{\handler}{\cop{\val_1}{\op}{\val_2}} \;|\; \Sigma \rightsquigarrow\\
-	\chandlei{\loc}{\handler}{\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\creturn{x}}} \;|\; \Sigma
-}\quad(\footnotesize\textsc{S-HandleInstOpPrepare})
-$$
-$$
-\inferrule{
-	\loc \neq \loc'
-}{
-	\chandlei{\loc}{\handler}{\cdo{x}{\cop{\vinst{\loc'}}{\op}{\val}}{\comp}} \;|\; \Sigma \rightsquigarrow\\
-	(\cdo{x}{\cop{\vinst{\loc'}}{\op}{\val}}{\chandlei{\loc}{\handler}{{\comp}}}) \;|\; \Sigma
-}\quad(\footnotesize\textsc{S-HandleInstOpSkip})
-$$
-$$
-\inferrule{
-	\handler[\op] = (x, k, \comp_{\op})
-}{
-	\chandlei{\loc}{\handler}{\cdo{y}{\cop{\vinst{\loc}}{\op}{\val}}{\comp}} \;|\; \Sigma \rightsquigarrow\\
-	\comp_{\op}[x := \val, k := (\vabs{y}{\chandlei{\loc}{\handler}{\comp}})] \;|\; \Sigma
-}\quad(\footnotesize\textsc{S-HandleInstOp})
-$$
-$$
-\inferrule{
-}{
-	\chandlei{\loc}{\handler; \hreturn{x_r}{\comp_r}}{\creturn{\val}} \;|\; \Sigma \rightsquigarrow
-	\comp_r[x_r := \val] \;|\; \Sigma
-}\quad(\footnotesize\textsc{S-HandleInstReturn})
-$$
-\label{fig:semantics3-calc}
-\end{minipage}
-}
-\end{figure}
-
+\\\\
 Lastly in Figure~\ref{fig:semantics3-calc} we give the semantics for the instance handlers.
 Instance handlers handle operation calls on instances with the same location as the handler.
 To be able to handle operation calls with one rule we first have to transform operation calls that are not being sequenced to the sequencing form (\textsc{S-HandleInstOpPrepare}).
@@ -769,6 +631,104 @@ If a $\mathsf{return}$ is encountered the computation $c_r$ in the $\mathsf{retu
 Operation calls on instances with a different location $l'$ are skipped, nesting the instance handler inside (\textsc{S-HandleInstOpSkip}).
 Similarly $\mathsf{new}$ calls are also skipped, again nesting the instance handler inside (\textsc{S-HandleInstNew}).
 Lastly, computations inside instance handlers can be reduced further (\textsc{S-HandleInstCong}).
+
+\begin{figure}[H]
+\caption{Semantics of effect scope handlers}
+\centering
+\fbox{
+\begin{minipage}{12 cm}
+\begin{mathpar}
+\inferH{S-HandleScopeCong}{
+	\comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma'
+}{
+	\chandlec{s_{loc}}{\comp} \;|\; \Sigma \rightsquigarrow \chandlec{s_{loc}}{\comp'} \;|\; \Sigma'
+}
+\and
+\inferH{S-HandleScopeReturn}{
+}{
+	\chandlec{s_{loc}}{\creturn{\val}} \;|\; \Sigma \rightsquigarrow
+	\creturn{\val} \;|\; \Sigma
+}
+\and
+\inferH{S-HandleScopeOp}{
+}{
+	\chandlec{s_{loc}}{\cop{\val_1}{\op}{\val_2}} \;|\; \Sigma \rightsquigarrow
+	\cop{\val_1}{\op}{\val_2} \;|\; \Sigma
+}
+\and
+\inferH{S-HandleScopeSeqOp}{
+}{
+	\chandlec{s_{loc}}{\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\comp}} \;|\; \Sigma \rightsquigarrow \\
+	(\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\chandlec{s_{loc}}{\comp}}) \;|\; \Sigma
+}
+\and
+\inferH{S-HandleScopeNewSkip}{
+	s_{loc} \neq s'_{loc}
+}{
+	\chandlec{s_{loc}}{\cnew{\eff}{s'_{loc}}{\handler ; \hfinally{y}{\comp'}}{x}{\comp}} \;|\; \Sigma \rightsquigarrow \\
+	\cnew{\eff}{s'_{loc}}{\handler ; \hfinally{y}{\comp'}}{x}{\chandlec{s_{loc}}{\comp}} \;|\; \Sigma
+}
+\and
+\inferH{S-HandleScopeNew}{
+	\loc \notin \mathsf{Dom}(\Sigma)
+}{
+	\chandlec{s_{loc}}{\cnew{\eff}{s_{loc}}{\handler; \hfinally{y}{\comp'}}{x}{\comp}} \;|\; \Sigma \rightsquigarrow \\
+	\chandlec{s_{loc}}{\cdo{y}{\chandlei{\loc}{\handler}{\comp[x := \vinst{\loc}]}}{\comp'}} \;|\; \Sigma,\loc := (s_{loc}, \eff)
+}
+\end{mathpar}
+\label{fig:semantics2-calc}
+\end{minipage}
+}
+\end{figure}
+
+\begin{figure}[H]
+\caption{Semantics of instance handlers}
+\centering
+\fbox{
+\begin{minipage}{12 cm}
+\begin{mathpar}
+\inferH{S-HandleInstCong}{
+	\comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma'
+}{
+	\chandlei{\loc}{\handler}{\comp} \;|\; \Sigma \rightsquigarrow \chandlei{\loc}{\handler}{\comp'} \;|\; \Sigma'
+}
+\and
+\inferH{S-HandleInstNew}{
+}{
+	\chandlei{\loc}{\handler}{\cnew{\eff}{s}{\handler' ; \hfinally{y}{\comp'}}{x}{\comp}} \;|\; \Sigma \rightsquigarrow \\
+	\cnew{\eff}{s}{\handler' ; \hfinally{y}{\comp'}}{x}{\chandlei{\loc}{\handler}{\comp}} \;|\; \Sigma
+}
+\and
+\inferH{S-HandleInstOpPrepare}{
+}{
+	\chandlei{\loc}{\handler}{\cop{\val_1}{\op}{\val_2}} \;|\; \Sigma \rightsquigarrow\\
+	\chandlei{\loc}{\handler}{\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\creturn{x}}} \;|\; \Sigma
+}
+\and
+\inferH{S-HandleInstOpSkip}{
+	\loc \neq \loc'
+}{
+	\chandlei{\loc}{\handler}{\cdo{x}{\cop{\vinst{\loc'}}{\op}{\val}}{\comp}} \;|\; \Sigma \rightsquigarrow\\
+	(\cdo{x}{\cop{\vinst{\loc'}}{\op}{\val}}{\chandlei{\loc}{\handler}{{\comp}}}) \;|\; \Sigma
+}
+\and
+\inferH{S-HandleInstOp}{
+	\handler[\op] = (x, k, \comp_{\op})
+}{
+	\chandlei{\loc}{\handler}{\cdo{y}{\cop{\vinst{\loc}}{\op}{\val}}{\comp}} \;|\; \Sigma \rightsquigarrow\\
+	\comp_{\op}[x := \val, k := (\vabs{y}{\chandlei{\loc}{\handler}{\comp}})] \;|\; \Sigma
+}
+\and
+\inferH{S-HandleInstReturn}{
+}{
+	\chandlei{\loc}{\handler; \hreturn{x_r}{\comp_r}}{\creturn{\val}} \;|\; \Sigma \rightsquigarrow
+	\comp_r[x_r := \val] \;|\; \Sigma
+}
+\end{mathpar}
+\label{fig:semantics3-calc}
+\end{minipage}
+}
+\end{figure}
 
 TODO: add example derivation
 

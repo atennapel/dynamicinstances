@@ -63,7 +63,7 @@ Another way to look at FG-STLC is to see it as a syntax for the lambda calculus 
 \begin{minipage}{6 cm}
 \begin{align*}
 & \val \Coloneqq x, y, z, k \;|\; \vabs{x}{\comp} \;|\; \vunit \\
-& \comp \Coloneqq \creturn{\val} \;|\; \capp{\val}{\val} \;|\; \cdo{x}{\comp}{\comp} \\
+& \comp \Coloneqq \creturn{\val} \;|\; \capp{\val}{\val} \;|\; \cdo{x}{\comp}{\comp}
 \end{align*}
 \label{fig:syntax-stlc}
 \end{minipage}
@@ -87,22 +87,24 @@ Using the unit value we can also delay computations by wrapping them in an abstr
 \caption{Semantics of the fine-grained lambda calculus}
 \centering
 \fbox{
-\begin{minipage}{11 cm}
-\[\inferrule{
+\begin{minipage}{12 cm}
+\begin{mathpar}
+\inferH{S-App}{
 }{
 	\capp{(\vabs{x}{\comp})}{\val} \rightsquigarrow \comp[x := \val]
-}\quad(\footnotesize\textsc{S-App})\]
-
-\[\inferrule{
+}
+\and
+\inferH{S-SeqReturn}{
 }{
 	(\cdo{x}{\creturn{\val}}{\comp}) \rightsquigarrow \comp[x := \val]
-}\quad(\footnotesize\textsc{S-SeqReturn})\]
-
-\[\inferrule{
+}
+\and
+\inferH{S-Seq}{
 	\comp_1 \rightsquigarrow \comp_1'
 }{
 	(\cdo{x}{\comp_1}{\comp_2}) \rightsquigarrow (\cdo{x}{\comp_1'}{\comp_2})
-}\quad(\footnotesize\textsc{S-Seq})\]
+}
+\end{mathpar}
 \label{fig:semantics-stlc}
 \end{minipage}
 }
@@ -128,7 +130,7 @@ Meaning that $\comp$ in $\comp \rightsquigarrow^* \comp$ can reach $\comp'$ in z
 \begin{minipage}{4 cm}
 \begin{align*}
 & \ty \Coloneqq \tunit \;|\; \tarr{\ty}{\cty} \\
-& \cty \Coloneqq \ty \\
+& \cty \Coloneqq \ty
 \end{align*}
 \label{fig:types-stlc}
 \end{minipage}
@@ -147,43 +149,45 @@ For the simply-typed lambda calculus a computation type is simply a value type, 
 \caption{Typing rules of the fine-grained simply-typed lambda calculus}
 \centering
 \fbox{
-\begin{minipage}{10 cm}
-\[\inferrule{
+\begin{minipage}{12 cm}
+\begin{mathpar}
+\inferH{T-Var}{
 	\Gamma[x] = \ty
 }{
 	\Gamma \vdash x : \ty
-}\quad(\footnotesize\textsc{T-Var})\]
-
-\[\inferrule{
+}
+\and
+\inferH{T-Unit}{
 }{
 	\Gamma \vdash \vunit : \tunit
-}\quad(\footnotesize\textsc{T-Unit})\]
-
-\[\inferrule{
+}
+\and
+\inferH{T-Abs}{
 	\Gamma, x : \ty_1 \vdash \comp : \cty_2
 }{
 	\Gamma \vdash \vabs{x}{\comp} : \tarr{\ty_1}{\cty_2}
-}\quad(\footnotesize\textsc{T-Abs})\]
-
-\[\inferrule{
+}
+\and
+\inferH{T-Return}{
 	\Gamma \vdash \val : \ty
 }{
 	\Gamma \vdash \creturn{\val} : \cty
-}\quad(\footnotesize\textsc{T-Return})\]
-
-\[\inferrule{
+}
+\and
+\inferH{T-App}{
 	\Gamma \vdash \val_1 : \tarr{\ty_1}{\cty_2}\\
 	\Gamma \vdash \val_2 : \ty_1
 }{
 	\Gamma \vdash \capp{\val_1}{\val_2} : \cty_2
-}\quad(\footnotesize\textsc{T-App})\]
-
-\[\inferrule{
+}
+\and
+\inferH{T-Seq}{
 	\Gamma \vdash \comp_1 : \cty_1\\
 	\Gamma, x : \ty_1 \vdash \comp_2 : \cty_2
 }{
 	\Gamma \vdash (\cdo{x}{\comp_1}{\comp_2}) : \cty_2
-}\quad(\footnotesize\textsc{T-Seq})\]
+}
+\end{mathpar}
 \label{fig:typing-stlc}
 \end{minipage}
 }
@@ -350,39 +354,41 @@ We assume that operations are not repeated within a handler.
 \caption{Semantics of algebraic effects}
 \centering
 \fbox{
-\begin{minipage}{16 cm}
-\[\inferrule{
+\begin{minipage}{12 cm}
+\begin{mathpar}
+\inferH{S-Flatten}{
 }{
 	(\cdo{x}{(\cdo{y}{\comp_1}{\comp_2})}{\comp_3}) \rightsquigarrow (\cdo{y}{\comp_1}{(\cdo{x}{\comp_2}{\comp_3})})
-}\quad(\footnotesize\textsc{S-Flatten})\]
-
-\[\inferrule{
+}
+\and
+\inferH{S-Op}{
 }{
 	\cop{op}{\val} \rightsquigarrow (\cdo{x}{\cop{op}{\val}}{\creturn{x}})
-}\quad(\footnotesize\textsc{S-Op})\]
-
-\[\inferrule{
+}
+\and
+\inferH{S-HandleReturn}{
 }{
 	\chandle{\creturn{\val}}{h; \hreturn{x}{\comp}} \rightsquigarrow \comp[x := \val]
-}\quad(\footnotesize\textsc{S-HandleReturn})\]
-
-\[\inferrule{
+}
+\and
+\inferH{S-HandleOp}{
 	\hopc{op}{x}{k}{\comp'} \in h
 }{
 	\chandle{\cdo{y}{\cop{op}{\val}}{\comp}}{h} \rightsquigarrow \comp'[x := \val, k := (\vabs{y}{\chandle{\comp}{h}})]
-}\quad(\footnotesize\textsc{S-HandleOp})\]
-
-\[\inferrule{
+}
+\and
+\inferH{S-HandleOpSkip}{
 	op \notin h
 }{
 	\chandle{\cdo{x}{\cop{op}{\val}}{\comp}}{h} \rightsquigarrow (\cdo{x}{\cop{op}{\val}}{\chandle{\comp}{h}})
-}\quad(\footnotesize\textsc{S-HandleOpSkip})\]
-
-\[\inferrule{
+}
+\and
+\inferH{S-Handle}{
 	\comp \rightsquigarrow \comp'
 }{
 	\chandle{\comp}{h} \rightsquigarrow \chandle{\comp'}{h}
-}\quad(\footnotesize\textsc{S-Handle})\]
+}
+\end{mathpar}
 \label{fig:semantics-algeff}
 \end{minipage}
 }
@@ -409,7 +415,7 @@ Lastly, \textsc{S-Handle} is able to reduce a computation in the handle computat
 \begin{align*}
 & \ty \Coloneqq \tunit \;|\; \tarr{\ty}{\cty}	\\
 & \cty \Coloneqq 	\aty{\ty}{r} \\
-& r \Coloneqq \{ \eff_1, ..., \eff_n \} \\
+& r \Coloneqq \{ \eff_1, ..., \eff_n \}
 \end{align*}
 \label{fig:types-algeff}
 \end{minipage}
@@ -420,25 +426,27 @@ Lastly, \textsc{S-Handle} is able to reduce a computation in the handle computat
 \caption{Subtyping rules of algebraic effects}
 \centering
 \fbox{
-\begin{minipage}{10 cm}
-\[\inferrule{
+\begin{minipage}{12 cm}
+\begin{mathpar}
+\inferH{Sub-Unit}{
 }{
 	\tunit <: \tunit
-}\quad(\footnotesize\textsc{Sub-Unit})\]
-
-\[\inferrule{
+}
+\and
+\inferH{Sub-Arr}{
 	\ty_3 <: \ty_1 \\
 	\cty_2 <: \cty_4
 }{
 	\tarr{\ty_1}{\cty_2} <: \tarr{\ty_3}{\cty_4}
-}\quad(\footnotesize\textsc{Sub-Arr})\]
-
-\[\inferrule{
+}
+\and
+\inferH{Sub-Annot}{
 	\ty_1 <: \ty_2 \\
 	r_1 \subseteq r_2
 }{
 	\aty{\ty_1}{r_1} <: \aty{\ty_2}{r_2}
-}\quad(\footnotesize\textsc{Sub-Annot})\]
+}
+\end{mathpar}
 \label{fig:subtyping-algeff}
 \end{minipage}
 }
@@ -449,85 +457,87 @@ Lastly, \textsc{S-Handle} is able to reduce a computation in the handle computat
 \centering
 \fbox{
 \begin{minipage}{14 cm}
-\[\inferrule{
+\begin{mathpar}
+\inferH{T-Var}{
 	\Gamma[x] = \ty
 }{
 	\Gamma \vdash x : \aty{\ty}{\varnothing}
-}\quad(\footnotesize\textsc{T-Var})\]
-
-\[\inferrule{
+}
+\and
+\inferH{T-Unit}{
 }{
 	\Gamma \vdash \vunit : \tunit
-}\quad(\footnotesize\textsc{T-Unit})\]
-
-\[\inferrule{
+}
+\and
+\inferH{T-Abs}{
 	\Gamma, x : \ty_1 \vdash \comp : \cty_2
 }{
 	\Gamma \vdash \vabs{x}{\comp} : \tarr{\ty_1}{\cty_2}
-}\quad(\footnotesize\textsc{T-Abs})\]
-
-\[\inferrule{
+}
+\and
+\inferH{T-SubVal}{
 	\Gamma \vdash \val : \ty_1 \\
 	\ty_1 <: \ty_2
 }{
 	\Gamma \vdash \val : \ty_2
-}\quad(\footnotesize\textsc{T-SubVal})\]
-
-\[\inferrule{
+}
+\and
+\inferH{T-Return}{
 	\Gamma \vdash \val : \ty
 }{
 	\Gamma \vdash \creturn{\val} : \aty{\ty}{\varnothing}
-}\quad(\footnotesize\textsc{T-Return})\]
-
-\[\inferrule{
+}
+\and
+\inferH{T-App}{
 	\Gamma \vdash \val_1 : \tarr{\ty_1}{\cty_2}\\
 	\Gamma \vdash \val_2 : \ty_1
 }{
 	\Gamma \vdash \capp{\val_1}{\val_2} : \cty_2
-}\quad(\footnotesize\textsc{T-App})\]
-
-\[\inferrule{
+}
+\and
+\inferH{T-Seq}{
 	\Gamma \vdash \comp_1 : \aty{\ty_1}{r}\\
 	\Gamma, x : \ty_1 \vdash \comp_2 : \aty{\ty_2}{r}
 }{
 	\Gamma \vdash (\cdo{x}{\comp_1}{\comp_2}) : \aty{\ty_2}{r}
-}\quad(\footnotesize\textsc{T-Seq})\]
-
-\[\inferrule{
+}
+\and
+\inferH{T-Op}{
 	op \Rightarrow (\eff, \ty^1_{op}, \ty^2_{op}) \\
 	\Gamma \vdash \val : \ty^1_{op} \\
 }{
 	\Gamma \vdash \cop{op}{\val} : \aty{\ty^2_{op}}{\{ \eff \}}
-}\quad(\footnotesize\textsc{T-Op})\]
-
-\[\inferrule{
+}
+\and
+\inferH{T-Handle}{
 	\Gamma \vdash \comp : \aty{\ty_1}{r_1} \\
 	op \in h \Leftrightarrow op \in O^\eff \\
 	\Gamma \vdash^{\ty_1} h : \aty{\ty_2}{r_2}
 }{
 	\Gamma \vdash \chandle{\comp}{h} :\aty{\ty_2}{((r_1 \setminus \{\eff\}) \cup r_2)}
-}\quad(\footnotesize\textsc{T-Handle})\]
-
-\[\inferrule{
+}
+\and
+\inferH{T-SubComp}{
 	\Gamma \vdash \comp : \cty_1 \\
 	\cty_1 <: \cty_2
 }{
 	\Gamma \vdash \comp : \cty_2
-}\quad(\footnotesize\textsc{T-SubComp})\]
-
-\[\inferrule{
+}
+\and
+\inferH{T-HOp}{
 	\Gamma \vdash^{\ty_1} h : \aty{\ty_2}{r} \\
 	op \Rightarrow (\eff, \ty^1_{op}, \ty^2_{op}) \\
 	\Gamma, x : \ty^1_{op}, k : \tarr{\ty^2_{op}}{\aty{\ty_2}{r}} \vdash \comp : \aty{\ty_2}{r} \\
 }{
 	\Gamma \vdash^{\ty_1} (\hop{op}{x}{k}{\comp}{h}) : \aty{\ty_2}{r}
-}\quad(\footnotesize\textsc{T-HOp})\]
-
-\[\inferrule{
+}
+\and
+\inferH{T-HReturn}{
 	\Gamma, x : \ty_1 \vdash \comp : \aty{\ty_2}{r}
 }{
 	\Gamma \vdash^{\ty_1} (\hreturn{x}{\comp}) : \aty{\ty_2}{r}
-}\quad(\footnotesize\textsc{T-HReturn})\]
+}
+\end{mathpar}
 \label{fig:typing-algeff}
 \end{minipage}
 }
@@ -635,7 +645,7 @@ The syntax of the system with algebraic effects and handlers is extended in Figu
 & \val \Coloneqq x, y, z, k \;|\; \vabs{x}{\comp} \;|\; \vunit\;|\; \change{\vinst} \\
 & \comp \Coloneqq \creturn{\val} \;|\; \capp{\val}{\val} \;|\; \cdo{x}{\comp}{\comp} \;|\;
 		\change{\copi{\val}{op}{\val} \;|\; \chandlei{\val}{\comp}{h}} \\
-& h \Coloneqq \hop{op}{x}{k}{\comp}{h} \;|\; \hreturn{x}{\comp} \\
+& h \Coloneqq \hop{op}{x}{k}{\comp}{h} \;|\; \hreturn{x}{\comp}
 \end{align*}
 \label{fig:syntax-static}
 \end{minipage}
@@ -649,34 +659,36 @@ The semantics for static instances are shown in Figure~\ref{fig:semantics-static
 \caption{Semantics of algebraic effects with static instances}
 \centering
 \fbox{
-\begin{minipage}{16 cm}
-\[\inferrule{
+\begin{minipage}{12 cm}
+\begin{mathpar}
+\inferH{S-Op}{
 }{
 	\copi{\val_1}{op}{\val_2} \rightsquigarrow (\cdo{x}{\copi{\val_1}{op}{\val_2}}{\creturn{x}})
-}\quad(\footnotesize\textsc{S-Op})\]
-
-\[\inferrule{
+}
+\and
+\inferH{S-HandleReturn}{
 }{
 	\chandlei{\val_1}{\creturn{\val_2}}{h; \hreturn{x}{\comp}} \rightsquigarrow \comp[x := \val_2]
-}\quad(\footnotesize\textsc{S-HandleReturn})\]
-
-\[\inferrule{
+}
+\and
+\inferH{S-HandleOp}{
 	\hopc{op}{x}{k}{\comp'} \in h
 }{
 	\chandlei{\vinst}{\cdo{y}{\copi{\vinst}{op}{\val}}{\comp}}{h} \rightsquigarrow \comp'[x := \val, k := (\vabs{y}{\chandlei{\vinst}{\comp}{h}})]
-}\quad(\footnotesize\textsc{S-HandleOp})\]
-
-\[\inferrule{
+}
+\and
+\inferH{S-HandleOpSkip}{
 	op \notin h \land \vinst_1 \neq \vinst_2
 }{
 	\chandlei{\vinst_1}{\cdo{x}{\copi{\vinst_2}{op}{\val}}{\comp}}{h} \rightsquigarrow (\cdo{x}{\copi{\vinst_2}{op}{\val}}{\chandlei{\vinst_1}{\comp}{h}})
-}\quad(\footnotesize\textsc{S-HandleOpSkip})\]
-
-\[\inferrule{
+}
+\and
+\inferH{S-Handle}{
 	\comp \rightsquigarrow \comp'
 }{
 	\chandlei{\val}{\comp}{h} \rightsquigarrow \chandlei{\val}{\comp'}{h}
-}\quad(\footnotesize\textsc{S-Handle})\]
+}
+\end{mathpar}
 \label{fig:semantics-static}
 \end{minipage}
 }
@@ -695,7 +707,7 @@ The effect annotation on the computation types are now sets of instance names in
 \begin{align*}
 & \ty \Coloneqq \tunit \;|\; \change{\tinst{\vinst}} \;|\; \tarr{\ty}{\cty} \\
 & \cty \Coloneqq \aty{\ty}{r} \\
-&\change{ r \Coloneqq \{ \vinst_1, ..., \vinst_n \} } \\
+&\change{ r \Coloneqq \{ \vinst_1, ..., \vinst_n \} }
 \end{align*}
 \label{fig:types-static}
 \end{minipage}
@@ -709,11 +721,13 @@ For subtyping we keep the rules from the previous system but we add a rule for t
 \caption{Subtyping rules of algebraic effects with static instances}
 \centering
 \fbox{
-\begin{minipage}{10 cm}
-\[\inferrule{
+\begin{minipage}{5 cm}
+\begin{mathpar}
+\inferH{Sub-Inst}{
 }{
 	\tinst{\vinst} <: \tinst{\vinst}
-}\quad(\footnotesize\textsc{Sub-Inst})\]
+}
+\end{mathpar}
 \label{fig:subtyping-algeff}
 \end{minipage}
 }
@@ -728,22 +742,23 @@ For both \textsc{T-OP} and \textsc{T-Handle} we just have to check that the adde
 \caption{Typing rules of algebraic effects with static instances}
 \centering
 \fbox{
-\begin{minipage}{15 cm}
-\[\inferrule{
+\begin{minipage}{12 cm}
+\begin{mathpar}
+\inferH{T-Inst}{
 }{
 	\Gamma \vdash \vinst : \tinst{\vinst}
-}\quad(\footnotesize\textsc{T-Inst})\]
-
-\[\inferrule{
+}
+\and
+\inferH{T-Op}{
 	\Gamma \vdash \val_1 : \tinst{\vinst} \\
 	E[\vinst] = \eff \\
 	\Gamma[op] = (\eff, \ty^1_{op}, \ty^2_{op}) \\
 	\Gamma \vdash \val_2 : \ty^1_{op} \\
 }{
 	\Gamma \vdash \copi{\val_1}{op}{\val_2} : \aty{\ty^2_{op}}{\{ \vinst \}}
-}\quad(\footnotesize\textsc{T-Op})\]
-
-\[\inferrule{
+}
+\and
+\inferH{T-Handle}{
 	\Gamma \vdash \val : \tinst{\vinst} \\
 	E[\vinst] = \eff \\
 	\Gamma \vdash \comp : \aty{\ty_1}{r_1} \\
@@ -751,7 +766,8 @@ For both \textsc{T-OP} and \textsc{T-Handle} we just have to check that the adde
 	\Gamma \vdash^{\ty_1} h : \aty{\ty_2}{r_2}
 }{
 	\Gamma \vdash \chandlei{\val}{\comp}{h} :\aty{\ty_2}{((r_1 \setminus \{\vinst\}) \cup r_2)}
-}\quad(\footnotesize\textsc{T-Handle})\]
+}
+\end{mathpar}
 \label{fig:typing-algeff}
 \end{minipage}
 }
