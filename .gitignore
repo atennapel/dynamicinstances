@@ -9,3 +9,7 @@ thesis/*.log
 thesis/*.synctex.gz
 thesis/_minted-*
 coq/.coqdeps.d
+
+thesis/*.bbl
+thesis/*.blg
+thesis/*.out

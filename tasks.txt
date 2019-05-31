@@ -186,9 +186,11 @@ X try to get rule name above rule instead of to the right
 - maybe mention that I formalize some stuff
 - point of type soundness
 	- point of lemmas
-- categorize related work and future work
-- is lifting relevant
-- related work
-	- compare and contrast
 - fix theorems in background theory
+
+- categorize future work
+/ related work
+	X categorize related work
+	/ compare and contrast
+	- is lifting relevant
 

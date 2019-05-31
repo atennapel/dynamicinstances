@@ -1,11 +1,34 @@
-
-\begin{itemize}
-\item Abstracting Algebraic Effects
-\item Abstraction-Safe Effect Handlers via Tunneling
-\item First Class Dynamic Effect Handlers: or, Polymorphic Heaps with Dynamic Effect Handlers
-\item Algebraic Effect Handlers with Resources and Deep Finalization
-\item Eff Directly in OCaml
-\item Programming with Algebraic Effects and Handlers
-\item An Effect System for Algebraic Effects and Handlers
-\item Koka: A Language with Row-Polymorphic Effect Inference
-\end{itemize}
+The Eff programming language~\ref{eff1} was one of the first languages with support for algebraic effects and handlers.
+It featured fully dynamic instances allowing for dynamic effects.
+In order to allow for the implementation of mutable references resources were introduced.
+Resources are handlers given at the creation of a dynamic instance which get wrapped around the whole execution of the program.
+This way an operation on such an instance can never escape since the handler is around the whole program.
+These handlers are also called \emph{default handlers}, which have their own semantics apart from regular handlers.
+This allows Eff to fully implement mutable references.
+In our case we insist that users provide a handler when creating a new instance.
+This handler is not around the whole program though but instead only to the matching $\mathsf{runscope}$ construct.
+This means we can implement mutable references like Eff, but not to the same degree since we do not allow them to escape their scope.
+We cannot implement fully encapsulated memoization for example, since such a function would only be valid within the scope of its corresponding reference.
+Eff did not feature an effect typing system initially, meaning that unhandled operations would not be caught statically.
+An effect typing system was proposed~\ref{eff2} but it did not feature dynamic instances, only static instances.
+The current version of Eff does not have dynamic instances since they were considered too difficult in the theory.
+\\\\
+An embedding of Eff in OCaml was proposed~\ref{effdirectly}.
+This embedding featured algebraic effects and handlers and dynamic instances, again without an effect typing system.
+The implementation relies on multi-prompt delimited control in OCaml.
+Default handlers are not implemented, instead dynamic effects such as mutable references are possible by treating the creation of instances as just another effect.
+Creating a new instance can be done using the \textsc{New} effect.
+This operation receives as arguments which effect to create an instance of, and the handler to use.
+The handler for the \textsc{New} operation then actually allocates the new instance and give it to the continuation of the operation, wrapping the entire continuation call in the give handler.
+We use a very similar technique to implement creation of instances.
+Our $\mathsf{runscope}$ construct is similar to the handler of \textsc{New} in the Eff embedding.
+In essence we ban the normal creation of dynamic instances and force users to always use the equivalent of the \textsc{New} effect.
+This restriction allows use to give a type system which make sure no instance escape their handler.
+\\\\
+Handle with care: relational interpretation of algebraic effects and handlers~\ref{handlewithcare}
+Abstracting Algebraic Effects~\ref{abstractingalgeffects}
+Abstraction-Safe Effect Handlers via Tunneling~\ref{tunneling}
+\\\\
+Koka: A Language with Row-Polymorphic Effect Inference~\ref{koka}\ref{koka2}
+Algebraic Effect Handlers with Resources and Deep Finalization~\ref{kokaresources}
+First Class Dynamic Effect Handlers: or, Polymorphic Heaps with Dynamic Effect Handlers~\ref{kokadynamic}
