@@ -25,10 +25,40 @@ Our $\mathsf{runscope}$ construct is similar to the handler of \textsc{New} in t
 In essence we ban the normal creation of dynamic instances and force users to always use the equivalent of the \textsc{New} effect.
 This restriction allows use to give a type system which make sure no instance escape their handler.
 \\\\
-Handle with care: relational interpretation of algebraic effects and handlers~\ref{handlewithcare}
-Abstracting Algebraic Effects~\ref{abstractingalgeffects}
-Abstraction-Safe Effect Handlers via Tunneling~\ref{tunneling}
+Koka is a programming language with effect inference using row polymorphism~\ref{koka}.
+Later algebraic effects and handler were also added~\ref{koka2}.
+Extending the language with an \textsc{lift} (also called \textsc{inject}) operation to inject effects, skipping a handler, some notion of mutable references can be implemented~\ref{handlewithcare}.
+These references are very tedious to work with though and they are unable to escape even single functions.
+Daan Leijen proposed an extension for Koka with dynamic effect handlers~\ref{kokadynamic}.
+This extension introduces \emph{umbrella effects}, which are effects that can contain dynamic effects.
+For example an umbrella effect \textsc{heap} can be defined which contains dynamic effects of type \textsc{ref} (mutable references).
+Values of type \textsc{ref} can then created using by defining a dynamic handler.
+Similar to how we have give a handler when creating a dynamic instance.
+Using these dynamic handlers we can implement polymorphic heaps.
+In order to let references escape the function in which they are created, a \textsc{new-ref} operation is defined on the umbrella effect \textsc{heap}.
+The \textsc{heap} handler then creates the dynamic \textsc{ref} handlers for each time \textsc{new-ref} is called, installing these handlers under the \textsc{heap} handler.
+This way the references can escape functions that define them as long as these functions are called under the \textsc{heap} handler.
+This is very similar to the \textsc{New} effect of the OCaml Eff embedding and to our \textsc{runscope} construct.
+Koka does not statically check that the dynamic effects do not escape their handler.
+Instead an exception effect is added to the effect annotation each time a dynamic handler is created.
+This means that you are always forced to handle the exceptions even if you know that none will be thrown.
+Similar to our system safe references are proposed using higher-ranked types, like in the ST monad in Haskell, in order to ensure that no unhandled operations will happen.
+These definitions still do not remove the exception effect in the effect annotation though.
+In our system instead we do not allow instances to escape their scope at all.
+We trade in some expressiveness for safety.
 \\\\
-Koka: A Language with Row-Polymorphic Effect Inference~\ref{koka}\ref{koka2}
-Algebraic Effect Handlers with Resources and Deep Finalization~\ref{kokaresources}
-First Class Dynamic Effect Handlers: or, Polymorphic Heaps with Dynamic Effect Handlers~\ref{kokadynamic}
+Algebraic effects and handlers have an abstraction problem.
+A function parameter of a higher-order function may interfere with the effects used inside of the function.
+If the function argument is used inside of handled computation then the effects in the function may be handled, even if the function itself is polymorphic with regards to these effects.
+In Eff dynamic instances solve this problem because one cannot handle an instance if they do not have access to this instance.
+In our system this is also true, a handler is defined when creating an instance and so we cannot accidentally handle an effect we are unaware of.
+The two papers ``Abstracting Algebraic Effects''~\ref{abstractingalgeffects} and ``Abstraction-safe effect handlers via tunneling''~\ref{tunneling} both address the same problem in different ways.
+The first of these allows for the definition of local effects.
+These local effects are guaranteed to not interfere with any other effects.
+This allows for abstraction-safe functions.
+The local effects do not rise to the same level as dynamic instances though, they do not allow for the definition of dynamic mutable references.
+``Abstraction-safe effect handlers via tunneling'' gives another solution by explicitly naming handlers.
+Operations are then called on the named handler.
+Functions are allowed to be polymorphic over a handler using \emph{handler variables}.
+The technique of explictly naming handlers as similar expressivity to static instances and the \textsc{inject} operation in Koka.
+It does not allow for the definition of dynamic mutable references.
