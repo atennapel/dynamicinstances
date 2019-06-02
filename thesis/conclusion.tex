@@ -1,14 +1,62 @@
+\section{Conclusion}
+Blablabla
+
 \section{Future work}
 
-\begin{itemize}
-\item More detailed effect annotations
-\item Formalization
-\item Incomplete handlers
-\item Shallow handlers
-\item Multi-handlers
-\item Combine with normal algebraic effects
-\item Allow escaping effects with exception effect
-\item Full parametric polymorphism
-\item Polymorphic effects
-\item Polymorphic operations
-\end{itemize}
+\textbf{Formalization.}
+We currently have formalized the system with static instances of Chapter~2.2 and have proven type soundness in Coq.
+Due to time constraints we were unable to also provide a formalization for X.
+It would be beneficial to also formalize X to gain more certainty the system is safe.
+\\\\
+\textbf{Parametric polymorphism over any type.}
+In order to keep the system simple and to only focus on the novel elements, X only supports parametric polymorphism over effect scopes.
+It would be very useful in practice to allow quantification over any type.
+We do not think that adding this will interfere with the other elements of the system.
+\\\\
+\textbf{Polymorphic effects.}
+Having added polymorphism over any type it makes sense to also allow for polymorphic effects.
+In our examples we have defined a \ident{State} effect with \ident{Int} values.
+In order to avoid having to define a seperate effect for each type we would like to keep in our state, we could allow for effects to have type parameters.
+For example, we could define a polymorphic \ident{State} effect like:
+\begin{minted}[tabsize=2]{haskell}
+effect State t {
+	get : () -> t
+	put : t -> ()
+}
+\end{minted}
+
+Using this effect we can have fully polymorphic mutable references.
+The type of an reference holding an integer value would be \ident{Inst s (State Int)}.
+After adding full parametric polymorphic this change would not be difficult to add.
+\\\\
+\textbf{Polymorphic operations.}
+Polymorphism in operations can also be useful for some effects.
+For example an exception effect:
+\begin{minted}[tabsize=2]{haskell}
+effect Exception {
+	throw : forall t. String -> t
+}
+\end{minted}
+Here, because we do not expect to continue a computation after an exception has been throw, we can let the \ident{throw} operation return any type.
+This makes it convenient to throw errors, for example in an if-expression where the type of both branches have to match.
+Adding polymorphic operations takes some more thought because in the case of operations like \ident{throw} we cannot allow a handler to call the continuation. The type of the continuation has to be something like \ident{(forall t1. t1) -> t2!r}, so it is impossible to actually invoke it.
+\\\\
+\textbf{Improved effect annotations.}
+Currently the effect annotation of a computation type is a set of effect scopes.
+We could make these annotations more useful by also noting which effects are used on each scope.
+For example, from \ident{Int!{s1, s2}} to \ident{Int!{{State, Flip}@s1, {Rng}@s2}}.
+Of course this would be an over-approximation of the actual effects used.
+We do not see any difficulty in extending the annotations in this way.
+\\\\
+\textbf{Combine with regular algebraic effects and handlers.}
+In our system handlers are given when creating instances.
+This is necessary in order to make sure that every instance has a handler, which completely handles the effects of that specific instance.
+Sometimes it might be useful to change the handler of an instance though.
+For example we might want to add logging to a specific \ident{State} instance, to see what values are being stored in it.
+To allow for this we would just have to add a $\mathsf{handle} (c) \{ h \}$ computation like in the system of Chapter~4.2.
+In order to make sure all operation calls are handled we would still need to use the handler given when creating the instance.
+The handler $h$ in $\mathsf{handle} (c) \{ h \}$ would have to be applied before the handler given when creating the instance, since \ident{h} might reinvoke the operations on that instance.
+The handler $h$ would not need to complete, it would not have to handle every operation of a specific effect.
+The handler could also be allowed to be \emph{shallow}, meaning that the handler is not automatically inserted in the continuation.
+Lastly $h$ could be a \emph{multi-handler}, handling operations of different effects and instances at once.
+We are not completely sure if this idea would work in practice or if the system would remain safe.
