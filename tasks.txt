@@ -237,3 +237,9 @@ X add summary to Examples chapter 3
 	X what have we seen
 	X conclude
 	X whats next
+X process Casper comments in Chapter 3
+- process Casper comments in related work
+- process Casper comments in conclusion
+- process Robbert comments in Chapter 3
+- process Robbert comments in related work
+- process Robbert comments in conclusion
