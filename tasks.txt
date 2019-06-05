@@ -233,7 +233,7 @@ X related work
 - introduction: mention Eff resources
 	- mentioned delimeted continuations
 - "this" is bad
-- add summary to Examples chapter 3
-	- what have we seen
-	- conclude
-	- whats next
+X add summary to Examples chapter 3
+	X what have we seen
+	X conclude
+	X whats next
