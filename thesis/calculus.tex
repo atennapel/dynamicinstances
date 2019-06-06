@@ -74,9 +74,7 @@ In this chapter we give a formal account of X.
 We give the syntax, typing rules and a small-step operation semantics.
 We end the chapter with a type soundness theorem.
 The system builds on the formal system with algebraic effects, handlers and static instances of Chapter~4.3.
-We add constructs to handle effect scope polymorphism.
-We also add a construct to dynamically create new instances.
-Finally we add constructs to handle effect scopes.
+We add constructs to handle effect scope polymorphism, to create new instances, and to handle effect scopes, as informally described in Chapter~3.
 \\\\
 In Section~\ref{sec:syntax} we give the syntax of the terms and types of X.
 In Section~\ref{sec:contexts} we give the environments and judgments used in the typing rules and semantics.
@@ -91,11 +89,11 @@ Finally in Section~\ref{sec:theorems} we give a type-soundness theorem.
 Just like in the formal systems of algebraic effects of Chapter~4.2 and Chapter~4.3
 we assume there is set of effect names $\mathsf{EffName}$ with $\Eff \subseteq \mathsf{EffName}$.
 For example $\Eff = \{ \mathsf{Flip}, \mathsf{State}, \mathsf{Exc}, ... \}$.
-Each effect $\eff$ has a non-empty set of operation names $\Op{\eff}$.
+There is also a set of operation names $\mathsf{O}$.
+Each effect $\eff \in \Eff$ has a non-empty set of operation names $\Op{\eff} \in O$.
 For example $\Op{\mathsf{Flip}} = \{\mathsf{flip}\}$ and $\Op{\mathsf{State}} = \{\mathsf{get}, \mathsf{put}\}$.
 Every operation name only corresponds to a single effect.
 Each operation $\op$ has a parameter type $\pty{\op}$ and a return type $\rty{\op}$.
-Locations $\loc$ are modeled by some countable infinite set.
 
 \begin{figure}
 \caption{Syntax}
@@ -127,19 +125,19 @@ Like in the systems in Chapter~4 terms and types are both split between values a
 Values are typed by value types and computations are typed by computation types.
 \\\\
 Value types $\ty$ are either an instance type $\tinst{s}{\eff}$, indexed by an effect scope $s$ and an effect $\eff$.
-Or a function type $\tarr{\ty}{\cty}$ where the paramter type is a value type and the return type is a computation type.
+Or a function type $\tarr{\ty}{\cty}$ where the parameter type is a value type and the return type is a computation type.
 Or an universally quantified computation type $\tforall{s_{var}}{\cty}$, where the domain of quantification are effect scopes.
 \\\\
 A computation type $\cty$ is always an annotated value type of the form $\aty{\ty}{r}$.
 Annotations $r$ are sets of effect scopes $\{ s_1, ..., s_n \}$.
 \\\\
 Values are either variables $x$, $k$, where we always use $k$ do denote variables that refer to continuations.
-Or instances $\vinst{\loc}$, indexed by some location $\loc$.
+Or instances $\vinst{\loc}$, indexed by some instance location $\loc$, which are modeled by some countable infinite set.
 Instances would not appear in the surface language, but are introduced by the semantics.
 Or lambda abstractions $\vabs{x}{\comp}$, where the body is a computation.
 Or effect scope abstractions $\vabst{s_{var}}{\comp}$, where we abstract over a computation $\comp$, with the domain of the quantification being effect scopes.
 \\\\
-For computations we have $\creturn{\val}$, to lift a value $\val$ in to a computation.
+As usual, for computations we have $\creturn{\val}$, to lift a value $\val$ in to a computation.
 We have application $\capp{\val}{\val}$ and sequencing $\cdo{x}{\comp}{\comp}$.
 We have operation calls $\cop{\val}{\op}{\val}$.
 The new constructs are as follows.
@@ -156,6 +154,7 @@ Return cases are of the form $\hreturn{x}{\comp}$.
 
 \section{Environments and judgments}
 \label{sec:contexts}
+We will now give the environment and judgments used in the typing rules and semantics.
 
 \begin{figure}[h]
 \caption{Environments}
@@ -172,17 +171,23 @@ Return cases are of the form $\hreturn{x}{\comp}$.
 }
 \end{figure}
 
-\textbf{Environments}
-Before looking at the different judgments, we will introduce the three environments used.
-The syntax for the environment are shown in figure \ref{fig:contexts}.
+\paragraph{Environments}
+The syntax for the environments is shown in Figure~\ref{fig:contexts}.
+As usual we have $\Gamma$, like in the systems of Chapter~4.
+$\Delta$ is introduced to handle the effect scope polymorphism.
+$\Sigma$ is introduced to handle the fresh generation of scope and instance locations.
+
 \begin{itemize}
 \item $\Gamma$ is the typing enviroment which assigns variables $x$ to value types $\ty$.
 \item $\Delta$ is the effect scope variable environment which keeps track of the scope variables $s_{var}$ that are in use.
 \item $\Sigma$ is the dynamic environment which keeps track of scope location $s_{loc}$ and instance locations $l$. Instance locations are assigned a tuple of a scope location and an effect $(s_{loc}, \eff)$. $\Sigma$ is used in both the typing rules and the operational semantics.
+We do not need a separate environment for the semantics because instances are not assigned dynamic values like references are.
+$\Sigma$ enables us to type instances in the typing rules, and to generate fresh scope and instance locations in the semantics.
 \end{itemize}
 
-\textbf{Judgments}
-There are three kinds of judgments: subtyping, well-formedness and typing.
+\paragraph{Judgments}
+There are three kinds of judgments: subtyping (Section~\ref{sec:subtyping}), well-formedness (Section~\ref{
+sec:wellformedness}) and typing (Section~\ref{sec:typingrules}).
 \\\\
 The subtyping judgments are used to weaken the effect annotation of a computation type.
 Weakening the effect annotation is sometimes necessary in order to type a program.
@@ -194,21 +199,21 @@ There is a subtyping judgment for both the value types $\ty$ and the computation
 \item $\subty{\cty}{\cty'}$ holds when the computation type $\cty$ is a subtype of $\cty'$.
 \end{itemize}
 
-The well-formedness judgments check that scopes used in the types are valid under the scope variable and dynamic environments.
+The well-formedness judgments assert that scopes used in the types are valid under the scope variable and dynamic environments.
 There are three judgments of this kind:
 \begin{itemize}
 \setlength\itemsep{0.5em}
-\item $\Delta;\Sigma \vdash s$ checks that the scope $s$ is either in $\Delta$ if it is a scope variable or else in $\Sigma$ if it is a scope location.
-\item $\Delta;\Sigma \vdash \ty$ checks that all the scopes in the value type $\ty$ are valid under the environments $\Delta$ and $\Sigma$.
-\item $\Delta;\Sigma \vdash \cty$ checks that all the scopes in the computation type $\cty$ are valid under the environments $\Delta$ and $\Sigma$.
+\item $\Delta;\Sigma \vdash s$ asserts that the scope $s$ is either in $\Delta$ if it is a scope variable or else in $\Sigma$ if it is a scope location.
+\item $\Delta;\Sigma \vdash \ty$ asserts that all the scopes in the value type $\ty$ are valid under the environments $\Delta$ and $\Sigma$.
+\item $\Delta;\Sigma \vdash \cty$ asserts that all the scopes in the computation type $\cty$ are valid under the environments $\Delta$ and $\Sigma$.
 \end{itemize}
 
 Lastly there are three typing judgments:
 \begin{itemize}
 \setlength\itemsep{0.5em}
-\item $\Delta;\Sigma;\Gamma \vdash \val : \ty$ checks that the value $\val$ has the value type $\ty$ under the $\Delta$, $\Sigma$ and $\Gamma$ environments.
-\item $\Delta;\Sigma;\Gamma \vdash \comp : \cty$ checks that the computation $\comp$ has the computation type $\cty$ under the $\Delta$, $\Sigma$ and $\Gamma$ environments.
-\item $\Delta;\Sigma;\Gamma \vdash^{\ty} h : \cty$ checks that the handler $h$ transform a return value of type $\ty$ to the computation type $\cty$.
+\item $\Delta;\Sigma;\Gamma \vdash \val : \ty$ asserts that the value $\val$ has the value type $\ty$ under the $\Delta$, $\Sigma$ and $\Gamma$ environments.
+\item $\Delta;\Sigma;\Gamma \vdash \comp : \cty$ asserts that the computation $\comp$ has the computation type $\cty$ under the $\Delta$, $\Sigma$ and $\Gamma$ environments.
+\item $\Delta;\Sigma;\Gamma \vdash^{\ty} h : \cty$ asserts that the handler $h$ transform a return value of type $\ty$ to the computation type $\cty$.
 \end{itemize}
 
 \section{Subtyping}
@@ -309,8 +314,8 @@ Lastly annotated types $\aty{\ty}{r}$ are compared by comparing the value types 
 \end{figure}
 
 In Figure~\ref{fig:wf-calc} we give the well-formedness rules for the value and computation types.
-Well-formedness checks that the effect scopes in the type are accounted for in the environments.
-The rules \textsc{WF-SVar} and \textsc{WF-SLoc} check that the effect scope variables $s_{var}$ and locations $s_{loc}$ are valid by checking that they are contained in the scope and dynamic environments respectively.
+Well-formedness asserts that the effect scopes in the type are accounted for in the environments.
+The rules \textsc{WF-SVar} and \textsc{WF-SLoc} assert that the effect scope variables $s_{var}$ and locations $s_{loc}$ are valid by checking that they are contained in the scope and dynamic environments respectively.
 For instance types we check that the mentioned effect scope is valid (\textsc{WF-Inst}).
 For function types $\tarr{\ty}{\cty}$ we check that both the paramter and return type is valid.
 For universally quantified types $\tforall{s_{var}}{\cty}$ we check that the computation type $\cty$ is valid, after adding the variable $s_{var}$ to the environment.
@@ -371,14 +376,9 @@ Similar to abstractions, effect scope abstractions are assigned a universally qu
 The typing rule for the computations are given in Figure~\ref{fig:comp-typing-calc}.
 The rules \textsc{T-Return}, \textsc{T-App}, \textsc{T-Seq} and \textsc{T-SubComp} are practically unchanged from the corresponding rules in the algebraic effects type system from Chapter~4.2.
 \\\\
-The rule for effect scope application (\textsc{T-TApp}) checks that, in the application $\cappt{\val}{s}$, the scope $s$ is well-formed.
+The rule for effect scope application (\textsc{T-TApp}) asserts that, in the application $\cappt{\val}{s}$, the scope $s$ is well-formed.
 Then we check that $\val$ is a universally quantified type $\tforall{s'}{\cty}$.
 Finally we substitute the given scope $s$ for the quantified variable $s'$ in $\cty$.
-\\\\
-For operation calls (\textsc{T-Op}) $\cop{\val_1}{op}{\val_2}$ we first check that the type of $\val_1$ is an instance type $\tinst{s}{\eff}$.
-We then check that the operation $op$ is an operation of the effect of the instance $\eff$ ($op \in \Op{\eff}$).
-Lastly we check that the given value $\val_2$ matches the parameter type of the operation $op$ ($\pty{op}$).
-The type given to the operation call is the return type of the operation $\rty{op}$ with the scope of the instance, $s$, in the annotation.
 
 \begin{figure}[H]
 \caption{Computation typing rules}
@@ -470,6 +470,11 @@ The type given to the operation call is the return type of the operation $\rty{o
 }
 \end{figure}
 
+For operation calls (\textsc{T-Op}) $\cop{\val_1}{op}{\val_2}$ we first check that the type of $\val_1$ is an instance type $\tinst{s}{\eff}$.
+We then check that the operation $op$ is an operation of the effect of the instance $\eff$ ($op \in \Op{\eff}$).
+Lastly we check that the given value $\val_2$ matches the parameter type of the operation $op$ ($\pty{op}$).
+The type given to the operation call is the return type of the operation $\rty{op}$ with the scope of the instance, $s$, in the annotation.
+\\\\
 The rule \textsc{T-New} types the creation of new instance: $\cnew{\eff}{s}{\handler; \hfinally{y}{\comp'}}{x}{\comp}$.
 We are creating a new instance $x$ of effect $\eff$ in the effect scope $s$.
 First we check that the given effect scope $s$ is valid.
@@ -549,8 +554,9 @@ We check that the body of the case $\comp$ returns a computation of the same typ
 
 Finally we give a small-step operational semantics for X.
 \\\\
-The rule $\comp_1 \;|\; \Sigma_1 \rightsquigarrow \comp_2 \;|\; \Sigma_2$ takes a step from the computation $\comp_1$ to $\comp_2$ in the dynamic environment $\Sigma_1$.
+The judgment $\comp_1 \;|\; \Sigma_1 \rightsquigarrow \comp_2 \;|\; \Sigma_2$ takes a step from the computation $\comp_1$ to $\comp_2$ in the dynamic environment $\Sigma_1$.
 $\Sigma_1$ might be updated with new effect scope locations or instance locations resulting in $\Sigma_2$.
+$\Sigma$ will always be monotically extended by $\rightsquigarrow$.
 
 \begin{figure}[h]
 \caption{Semantics}

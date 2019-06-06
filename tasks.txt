@@ -126,10 +126,10 @@ Introductie notes
 
 2019-04-17
 - cite logic variables, starrays example papers
-- lose type inference example
-- no type polymorphism
+X lose type inference example
+X no type polymorphism
 
-- write text for the examples 
+X write text for the examples 
 
 2019-05-02
 X work on calculus in parralel
@@ -171,12 +171,12 @@ X try to get rule name above rule instead of to the right
 	X write a good macro for this
 	X use \begin{array} with @
 - try to get rule references to have links
-- in Chapter 5 introduction remind where "stuff" comes from
-- scope location and instance location (not just location)
-- no store with values needed
-	- sigma needed for type system
-	- operational semantics for fresh generation
-- as usual we have Gamma and now we also have
+X in Chapter 5 introduction remind where "stuff" comes from
+X scope location and instance location (not just location)
+X no store with values needed
+	X sigma needed for type system
+	X operational semantics for fresh generation
+X as usual we have Gamma and now we also have
 - theorem for Sigma extension
 	- operational semantics will do a valid extension (monotonic extensions)
 - theorem:
