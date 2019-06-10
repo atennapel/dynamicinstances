@@ -183,10 +183,10 @@ X as usual we have Gamma and now we also have
 	if G;S |- e : t and S <= S' then G;S' |- e : t
 - fix theorem with non-empty annotation
 	- operation call is possible if non-empty
-- maybe mention that I formalize some stuff
 - point of type soundness
 	- point of lemmas
-- fix theorems in background theory
+X fix theorems in background theory
+X maybe mention that I formalize some stuff
 
 X categorize future work
 X related work
@@ -243,3 +243,5 @@ X process Casper comments in Chapter 3
 - process Robbert comments in Chapter 3
 - process Robbert comments in related work
 - process Robbert comments in conclusion
+
+- clean up Coq folder and check that static instances is completed.

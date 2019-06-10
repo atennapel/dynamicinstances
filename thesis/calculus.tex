@@ -741,6 +741,19 @@ TODO: add example derivation
 \section{Type soundness}
 \label{sec:theorems}
 
+\begin{theorem}[Semantics does valid monotonic extension]
+\[
+	\mathsf{if}\;
+		(\comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma')
+		\;\land\;
+		\vdash \Sigma
+	\;\mathsf{then}\;
+		\vdash \Sigma'
+		\;\land\;
+		\Sigma \subseteq \Sigma'
+\]
+\end{theorem}
+
 TODO \\
 We define a computation $\comp$ to be a value if $\comp$ is of the form $\creturn{\val}$ for some value $\val$.
 	\[ \mathsf{value}(\comp) \;\mathsf{if}\; \exists \val. \comp = \creturn{\val} \]
