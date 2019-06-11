@@ -777,44 +777,29 @@ Lastly, computations inside instance handlers can be reduced further (\textsc{S-
 }
 \end{figure}
 
-TODO: add example derivation
+% TODO: add example derivation
 
 \section{Type soundness}
 \label{sec:theorems}
 
-\begin{theorem}[Semantics does valid monotonic extension]
-\[
-	\mathsf{if}\;
-		(\comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma')
-		\;\land\;
-		\vdash \Sigma
-	\;\mathsf{then}\;
-		\vdash \Sigma'
-		\;\land\;
-		\Sigma \subseteq \Sigma'
-\]
-\end{theorem}
-
-TODO \\
-We define a computation $\comp$ to be a value if $\comp$ is of the form $\creturn{\val}$ for some value $\val$.
-	\[ \mathsf{value}(\comp) \;\mathsf{if}\; \exists \val. \comp = \creturn{\val} \]
+It is important for our system to be type safe.
+The operational semantics can get stuck if operations are unhandled.
 
 \begin{theorem}[Type soundness]
 \[
 	\mathsf{if}\;
-		(\cdot;\Sigma;\cdot \vdash \comp : \aty{\ty}{\varnothing})
+		(\cdot;\cdot;\cdot \vdash \comp : \aty{\ty}{\varnothing})
 		\;\land\;
-		(\comp \;|\; \Sigma \rightsquigarrow^* \comp' \;|\; \Sigma')
+		(\comp \;|\; \cdot \rightsquigarrow^* \comp' \;|\; \Sigma)
 	\;\mathsf{then}\;
 		\mathsf{value}(\comp')
 		\;\lor\;
-		(\exists \comp'' \; \Sigma''.\; \comp' \;|\; \Sigma' \rightsquigarrow \comp'' \;|\; \Sigma'')
+		(\exists \comp'' \; \Sigma'.\; \comp' \;|\; \Sigma \rightsquigarrow \comp'' \;|\; \Sigma')
 \]
 \end{theorem}
 
 The type soundness theorem states that if a computation typechecks with no effects in the annotation and we take some amount of steps, then either the computation is a value or we can take another step.
 This means that if a computation typechecks with no effects then we cannot get stuck on an operation call.
-\\\\
 
 \begin{lemma}[Progress]
 \[
@@ -827,7 +812,31 @@ This means that if a computation typechecks with no effects then we cannot get s
 \]
 \end{lemma}
 
+\begin{lemma}[$\Sigma$ weakening]
+\[
+	\mathsf{if}\;
+		(\Delta;\Sigma;\Gamma \vdash \comp : \cty)
+		\;\land\;
+		\vdash \Sigma'
+		\;\land\;
+		\Sigma \subseteq \Sigma'
+	\;\mathsf{then}\;
+		\Delta;\Sigma';\Gamma \vdash \comp : \cty
+\]
+\end{lemma}
 
+\begin{lemma}[Semantics does valid monotonic extension]
+\[
+	\mathsf{if}\;
+		(\comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma')
+		\;\land\;
+		\vdash \Sigma
+	\;\mathsf{then}\;
+		\vdash \Sigma'
+		\;\land\;
+		\Sigma \subseteq \Sigma'
+\]
+\end{lemma}
 
 \begin{lemma}[Preservation]
 \[
