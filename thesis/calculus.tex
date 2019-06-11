@@ -183,10 +183,11 @@ $\Sigma$ is introduced to handle the fresh generation of scope and instance loca
 \item $\Sigma$ is the dynamic environment which keeps track of scope location $s_{loc}$ and instance locations $l$. Instance locations are assigned a tuple of a scope location and an effect $(s_{loc}, \eff)$. $\Sigma$ is used in both the typing rules and the operational semantics.
 We do not need a separate environment for the semantics because instances are not assigned dynamic values like references are.
 $\Sigma$ enables us to type instances in the typing rules, and to generate fresh scope and instance locations in the semantics.
+Because there is a dependence of instance locations on scope locations we also introduce a well-formedness judgment for $\Sigma$.
 \end{itemize}
 
 \paragraph{Judgments}
-There are three kinds of judgments: subtyping (Section~\ref{sec:subtyping}), well-formedness (Section~\ref{
+There are four kinds of judgments: subtyping (Section~\ref{sec:subtyping}), well-formedness (Section~\ref{
 sec:wellformedness}) and typing (Section~\ref{sec:typingrules}).
 \\\\
 The subtyping judgments are used to weaken the effect annotation of a computation type.
@@ -199,13 +200,15 @@ There is a subtyping judgment for both the value types $\ty$ and the computation
 \item $\subty{\cty}{\cty'}$ holds when the computation type $\cty$ is a subtype of $\cty'$.
 \end{itemize}
 
-The well-formedness judgments assert that scopes used in the types are valid under the scope variable and dynamic environments.
-There are three judgments of this kind:
+We have a well-formedness judgment $\vdash \Sigma$ which makes sure instance locations in $\Sigma$ do not depend on an non-existant scope locations and that locations are unique.
+The well-formedness judgments for types assert that scopes used in the types are valid under the scope variable and dynamic environments.
+The well-formedness judgments have the following form:
 \begin{itemize}
 \setlength\itemsep{0.5em}
+\item $\vdash \Sigma$ asserts that all instance locations in $\Sigma$ refer to valid scope locations and that all locations are unique.
 \item $\Delta;\Sigma \vdash s$ asserts that the scope $s$ is either in $\Delta$ if it is a scope variable or else in $\Sigma$ if it is a scope location.
 \item $\Delta;\Sigma \vdash \ty$ asserts that all the scopes in the value type $\ty$ are valid under the environments $\Delta$ and $\Sigma$.
-\item $\Delta;\Sigma \vdash \cty$ asserts that all the scopes in the computation type $\cty$ are valid under the environments $\Delta$ and $\Sigma$.
+\item $\Delta;\Sigma \vdash \cty$ asserts that all the scopes in the computation type $\cty$ are valid under the environments $\Delta$ and $\Sigma$. This judgment is only used in the theorems at the end of the Chapter.
 \end{itemize}
 
 Lastly there are three typing judgments:
@@ -265,7 +268,38 @@ Lastly annotated types $\aty{\ty}{r}$ are compared by comparing the value types 
 \label{sec:wellformedness}
 
 \begin{figure}[h]
-\caption{Well-formedness}
+\caption{Well-formedness for $\Sigma$}
+\centering
+\fbox{
+\begin{minipage}{12 cm}
+\begin{mathpar}
+\inferH{WFS-Empty}{
+}{
+	\vdash \cdot
+}
+\and
+\inferH{WFS-ScopeLoc}{
+	\vdash \Sigma \\
+	s_{loc} \notin \Sigma
+}{
+	\vdash \Sigma, s_{loc}
+}
+\and
+\inferH{WFS-InstanceLoc}{
+	\vdash \Sigma \\
+	l \notin \Sigma \\
+	s_{loc} \in \Sigma
+}{
+	\vdash \Sigma, l := (s_{loc}, \eff)
+}
+\end{mathpar}
+\label{fig:wf-sigma}
+\end{minipage}
+}
+\end{figure}
+
+\begin{figure}[h]
+\caption{Well-formedness for types}
 \centering
 \fbox{
 \begin{minipage}{12 cm}
@@ -313,6 +347,13 @@ Lastly annotated types $\aty{\ty}{r}$ are compared by comparing the value types 
 }
 \end{figure}
 
+In Figure~\ref{fig:wf-sigma} we give the well-formedness rules for $\Sigma$.
+If $\Sigma$ is empty then it is well-formed (\textsc{WFS-Empty}).
+For scope locations $s_{loc}$ we check that the rest of $\Sigma$ is well-formed and that $s_{loc}$ does not occur in it, meaning that $s_{loc}$ is unique (\textsc{WFS-ScopeLoc}).
+For instance locations $l$ we also first check that the rest of $\Sigma$ is well-formed.
+Then we check that $l$ does not occur in $\Sigma$.
+Lastly we check that the scope location $s_{loc}$ used by $l$ is defined in $\Sigma$.
+\\\\
 In Figure~\ref{fig:wf-calc} we give the well-formedness rules for the value and computation types.
 Well-formedness asserts that the effect scopes in the type are accounted for in the environments.
 The rules \textsc{WF-SVar} and \textsc{WF-SLoc} assert that the effect scope variables $s_{var}$ and locations $s_{loc}$ are valid by checking that they are contained in the scope and dynamic environments respectively.
@@ -379,6 +420,11 @@ The rules \textsc{T-Return}, \textsc{T-App}, \textsc{T-Seq} and \textsc{T-SubCom
 The rule for effect scope application (\textsc{T-TApp}) asserts that, in the application $\cappt{\val}{s}$, the scope $s$ is well-formed.
 Then we check that $\val$ is a universally quantified type $\tforall{s'}{\cty}$.
 Finally we substitute the given scope $s$ for the quantified variable $s'$ in $\cty$.
+\\\\
+For operation calls (\textsc{T-Op}) $\cop{\val_1}{op}{\val_2}$ we first check that the type of $\val_1$ is an instance type $\tinst{s}{\eff}$.
+We then check that the operation $op$ is an operation of the effect of the instance $\eff$ ($op \in \Op{\eff}$).
+Lastly we check that the given value $\val_2$ matches the parameter type of the operation $op$ ($\pty{op}$).
+The type given to the operation call is the return type of the operation $\rty{op}$ with the scope of the instance, $s$, in the annotation.
 
 \begin{figure}[H]
 \caption{Computation typing rules}
@@ -470,11 +516,6 @@ Finally we substitute the given scope $s$ for the quantified variable $s'$ in $\
 }
 \end{figure}
 
-For operation calls (\textsc{T-Op}) $\cop{\val_1}{op}{\val_2}$ we first check that the type of $\val_1$ is an instance type $\tinst{s}{\eff}$.
-We then check that the operation $op$ is an operation of the effect of the instance $\eff$ ($op \in \Op{\eff}$).
-Lastly we check that the given value $\val_2$ matches the parameter type of the operation $op$ ($\pty{op}$).
-The type given to the operation call is the return type of the operation $\rty{op}$ with the scope of the instance, $s$, in the annotation.
-\\\\
 The rule \textsc{T-New} types the creation of new instance: $\cnew{\eff}{s}{\handler; \hfinally{y}{\comp'}}{x}{\comp}$.
 We are creating a new instance $x$ of effect $\eff$ in the effect scope $s$.
 First we check that the given effect scope $s$ is valid.
