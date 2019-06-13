@@ -194,8 +194,6 @@ X related work
 	X compare and contrast
 	X is lifting relevant
 
-- add "default handlers" as future work (global scope?)
-
 2019-06-04
 - conclusion short, 1 page
 	- revise on thesis
@@ -221,15 +219,18 @@ X related work
 	- "you are" -> "one is"
 	- Helium -> "paper shows no evidence of heaps..." (if not found) 
 - add bibtex (use DBLP)
-- future work:
-	- intro text
-	- theory section say something brief about formalization (we used this, debruijn that, resulted in)
-		- labeled subsection
-			- paragraph of detail (mention in contribution)
-	- there all all kinds of other features, and then list of possible extensions
-	- type annotations: "more usefull" more static guaruantees
-		- remove over approximation
-	
+X future work:
+	X intro text
+	X theory section say something brief about formalization (we used this, debruijn that, resulted in)
+		X labeled subsection
+			X paragraph of detail (mention in contribution)
+	X there all all kinds of other features, and then list of possible extensions
+	X type annotations: "more usefull" more static guaruantees
+		X remove over approximation
+	X update section of combination
+	X add "default handlers" as future work (global scope?)
+		- more comparison with Eff resources.
+
 - introduction: mention Eff resources
 	- mentioned delimeted continuations
 - "this" is bad

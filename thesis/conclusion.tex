@@ -1,19 +1,21 @@
-\section{Conclusion}
+% \section{Conclusion}
 Blablabla
 
 \section{Future work}
-
-\textbf{Formalization.}
-We currently have formalized the system with static instances of Chapter~2.2 and have proven type soundness in Coq.
+We currently have formalized the system with static instances of Chapter~2.1 and 2.2 and have proven type soundness in Coq~\footnote{https://github.com/atennapel/dynamicinstances}.
+This formalization is briefly discussed in Chapter~\ref{sec:formalization}.
 Due to time constraints we were unable to also provide a formalization for X.
 It would be beneficial to also formalize X to gain more certainty the system is safe.
 \\\\
-\textbf{Parametric polymorphism over any type.}
+There are many kinds of features possible which increase the expressiveness and guarantees of our system.
+We will now discuss possible extensions to our system.
+
+\paragraph{Parametric polymorphism over any type.}
 In order to keep the system simple and to only focus on the novel elements, X only supports parametric polymorphism over effect scopes.
 It would be very useful in practice to allow quantification over any type.
 We do not think that adding this will interfere with the other elements of the system.
 \\\\
-\textbf{Polymorphic effects.}
+\paragraph{Polymorphic effects.}
 Having added polymorphism over any type it makes sense to also allow for polymorphic effects.
 In our examples we have defined a \ident{State} effect with \ident{Int} values.
 In order to avoid having to define a seperate effect for each type we would like to keep in our state, we could allow for effects to have type parameters.
@@ -26,10 +28,10 @@ effect State t {
 \end{minted}
 
 Using this effect we can have fully polymorphic mutable references.
-The type of an reference holding an integer value would be \ident{Inst s (State Int)}.
-After adding full parametric polymorphic this change would not be difficult to add.
+For example, the type of a reference holding an integer value would be \ident{Inst s (State Int)}.
+Given that each reference carries the type of the value in the reference, \ident{get} and \ident{put} can be type safe.
 \\\\
-\textbf{Polymorphic operations.}
+\paragraph{Polymorphic operations.}
 Polymorphism in operations can also be useful for some effects.
 For example an exception effect:
 \begin{minted}[tabsize=2]{haskell}
@@ -39,24 +41,61 @@ effect Exception {
 \end{minted}
 Here, because we do not expect to continue a computation after an exception has been throw, we can let the \ident{throw} operation return any type.
 This makes it convenient to throw errors, for example in an if-expression where the type of both branches have to match.
-Adding polymorphic operations takes some more thought because in the case of operations like \ident{throw} we cannot allow a handler to call the continuation. The type of the continuation has to be something like \ident{(forall t1. t1) -> t2!r}, so it is impossible to actually invoke it.
+Adding polymorphic operations takes some more thought because in the case of operations like \ident{throw} we cannot allow a handler to call the continuation.
 \\\\
-\textbf{Improved effect annotations.}
+\paragraph{Improved effect annotations.}
 Currently the effect annotation of a computation type is a set of effect scopes.
-We could make these annotations more useful by also noting which effects are used on each scope.
+We could make these annotations more precise by also noting which effects are used on each scope.
 For example, from \ident{Int!{s1, s2}} to \ident{Int!{{State, Flip}@s1, {Rng}@s2}}.
-Of course this would be an over-approximation of the actual effects used.
+We could also allow users to restrict which effects occur on which effect scope in this way, giving more static guarantees.
 We do not see any difficulty in extending the annotations in this way.
 \\\\
-\textbf{Combine with regular algebraic effects and handlers.}
+\paragraph{Combine with regular algebraic effects and handlers.}
 In our system handlers are given when creating instances.
-This is necessary in order to make sure that every instance has a handler, which completely handles the effects of that specific instance.
-Sometimes it might be useful to change the handler of an instance though.
-For example we might want to add logging to a specific \ident{State} instance, to see what values are being stored in it.
-To allow for this we would just have to add a $\mathsf{handle} (c) \{ h \}$ computation like in the system of Chapter~4.2.
-In order to make sure all operation calls are handled we would still need to use the handler given when creating the instance.
-The handler $h$ in $\mathsf{handle} (c) \{ h \}$ would have to be applied before the handler given when creating the instance, since \ident{h} might reinvoke the operations on that instance.
-The handler $h$ would not need to complete, it would not have to handle every operation of a specific effect.
-The handler could also be allowed to be \emph{shallow}, meaning that the handler is not automatically inserted in the continuation.
-Lastly $h$ could be a \emph{multi-handler}, handling operations of different effects and instances at once.
-We are not completely sure if this idea would work in practice or if the system would remain safe.
+These handlers are necessary in order to make sure that every instance has a handler, which completely handles the effects of that specific instance.
+In regular algebraic effects (Chapter~2.1) operation calls can be called anywhere and can also be handled anywhere higher up.
+
+These are two different ways of using algebraic effects.
+We could combine our system with the regular algebraic effects and handlers.
+For example:
+\begin{minted}[tabsize=2]{haskell}
+combination : forall s. (Inst s State) -> ()!{s, State}
+combination [s] r =
+	x <- #get();
+	r#put(x)
+\end{minted}
+
+The function \ident{combination} takes as argument a \ident{State} instance on some effect scope \ident{s}.
+We then call the \ident{get} operation, but not on an instance and call this value \ident{x}.
+We then store \ident{x} in the reference argument \ident{r}, by calling the \ident{r#put}.
+From the effect annotation on the type of \ident{combination} we can see we are both using the effect scope \ident{s} and \ident{State} without a scope.
+While \ident{r} already has a handler associated with it, because one has to be given when creating it, the \ident{#get} operation does not.
+We still have to give a handler for \ident{#get} higher up, like one would do with regular algebraic effects and handlers.
+Effect interfaces can be used for both systems as we do not change these from the regular algebraic effects system in our system.
+It is not clear how difficult it is to combine these two systems as they can interact, regular operations can be called within an effect scope.
+
+\paragraph{Global scope}
+Usually mutable references are globally scoped, meaning they are valid for the entire program.
+In our system we have to explicitly scope instances using \ident{runscope}.
+In order to fully emulate global mutable references we could add a special scope location \ident{global}.
+Instances created on the \ident{global} scope are globally scoped and can be used anywhere.
+We can modify the \ident{ref} function from Chapter~3.1 to create globally scoped mutable references.
+\begin{minted}[tabsize=2]{haskell}
+globalref : Int -> (Inst global State)!{global}
+globalref v =
+	new State@global {
+		get () k -> \st -> k st st
+		put st' k -> \st -> k () st'
+		return x -> \st -> return x
+		finally f -> f v
+	} as x in return x
+\end{minted}
+
+Notice that we no longer need \ident{forall s.} in the type.
+By combining globally scoped instances and polymorphic effects we would be able to emulate fully polymorphic mutable references, as seen in the ML programming language.
+We would need a special $\mathsf{runglobalscope}$ construct in the semantics which always surrounds the entire program and handles any global instances.
+Care would have to be taken to ensure global instances cannot escape, we have to still make sure their operations are always handled.
+Questions remain on what limitations we need on the global handlers.
+Should we be allowed to call other effects in the handlers?
+Should we be allowed to invoke the continuation zero or multiple times?
+This idea is similar to the concept of resources in the Eff programming language.

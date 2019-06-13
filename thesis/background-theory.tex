@@ -325,6 +325,7 @@ We can prove this theorem using the following lemmas:
 Where the progress lemma states that given a well-typed computation $\comp$ then either $\comp$ is a value or $\comp$ can take a  step. The preservation lemma states that given a well-typed computation $\comp$ and if $\comp$ can take a step to $\comp'$ then $\comp'$ is also well-typed. We can prove both these by induction on the typing derivations. Note again that the context has to be empty for the Progress lemma, again because the computation could get stuck on free variables. For the Preservation lemma the context can be anything however, since the operational semantics will not introduce any new free variables that are not already in the context.
 \\\\
 We formalized the fine-grained simply-typed lambda calculus and have proven the type soundness theorem in the Coq proof assistant.
+We briefly discuss the formalization in Section~\ref{sec:formalization}.
 
 \newpage
 \section{Algebraic effects} \label{section:algeff}
@@ -663,11 +664,7 @@ We can now give the generalized version of the progress lemma:
 This lemma allows $\comp$ to be typed with any effect annotation, by adding the possibility that $\comp$ has unhandled operations.
 \\\\
 We formalized the algebraic effect and handler system and have proven the type soundness theorem in the Coq proof assistant.
-The system formalized slightly differs in that we follow the syntax from Bauer and Pretnar \cite{eff2}.
-Operation calls are of the form $op(\val, x. \comp)$, carrying around a continuation.
-Also handlers are first-class values of type $\cty \Rightarrow \cty$.
-These changes make the proofs easier.
-Having continations inside operation calls means we can move operation calls over sequencing, so the $\mathsf{effectful}$ predicate only has one form.
+We briefly discuss the formalization in Section~\ref{sec:formalization}.
 
 \newpage
 \section{Static instances} \label{section:staticinst}
@@ -838,10 +835,21 @@ These lemmas are exactly the same as the ones in Section~\ref{section:algeff}.
 We only need to slightly update our $\mathsf{effectful}$ notion, because operation calls are now called on instances.
 \[ \mathsf{effectful}(\comp) \;\mathsf{if}\; (\exists \vinst \; op \; \val. \comp = \copi{\vinst}{op}{\val}) \lor (\exists \vinst \; x \; op \; \val \; \comp'. \comp = \cdo{x}{\copi{\vinst}{op}{\val}}{\comp'}) \]
 
-We formalized the system with static instances and have proven the type soundness theorem in the Coq proof assistant.
-The formalization follows closely the one for algebraic effects without static instances.
-We only formalized the system with handlers with one operation.
-Again we use a system that follows the one used by Bauer and Pretnar~\cite{eff2}.
-Static instances do not add much complexity compared to algebraic effects.
+We formalized the system with static instances and have proven the type soundness theorem in Coq.
+We will now discuss the formalizations of the different systems.
 
+\section{Formalization}
+\label{sec:formalization}
+
+We have formalized and proven type soundness for all the three systems discussed in this chapter.
+We used DeBruijn indeces to deal with naming and substitution.
+We also restrict effects to only have one operation, modeled as a natural number.
+Handlers can only handle a single operation.
+The system formalized slightly differs in that we follow the syntax from Bauer and Pretnar \cite{eff2}.
+Operation calls are of the form $op(\val, x. \comp)$, carrying around a continuation.
+Also handlers are first-class values of type $\cty \Rightarrow \cty$.
+These changes make the proofs easier.
+Having continations inside operation calls means we can move operation calls over sequencing, so the $\mathsf{effectful}$ predicate only has one form:
+\[ \mathsf{effectful}(\comp) \;\mathsf{if}\; \exists op \; \val \; \comp'. \comp = op(\val, x. \comp') \]
+Adding static instances did not result in much added complexity.
 }
