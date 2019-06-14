@@ -178,14 +178,14 @@ X no store with values needed
 X as usual we have Gamma and now we also have
 X fix theorems in background theory
 X maybe mention that I formalize some stuff
-- theorem for Sigma extension
-	- operational semantics will do a valid extension (monotonic extensions)
-- theorem:
+X theorem for Sigma extension
+	X operational semantics will do a valid extension (monotonic extensions)
+X theorem:
 	if G;S |- e : t and S <= S' then G;S' |- e : t
-- fix theorem with non-empty annotation
-	- operation call is possible if non-empty
-- point of type soundness
-	- point of lemmas
+X fix theorem with non-empty annotation
+	X operation call is possible if non-empty
+X point of type soundness
+	X point of lemmas
 - try to get rule references to have links
 
 X categorize future work

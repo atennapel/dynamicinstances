@@ -782,8 +782,9 @@ Lastly, computations inside instance handlers can be reduced further (\textsc{S-
 \section{Type soundness}
 \label{sec:theorems}
 
-It is important for our system to be type safe.
-The operational semantics can get stuck if operations are unhandled.
+Because our initial goal was to find a safe type system for dynamic instances, it is important that our system is actually type safe.
+We will now give a precise main type soundness theorem.
+We will also give lemmas that are necessary in order to prove this theorem.
 
 \begin{theorem}[Type soundness]
 \[
@@ -804,13 +805,51 @@ This means that if a computation typechecks with no effects then we cannot get s
 \begin{lemma}[Progress]
 \[
 	\mathsf{if}\;
-		\cdot;\Sigma;\cdot \vdash \comp : \aty{\ty}{\varnothing}
+		(\cdot;\Sigma;\cdot \vdash \comp : \aty{\ty}{\varnothing})
 	\;\mathsf{then}\;
 		\mathsf{value}(\comp)
 		\lor
 		(\exists \comp' \; \Sigma'.\; \comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma')
 \]
 \end{lemma}
+
+\begin{lemma}[Preservation]
+\[
+	\mathsf{if}\;
+		(\Delta;\Sigma;\Gamma \vdash \comp : \cty)
+		\;\land\;
+		(\comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma')
+	\;\mathsf{then}\;
+		\Delta;\Sigma';\Gamma \vdash \comp' : \cty
+\]
+\end{lemma}
+
+Just like the algebraic effects systems of Chapter~4 we can prove the type soundness theorem using progress and preservation lemmas.
+The progress lemma states that given a well-typed computation with no effects then either the computation is a value or we can take a step.
+The preservation lemma states that when taking a step on a well-typed computation, the result will still be well-typed.
+\\\\
+Again we need to generalize the progress lemma in order to be able to proof it.
+We slightly modify the notion of $\mathsf{effectful}$ of Chapter~4.2 for our calculus, changing the operation calls to now have an instance location.
+	\[ \mathsf{effectful}(\comp) \;\mathsf{if}\; (\exists l \; op \; \val. \comp = \cop{\vinst{l}}{op}{\val}) \lor (\exists x \; l \; op \; \val \; \comp'. \comp = \cdo{x}{\cop{\vinst{l}}{op}{\val}}{\comp'}) \]
+
+We can now state the generalized version of the progress lemma, for the case where $\comp$ does have effects.
+
+\begin{lemma}[Progress effectful]
+\[
+	\mathsf{if}\;
+		\cdot;\Sigma;\cdot \vdash \comp : \aty{\ty}{r}
+	\;\mathsf{then}\;
+		\mathsf{value}(\comp)
+		\lor
+		\mathsf{effectful}(\comp)
+		\lor
+		(\exists \comp' \; \Sigma'.\; \comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma')
+\]
+\end{lemma}
+
+Finally we give two lemmas which will be useful when proving the type soundness theorem.
+The first allows the dynamic environment $\Sigma$ to be weakened.
+Adding fresh scope and instance locations to $\Sigma$ should not disallow a previously well-typed computation from being well-typed.
 
 \begin{lemma}[$\Sigma$ weakening]
 \[
@@ -825,28 +864,20 @@ This means that if a computation typechecks with no effects then we cannot get s
 \]
 \end{lemma}
 
+The second lemma states that the operational semantics will always extend $\Sigma$ monotonically.
+No scope or instance location occuring in $\Sigma$ will be removed.
+
 \begin{lemma}[Semantics does valid monotonic extension]
 \[
 	\mathsf{if}\;
-		(\comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma')
-		\;\land\;
-		\vdash \Sigma
+		\comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma'
 	\;\mathsf{then}\;
-		\vdash \Sigma'
-		\;\land\;
 		\Sigma \subseteq \Sigma'
 \]
 \end{lemma}
 
-\begin{lemma}[Preservation]
-\[
-	\mathsf{if}\;
-		(\Delta;\Sigma;\Gamma \vdash \comp : \cty)
-		\;\land\;
-		(\comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma')
-	\;\mathsf{then}\;
-		\Delta;\Sigma';\Gamma \vdash \comp' : \cty
-\]
-\end{lemma}
+Unfortunately due to time constraints we have not been able to formalize and prove the type soundness theorem at the time of writing.
+\\\\
+In the next chapter we will discuss related work.
 
 }
