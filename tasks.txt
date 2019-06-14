@@ -186,7 +186,6 @@ X fix theorem with non-empty annotation
 	X operation call is possible if non-empty
 X point of type soundness
 	X point of lemmas
-- try to get rule references to have links
 
 X categorize future work
 X related work
@@ -217,8 +216,7 @@ X conclusion short, 1 page
 		- add the New code piece
 		- "very tedious to work with", remove very explain (require boilerplate, ...)
 	- "you are" -> "one is"
-	- Helium -> "paper shows no evidence of heaps..." (if not found) 
-- add bibtex (use DBLP)
+	- Helium -> "paper shows no evidence of heaps..." (if not found)
 X future work:
 	X intro text
 	X theory section say something brief about formalization (we used this, debruijn that, resulted in)
@@ -246,3 +244,9 @@ X process Casper comments in conclusion
 X process Robbert comments in conclusion
 
 - clean up Coq folder and check that static instances is completed.
+
+- try to get rule references to have links
+- add bibtex (use DBLP)
+- think of name for system!
+- change title
+- fix long chapter titles at the top
