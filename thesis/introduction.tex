@@ -90,28 +90,33 @@ In Haskell the the so-called ``ST monad''~\cite{runst} can be used to safely imp
 A feature called dynamic instances was introduced by the Eff programming language~\cite{eff1}.
 With dynamic instances multiple different instances of the same effect can be dynamically created.
 Using this multiple state cells can be implemented.
-Unfortunately there is no type-and-effect for dynamic instances, using them can results in runtime errors when instances do not have an associated handler.
+\iffalse
+Eff also introduced a construct called \emph{resources}.
+Resources are an effect instance with a globally scoped handler associated.
+Having a globally scoped handler means operation calls on an instance with a resource can never escape their scope and will always be handled.
+\fi
+Unfortunately there is no type-and-effect for dynamic instances, using them can results in runtime errors when operation calls do not have an associated handler.
 \\\\
-In this thesis we define a calculus based on algebraic effects and handlers which allows for the definition of side-effects such as local references, local exceptions, and the dynamic opening of channels.
+In this thesis we define a calculus named \lang{} based on algebraic effects and handlers which allows for the definition of side-effects such as local references, local exceptions, and the dynamic opening of channels.
 Using this system we can implement a system similar to the ``ST monad'' in Haskell.
 This system gives full control of which parts of a program are pure and impure.
 Functions also compose easily, irrelevant of which side-effects they use.
 Using a type-and-effect system every function keeps track of which effects it may use.
 We also statically ensure that side-effects are encapsulated.
-We give examples of programs using these side-effects in our system and show how to implement local mutable references in this system.
+We give examples of programs using these side-effects in \lang{} and show how to implement local mutable references in this system.
 We give a formal description of the syntax, typing rules and semantics of the system.
 
 \section*{Contributions}
 \begin{itemize}
 
 \item \textbf{Language.}
-We define a language based on algebraic effects and handlers that can handle a form of dynamic effect instances.
+We define a language named \lang{} based on algebraic effects and handlers that can handle a form of dynamic effect instances.
 
 \item \textbf{Mutable references.}
-We give examples in our language that would be difficult or impossible to express with just algebraic effects.
+We give examples in \lang{} that would be difficult or impossible to express with just algebraic effects.
 
 \item \textbf{Operational semantics and type system.}
-We define a core calculus of our language together with a small-step operational semantics and a type system.
+We define a core calculus of \lang{} together with a small-step operational semantics and a type system.
 
 \item \textbf{Type soundness.}
 We give a type soundness theorem for our type system with respect to the operational semantics via type preservation and progress for the core calculus.
@@ -124,8 +129,8 @@ We have formalized algebraic effects and handlers with and without static instan
 \section*{Thesis structure}
 The thesis is structured as follows.
 Chapter 2 gives an introduction to algebraic effects and handlers, and static and dynamic instances.
-Chapter 3 gives an introduction to our proposed language.
+Chapter 3 gives an introduction to \lang{}.
 Chapter 4 gives formal definitions of systems with algebraic effecst and handlers, and static instances.
-Chapter 5 gives a formal account of X.
+Chapter 5 gives a formal account of \lang{}.
 Chapter 6 discusses related work.
 Chapter 7 concludes the thesis and discusses future work.

@@ -44,6 +44,9 @@
 \newtheorem{theorem}{Theorem}
 
 \newcommand\ident[1]{\mintinline{haskell}{#1}}
+\newcommand\identp[1]{\mintinline{text}{#1}}
+
+\newcommand{\lang}{Miro}
 
 \lstset{
 	frame = single,
@@ -64,16 +67,16 @@
 \chapter{Introduction}
 \input{introduction.tex}
 
-\chapter{An introduction to algebraic effects and handlers}
+\chapter[Algebraic effects introduction]{An introduction to algebraic effects and handlers}
 \input{background.tex}
 
-\chapter{Introduction to X}
+\chapter{Introduction to \lang{}}
 \input{examples.tex}
 
-\chapter{Semantics and types of algebraic effects and handlers}
+\chapter[Algebraic effects theory]{Semantics and types of algebraic effects and handlers}
 \input{background-theory.tex}
 
-\chapter{Semantics and types of X}
+\chapter{Semantics and types of \lang{}}
 \input{calculus.tex}
 
 \chapter{Related work}
@@ -84,7 +87,7 @@
 % \input{features.tex}
 
 \newpage
-\begin{thebibliography}{9}
+\begin{thebibliography}{100}
 \bibitem{eff1}
 Bauer, Andrej, and Matija Pretnar. "Programming with algebraic effects and handlers." Journal of Logical and Algebraic Methods in Programming 84.1 (2015): 108-123.
 \bibitem{eff2}
@@ -99,10 +102,10 @@ Leijen, Daan. Algebraic Effects for Functional Programming. Technical Report. 15
 Leijen, Daan. "First class dynamic effect handlers: or, polymorphic heaps with dynamic effect handlers." Proceedings of the 3rd ACM SIGPLAN International Workshop on Type-Driven Development. ACM, 2018.
 \bibitem{kokaresources}
 Leijen, Daan. Algebraic effect handlers with resources and deep finalization. Technical Report MSR-TR-2018-10. Microsoft Research, 2018.
-\bibitem{frank}
-Lindley, Sam, Conor McBride, and Craig McLaughlin. "Do Be Do. In: POPL'2017. ACM, New York, pp. 500-514. ISBN 9781450346603, http://dx. doi. org/10.1145/3009837.3009897."
-\bibitem{idris}
-Brady, Edwin. "Programming and Reasoning with Side-Effects in IDRIS." (2014).
+%\bibitem{frank}
+%Lindley, Sam, Conor McBride, and Craig McLaughlin. "Do Be Do. In: POPL'2017. ACM, New York, pp. 500-514. ISBN 9781450346603, http://dx. doi. org/10.1145/3009837.3009897."
+%\bibitem{idris}
+%Brady, Edwin. "Programming and Reasoning with Side-Effects in IDRIS." (2014).
 \bibitem{fg-stlc}
 Levy, PaulBlain, John Power, and Hayo Thielecke. "Modelling environments in call-by-value programming languages." Information and computation 185.2 (2003): 182-210.
 \bibitem{anormalform}
@@ -119,14 +122,14 @@ Plotkin, Gordon D., and Matija Pretnar. "Handling algebraic effects." arXiv prep
 Launchbury, John, and Simon L. Peyton Jones. "Lazy functional state threads." ACM SIGPLAN Notices 29.6 (1994): 24-35.
 \bibitem{typedlogic}
 Claessen, Koen, and Peter Ljunglöf. "Typed Logical Variables in Haskell." Electr. Notes Theor. Comput. Sci. 41.1 (2000): 37.
-\bibitem{algtutorial}
-Pretnar, Matija. "An introduction to algebraic effects and handlers. invited tutorial paper." Electronic Notes in Theoretical Computer Science 319 (2015): 19-35.
+%\bibitem{algtutorial}
+%Pretnar, Matija. "An introduction to algebraic effects and handlers. invited tutorial paper." Electronic Notes in Theoretical Computer Science 319 (2015): 19-35.
 \bibitem{handlewithcare}
 Biernacki, Dariusz, et al. "Handle with care: relational interpretation of algebraic effects and handlers." Proceedings of the ACM on Programming Languages 2.POPL (2017): 8.
-\bibitem{abstractingalgeffects}
-Biernacki, Dariusz, et al. "Abstracting algebraic effects." Proceedings of the ACM on Programming Languages 3.POPL (2019): 6.
-\bibitem{tunneling}
-Zhang, Yizhou, and Andrew C. Myers. "Abstraction-safe effect handlers via tunneling." Proceedings of the ACM on Programming Languages 3.POPL (2019): 5.
+%\bibitem{abstractingalgeffects}
+%Biernacki, Dariusz, et al. "Abstracting algebraic effects." Proceedings of the ACM on Programming Languages 3.POPL (2019): 6.
+%\bibitem{tunneling}
+%Zhang, Yizhou, and Andrew C. Myers. "Abstraction-safe effect handlers via tunneling." Proceedings of the ACM on Programming Languages 3.POPL (2019): 5.
 \bibitem{effdirectly}
 Kiselyov, Oleg, and K. C. Sivaramakrishnan. "Eff directly in OCaml." arXiv preprint arXiv:1812.11664 (2018).
 \end{thebibliography}

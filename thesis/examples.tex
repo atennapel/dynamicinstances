@@ -1,7 +1,7 @@
 \iffalse
-In this chapter we will give an introduction to programming with X.
+In this chapter we will give an introduction to programming with \lang{}.
 X is a modification of the algebraic effects system described in Chapter~2.1, extended with a restricted form of the dynamic instances of Chapter~2.3.
-We introduce the novel concepts of X.
+We introduce the novel concepts of \lang{}.
 When create a new instance we have to give handler, this ensures that the instance is always associated with a handler.
 The $\mathsf{runscope}$ construct can handle multiple effects at the same time.
 These effects are collected under a notion of \emph{effect scope}, which is used to group instances together.
@@ -13,7 +13,7 @@ These constructs allows us to write functions which are polymorphic over effect 
 In Chapter~2.3 we saw how dynamic instances allow us to implement mutable references in a system with algebraic effects.
 This system is untyped however, meaning that you can get runtime errors if an operation is unhandled.
 This can happen if an operation is called on a dynamic instance outside of a handler.
-In this chapter we introduce X, which combines algebraic effects and dynamic instances while still remaining typeable.
+In this chapter we introduce \lang{}, which combines algebraic effects and dynamic instances while still remaining typeable.
 In order to achieve this we introduce the notion of an \emph{effect scope}.
 An effect scope groups together instances.
 When creating an instance we give an effect scope to create the instance in.
@@ -26,7 +26,7 @@ After all the instances created on this new scope will actually be instantiated 
 In order to allow computations to be polymorphic over effect scopes we also introduce \emph{effect scope polymorpishm} together with \emph{effect scope abstraction} and \emph{effect scope application}.
 \\\\
 We start with explaining all the novel concepts in Section~3.1, using the example of mutable references.
-% After we will show how mutable references can be expressed in X in Section~3.2.
+% After we will show how mutable references can be expressed in \lang{} in Section~3.2.
 Then we will show how mutable vectors can be defined, followed by an implementation of a list shuffling algorithm in Section~3.2.
 \iffalse
 We end the chapter by showing how our system allows for local effects in Section~3.3.
@@ -79,7 +79,7 @@ result =
 \label{fig:example1}
 \end{figure}
 
-In Figure~\ref{fig:example1} we give an example containing all the novel constructs of X.
+In Figure~\ref{fig:example1} we give an example containing all the novel constructs of \lang{}.
 
 \subsection{Effects}
 

@@ -70,18 +70,18 @@
 % add substitution to type application
 % more brackets in semantics
 
-In this chapter we give a formal account of X.
+In this chapter we give a formal account of \lang{}.
 We give the syntax, typing rules and a small-step operation semantics.
 We end the chapter with a type soundness theorem.
 The system builds on the formal system with algebraic effects, handlers and static instances of Chapter~4.3.
 We add constructs to handle effect scope polymorphism, to create new instances, and to handle effect scopes, as informally described in Chapter~3.
 \\\\
-In Section~\ref{sec:syntax} we give the syntax of the terms and types of X.
+In Section~\ref{sec:syntax} we give the syntax of the terms and types of \lang{}.
 In Section~\ref{sec:contexts} we give the environments and judgments used in the typing rules and semantics.
 In Section~\ref{sec:subtyping} we give subtyping rules for the types.
 In Section~\ref{sec:wellformedness} we give well-formedness rules for the types.
 In Section~\ref{sec:typingrules} we give the typing rules.
-In Section~\ref{sec:semantics} we give a small-step operation semantics for X.
+In Section~\ref{sec:semantics} we give a small-step operation semantics for \lang{}.
 Finally in Section~\ref{sec:theorems} we give a type-soundness theorem.
 
 \section{Syntax}
@@ -117,7 +117,7 @@ Each operation $\op$ has a parameter type $\pty{\op}$ and a return type $\rty{\o
 }
 \end{figure}
 
-In Figure~\ref{fig:syntax-calc} we show the syntax of the types and terms of X.
+In Figure~\ref{fig:syntax-calc} we show the syntax of the types and terms of \lang{}.
 An effect scope $s$ is either a scope variable $s_{var}$ or a scope location $s_{loc}$.
 Effect scope variables $s_{var}$ and effects scope locations $s_{loc}$ are both modeled by countable infinite sets.
 \\\\
@@ -593,7 +593,7 @@ We check that the body of the case $\comp$ returns a computation of the same typ
 \section{Semantics}
 \label{sec:semantics}
 
-Finally we give a small-step operational semantics for X.
+Finally we give a small-step operational semantics for \lang{}
 \\\\
 The judgment $\comp_1 \;|\; \Sigma_1 \rightsquigarrow \comp_2 \;|\; \Sigma_2$ takes a step from the computation $\comp_1$ to $\comp_2$ in the dynamic environment $\Sigma_1$.
 $\Sigma_1$ might be updated with new effect scope locations or instance locations resulting in $\Sigma_2$.

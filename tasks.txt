@@ -197,25 +197,25 @@ X related work
 X conclusion short, 1 page
 	X revise on thesis
 - related work:
-	- start with "wide field, lots of areas"
-	- we focus on dynamic effects
-	- zoom in at the start
-	- use \paragraph{Eff}, \paragraph{Koka}, ...
+	X start with "wide field, lots of areas"
+	X we focus on dynamic effects
+	X zoom in at the start
+	X use \paragraph{Eff}, \paragraph{Koka}, ...
 	- better explain local effects
 	- "in our system this is also true" refer better
 	- change first line, better scope on what system
-	- code examples of Eff and Koka
-	- With eff say up front it is not typed
-		- however untyped, can do more, fewer static guaruantees
-		- first high-level then details
-	- Eff: say what eff has and we don't (point to future work)
-		- then discuss the resources
-	- future work: global top scope (would need extra semantics)
+	/ code examples of Eff and Koka
+	X With eff say up front it is not typed
+		X however untyped, can do more, fewer static guaruantees
+		X first high-level then details
+	X Eff: say what eff has and we don't (point to future work)
+		X then discuss the resources
+	X future work: global top scope (would need extra semantics)
 	- OCaml: variant of eff is implemented in OCAml also supports dynamic effects
 		- high level differences and then detail
 		- add the New code piece
 		- "very tedious to work with", remove very explain (require boilerplate, ...)
-	- "you are" -> "one is"
+	X "you are" -> "one is"
 	- Helium -> "paper shows no evidence of heaps..." (if not found)
 X future work:
 	X intro text
@@ -247,6 +247,6 @@ X process Robbert comments in conclusion
 
 - try to get rule references to have links
 - add bibtex (use DBLP)
-- think of name for system!
-- change title
-- fix long chapter titles at the top
+X think of name for system!
+- change title maybe
+X fix long chapter titles at the top

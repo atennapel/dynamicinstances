@@ -1,57 +1,119 @@
-The Eff programming language~\ref{eff1} was one of the first languages with support for algebraic effects and handlers.
-It featured fully dynamic instances allowing for dynamic effects.
-In order to allow for the implementation of mutable references resources were introduced.
-Resources are handlers given at the creation of a dynamic instance which get wrapped around the whole execution of the program.
-This way an operation on such an instance can never escape since the handler is around the whole program.
-These handlers are also called \emph{default handlers}, which have their own semantics apart from regular handlers.
-This allows Eff to fully implement mutable references.
-In our case we insist that users provide a handler when creating a new instance.
-This handler is not around the whole program though but instead only to the matching $\mathsf{runscope}$ construct.
-This means we can implement mutable references like Eff, but not to the same degree since we do not allow them to escape their scope.
-We cannot implement fully encapsulated memoization for example, since such a function would only be valid within the scope of its corresponding reference.
-Eff did not feature an effect typing system initially, meaning that unhandled operations would not be caught statically.
-An effect typing system was proposed~\ref{eff2} but it did not feature dynamic instances, only static instances.
+Algebraic effects and handlers is a wide field with many different areas and features to consider.
+We will focus only on languages which have support for dynamic effects.
+
+\paragraph{Eff} \label{sec:eff}
+The Eff programming language~\cite{eff1} was the first language with support for algebraic effects and handlers.
+It featured fully dynamic instances (Chapter~\ref{section:background-dynamicinst}) allowing for dynamic effects.
+Eff did not feature an effect typing system initially.
+Having no effect typing system means there are fewer restrictions on what one can do, but there are also fewer static guarantees.
+For example it is not statically guaranteed all operation call will be handled, resulting in runtime errors.
+An effect typing system was proposed~\cite{eff2} but it did not feature dynamic instances, only static instances (Chapter~\ref{section:background-staticinst} and Chapter~\ref{section:staticinst}).
 The current version of Eff does not have dynamic instances since they were considered too difficult in the theory.
+Dynamic instances in Eff can be introduced without an associated handler, different than \lang{}.
+In most language mutable references are globally scoped.
+Eff supports these kinds of globally scoped dynamic effects using \emph{resources},
+taking an example from ``Programming with algebraic effects and handlers''\cite{eff1}:
+\newpage
+\begin{minted}[tabsize=2]{ocaml}
+let ref x =
+	new ref @ x with
+		operation lookup () @ s -> (s, s)
+		operation update s' @ _ -> ((), s')
+	end
+\end{minted}
+Here the \ident{new E @ x with h} syntax creates a new instance of effect \ident{E} with an associated global handler \ident{h}.
+The \ident{x} is a piece of state that the handler is allowed to manipulate.
+In the example the \ident{ref} function creates a new instance of the \ident{ref} effect with initial value \ident{x}.
+Resources always have a handler associated with them.
+These special handlers are globally scoped and are more restricted than regular handlers and have different semantics.
+Because the handler is globally scoped any operation call on an instance with a resource will always be handled.
+Such handlers are also sometimes called \emph{default handlers}.
+In the future work we discuss the possibility of adding default handlers to \lang{} in Chapter~\ref{sec:globalscopes}.
 \\\\
-An embedding of Eff in OCaml was proposed~\ref{effdirectly}.
-This embedding featured algebraic effects and handlers and dynamic instances, again without an effect typing system.
+\paragraph{OCaml embedding}
+A variant of Eff was implemented as an embedding in OCaml~\cite{effdirectly}.
+This embedding features algebraic effects and handlers and dynamic instances, again without an effect typing system.
 The implementation relies on multi-prompt delimited control in OCaml.
-Default handlers are not implemented, instead dynamic effects such as mutable references are possible by treating the creation of instances as just another effect.
-Creating a new instance can be done using the \textsc{New} effect.
-This operation receives as arguments which effect to create an instance of, and the handler to use.
-The handler for the \textsc{New} operation then actually allocates the new instance and give it to the continuation of the operation, wrapping the entire continuation call in the give handler.
+The embedding does not implement the resources or default handlers from Eff.
+Instead the observation is made that dynamic effects can be seen as just another effect, which are called \emph{higher-order effects}.
+A effect called \identp{New} is defined with a \identp{new} operation.
+We give the definition of \identp{New} here but refer to the paper for a full explanation.
+\newpage
+\begin{minted}[tabsize=2]{ocaml}
+type eff handler t = {h: forall w. eff result prompt -> (unit -> w) -> w}
+type dyn instance =
+	New : eff handler t * (eff result prompt -> dyn instance result)
+		-> dyn instance
+let new instance p arg = shift0 p (fun k -> Eff (New (arg,k)))
+let new handler p thunk =
+	handle it p thunk
+		(fun v -> v)
+		(fun loop -> function New ({h=h},k) ->
+			let new instance p = new prompt () in
+				h new instance p (fun () -> loop @@ k new instance p))
+let pnew = new prompt ()
+let newref s0 = new instance pnew {h = handle ref s0}
+\end{minted}
+
+This \identp{new} operation takes as arguments an effect and a handler.
+Then a handler for \identp{New} is defined which creates instances for each \identp{new} operation and wraps the continuation in the handler that was given as argument.
 We use a very similar technique to implement creation of instances.
-Our $\mathsf{runscope}$ construct is similar to the handler of \textsc{New} in the Eff embedding.
-In essence we ban the normal creation of dynamic instances and force users to always use the equivalent of the \textsc{New} effect.
+Our $\mathsf{runscope}$ construct is similar to the handler of \identp{New} in the Eff embedding.
+In essence we ban the normal creation of dynamic instances and force users to always use the equivalent of the \identp{New} effect.
 This restriction allows use to give a type system which make sure no instance escape their handler.
+In the OCaml embedding no such restrictions are made and just like Eff one has no static guarantees that all operations will be handled.
 \\\\
-Koka is a programming language with effect inference using row polymorphism~\ref{koka}.
-Later algebraic effects and handler were also added~\ref{koka2}.
-Extending the language with an \textsc{lift} (also called \textsc{inject}) operation to inject effects, skipping a handler, some notion of mutable references can be implemented~\ref{handlewithcare}.
-These references are very tedious to work with though and they are unable to escape even single functions.
-Daan Leijen proposed an extension for Koka with dynamic effect handlers~\ref{kokadynamic}.
+\paragraph{Koka}
+Koka is a programming language with effect inference using row polymorphism~\cite{koka}.
+Later algebraic effects and handler were also added~\cite{koka2}.
+Extending the language with a \identp{lift} (also called \identp{inject}) operation to inject effects, skipping a handler, some notion of mutable references can be implemented~\cite{handlewithcare}.
+References implemented using this technique are very limited though, being unable to escape even single functions.
+Leijen proposed an extension for Koka with dynamic effect handlers~\cite{kokadynamic}.
 This extension introduces \emph{umbrella effects}, which are effects that can contain dynamic effects.
-For example an umbrella effect \textsc{heap} can be defined which contains dynamic effects of type \textsc{ref} (mutable references).
-Values of type \textsc{ref} can then created using by defining a dynamic handler.
+For example an umbrella effect \identp{heap} can be defined which contains dynamic effects of type \identp{ref} (mutable references).
+\begin{minted}[tabsize=2]{text}
+effect heap {
+	fun new-ref(init : a) : ref<a>
+}
+effect dynamic ref<a> in heap {
+	fun get() : a
+	fun set(x : a) : ()
+}
+\end{minted}
+Values of type \identp{ref} can then created using by defining a dynamic handler.
+\begin{minted}[tabsize=2]{text}
+fun with-ref(init:a, action:ref<a> -> e b ) : e b {
+	handle dynamic (action) (local=init) {
+		get() -> resume(local,local)
+		set(x) -> resume((),x)
+} }
+\end{minted}
 Similar to how we have give a handler when creating a dynamic instance.
 Using these dynamic handlers we can implement polymorphic heaps.
-In order to let references escape the function in which they are created, a \textsc{new-ref} operation is defined on the umbrella effect \textsc{heap}.
-The \textsc{heap} handler then creates the dynamic \textsc{ref} handlers for each time \textsc{new-ref} is called, installing these handlers under the \textsc{heap} handler.
-This way the references can escape functions that define them as long as these functions are called under the \textsc{heap} handler.
-This is very similar to the \textsc{New} effect of the OCaml Eff embedding and to our \textsc{runscope} construct.
+In order to let references escape the function in which they are created, a \identp{new-ref} operation is defined on the umbrella effect \identp{heap}.
+\begin{minted}[tabsize=2]{text}
+fun heap(action : () -> <heap|e> a ) : e a {
+	handle(action) {
+		new-ref(init) -> with-ref(init,resume)
+} }
+\end{minted}
+The \identp{heap} handler then creates the dynamic \identp{ref} handlers for each time \identp{new-ref} is called, installing these handlers under the \identp{heap} handler.
+This way the references can escape functions that define them as long as these functions are called under the \identp{heap} handler.
+This is very similar to the \identp{New} effect of the OCaml Eff embedding and to our $\mathsf{runscope}$ construct.
 Koka does not statically check that the dynamic effects do not escape their handler.
 Instead an exception effect is added to the effect annotation each time a dynamic handler is created.
-This means that you are always forced to handle the exceptions even if you know that none will be thrown.
-Similar to our system safe references are proposed using higher-ranked types, like in the ST monad in Haskell, in order to ensure that no unhandled operations will happen.
+This means that one is always forced to handle the exceptions even if you know that none will be thrown.
+Similar to \lang{} safe references are proposed using higher-ranked types, like in the ST monad in Haskell, in order to ensure that no unhandled operations will happen.
 These definitions still do not remove the exception effect in the effect annotation though.
-In our system instead we do not allow instances to escape their scope at all.
-We trade in some expressiveness for safety.
+In \lang{} instead we statically guarantee that instances do not escape their scope, we do not require and exception effect in the effect annotation.
+
+\iffalse
 \\\\
-Algebraic effects and handlers have an abstraction problem.
+\paragraph{Other} Algebraic effects and handlers have an abstraction problem.
 A function parameter of a higher-order function may interfere with the effects used inside of the function.
 If the function argument is used inside of handled computation then the effects in the function may be handled, even if the function itself is polymorphic with regards to these effects.
 In Eff dynamic instances solve this problem because one cannot handle an instance if they do not have access to this instance.
-In our system this is also true, a handler is defined when creating an instance and so we cannot accidentally handle an effect we are unaware of.
+In \lang{} this is also true, a handler is defined when creating an instance and so we cannot accidentally handle an effect we are unaware of.
 The two papers ``Abstracting Algebraic Effects''~\ref{abstractingalgeffects} and ``Abstraction-safe effect handlers via tunneling''~\ref{tunneling} both address the same problem in different ways.
 The first of these allows for the definition of local effects.
 These local effects are guaranteed to not interfere with any other effects.
@@ -62,3 +124,4 @@ Operations are then called on the named handler.
 Functions are allowed to be polymorphic over a handler using \emph{handler variables}.
 The technique of explictly naming handlers as similar expressivity to static instances and the \textsc{inject} operation in Koka.
 It does not allow for the definition of dynamic mutable references.
+\fi

@@ -8,14 +8,14 @@ Dynamic instances, as introduced by Bauer and Pretnar in Eff, allow the programm
 Using dynamic instances one can implement dynamic effects such as mutable references and the dynamic opening of channels.
 Unfortunately the type system of Eff under-approximates the uses of effects, which can lead to runtime errors.
 \\\\
-In Chapter~3 we have presented a new language X with algebraic effects and handlers, and dynamic instaces.
+In Chapter~3 we have presented a new language \lang{} with algebraic effects and handlers, and dynamic instaces.
 Using a notion of effect scopes we are able to safely use dynamically created instances, ensuring that no instance will escape the scope of their handler.
-We have shown how we can implement mutable references and vectors in X.
+We have shown how we can implement mutable references and vectors in \lang{}.
  \\\\
  We presented formal accounts of algebraic effects and handler, with and without static instances, giving a type system and operational semantics.
  We have formalized these systems and proven type soundness in Coq.
  \\\\
- Finally we have presented a type system and operational semantics for the core language of X.
+ Finally we have presented a type system and operational semantics for the core language of \lang{}.
  We also gave a type soundness theorem for the type system with respect to the semantics.
  \\\\
  In this thesis we have shown that we can safely combine algebraic effects with dynamic instances by giving an explicit scope for the use of an instance.
@@ -25,14 +25,14 @@ By enabling the definition of dynamic effects, such as mutable references, algeb
 \section{Future work}
 We currently have formalized the system with static instances of Chapter~2.1 and 2.2 and have proven type soundness in Coq~\footnote{https://github.com/atennapel/dynamicinstances}.
 This formalization is briefly discussed in Chapter~\ref{sec:formalization}.
-Due to time constraints we were unable to also provide a formalization for X.
-It would be beneficial to also formalize X to gain more certainty the system is safe.
+Due to time constraints we were unable to also provide a formalization for \lang{}.
+It would be beneficial to also formalize \lang{} to gain more certainty the system is safe.
 \\\\
-There are many kinds of features possible which increase the expressiveness and guarantees of our system.
-We will now discuss possible extensions to our system.
+There are many kinds of features possible which increase the expressiveness and guarantees of \lang{}.
+We will now discuss possible extensions to \lang{}.
 
 \paragraph{Parametric polymorphism over any type.}
-In order to keep the system simple and to only focus on the novel elements, X only supports parametric polymorphism over effect scopes.
+In order to keep the system simple and to only focus on the novel elements, \lang{} only supports parametric polymorphism over effect scopes.
 It would be very useful in practice to allow quantification over any type.
 We do not think that adding this will interfere with the other elements of the system.
 \\\\
@@ -72,12 +72,12 @@ We could also allow users to restrict which effects occur on which effect scope 
 We do not see any difficulty in extending the annotations in this way.
 \\\\
 \paragraph{Combine with regular algebraic effects and handlers.}
-In our system handlers are given when creating instances.
+In \lang{} handlers are given when creating instances.
 These handlers are necessary in order to make sure that every instance has a handler, which completely handles the effects of that specific instance.
 In regular algebraic effects (Chapter~2.1) operation calls can be called anywhere and can also be handled anywhere higher up.
 
 These are two different ways of using algebraic effects.
-We could combine our system with the regular algebraic effects and handlers.
+We could combine \lang{} with the regular algebraic effects and handlers.
 For example:
 \begin{minted}[tabsize=2]{haskell}
 combination : forall s. (Inst s State) -> ()!{s, State}
@@ -92,12 +92,12 @@ We then store \ident{x} in the reference argument \ident{r}, by calling the \ide
 From the effect annotation on the type of \ident{combination} we can see we are both using the effect scope \ident{s} and \ident{State} without a scope.
 While \ident{r} already has a handler associated with it, because one has to be given when creating it, the \ident{#get} operation does not.
 We still have to give a handler for \ident{#get} higher up, like one would do with regular algebraic effects and handlers.
-Effect interfaces can be used for both systems as we do not change these from the regular algebraic effects system in our system.
+Effect interfaces can be used for both systems as we do not change these from the regular algebraic effects system in \lang{}.
 It is not clear how difficult it is to combine these two systems as they can interact, regular operations can be called within an effect scope.
 
-\paragraph{Global scope}
+\paragraph{Global scope} \label{sec:globalscopes}
 Usually mutable references are globally scoped, meaning they are valid for the entire program.
-In our system we have to explicitly scope instances using \ident{runscope}.
+In \lang{} we have to explicitly scope instances using \ident{runscope}.
 In order to fully emulate global mutable references we could add a special scope location \ident{global}.
 Instances created on the \ident{global} scope are globally scoped and can be used anywhere.
 We can modify the \ident{ref} function from Chapter~3.1 to create globally scoped mutable references.
@@ -119,4 +119,5 @@ Care would have to be taken to ensure global instances cannot escape, we have to
 Questions remain on what limitations we need on the global handlers.
 Should we be allowed to call other effects in the handlers?
 Should we be allowed to invoke the continuation zero or multiple times?
-This idea is similar to the concept of resources in the Eff programming language.
+This idea is similar to the concept of resources in the Eff programming language, as discussed in the related work in Chapter~\ref{sec:eff}.
+Handlers on the global scope are similar to default handlers.
