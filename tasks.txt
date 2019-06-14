@@ -142,8 +142,8 @@ X "in section 3.1 we are going to..."
 	X " insection 3.3 we are going to show scale ..."
 X always show explicit effect scope variables
 
-/ syntax text X done
-- examples text done
+X syntax text X done
+X examples text done
 
 2019-05-09
 X untyped -> now typed in introduction
@@ -170,13 +170,14 @@ X In "intro to alg effect" put long code on it's own (not inline)
 X try to get rule name above rule instead of to the right
 	X write a good macro for this
 	X use \begin{array} with @
-- try to get rule references to have links
 X in Chapter 5 introduction remind where "stuff" comes from
 X scope location and instance location (not just location)
 X no store with values needed
 	X sigma needed for type system
 	X operational semantics for fresh generation
 X as usual we have Gamma and now we also have
+X fix theorems in background theory
+X maybe mention that I formalize some stuff
 - theorem for Sigma extension
 	- operational semantics will do a valid extension (monotonic extensions)
 - theorem:
@@ -185,8 +186,7 @@ X as usual we have Gamma and now we also have
 	- operation call is possible if non-empty
 - point of type soundness
 	- point of lemmas
-X fix theorems in background theory
-X maybe mention that I formalize some stuff
+- try to get rule references to have links
 
 X categorize future work
 X related work
@@ -195,8 +195,8 @@ X related work
 	X is lifting relevant
 
 2019-06-04
-- conclusion short, 1 page
-	- revise on thesis
+X conclusion short, 1 page
+	X revise on thesis
 - related work:
 	- start with "wide field, lots of areas"
 	- we focus on dynamic effects
@@ -240,9 +240,9 @@ X add summary to Examples chapter 3
 	X whats next
 X process Casper comments in Chapter 3
 - process Casper comments in related work
-- process Casper comments in conclusion
+X process Casper comments in conclusion
 - process Robbert comments in Chapter 3
 - process Robbert comments in related work
-- process Robbert comments in conclusion
+X process Robbert comments in conclusion
 
 - clean up Coq folder and check that static instances is completed.

@@ -1,6 +1,27 @@
 % \section{Conclusion}
-Blablabla
-
+We conclude with a brief discussion of what we have presented and discuss possible future work.
+\\\\
+In Chapter~2 we have seen that algebraic effects and handlers are a composable approach to programming with side-effects.
+Using algebraic effects effects we can keep functions pure until we handle the effects within them.
+We have also seen that we are unable to express mutable references within algebraic effects and handlers.
+Dynamic instances, as introduced by Bauer and Pretnar in Eff, allow the programmer to dynamically generate instances of effects.
+Using dynamic instances one can implement dynamic effects such as mutable references and the dynamic opening of channels.
+Unfortunately the type system of Eff under-approximates the uses of effects, which can lead to runtime errors.
+\\\\
+In Chapter~3 we have presented a new language X with algebraic effects and handlers, and dynamic instaces.
+Using a notion of effect scopes we are able to safely use dynamically created instances, ensuring that no instance will escape the scope of their handler.
+We have shown how we can implement mutable references and vectors in X.
+ \\\\
+ We presented formal accounts of algebraic effects and handler, with and without static instances, giving a type system and operational semantics.
+ We have formalized these systems and proven type soundness in Coq.
+ \\\\
+ Finally we have presented a type system and operational semantics for the core language of X.
+ We also gave a type soundness theorem for the type system with respect to the semantics.
+ \\\\
+ In this thesis we have shown that we can safely combine algebraic effects with dynamic instances by giving an explicit scope for the use of an instance.
+Using the notion of an effect scope and effect scope variables we can ensure that no operation call will be left unhandled and we can avoid runtime errors.
+By enabling the definition of dynamic effects, such as mutable references, algebraic effects and handlers can be useful in more situations.
+ 
 \section{Future work}
 We currently have formalized the system with static instances of Chapter~2.1 and 2.2 and have proven type soundness in Coq~\footnote{https://github.com/atennapel/dynamicinstances}.
 This formalization is briefly discussed in Chapter~\ref{sec:formalization}.
