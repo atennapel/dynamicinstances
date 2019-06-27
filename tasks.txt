@@ -250,3 +250,59 @@ X process Robbert comments in conclusion
 X think of name for system!
 - change title maybe
 X fix long chapter titles at the top
+
+2019-06-27
+- answer for why to trust
+- proof sketches
+	- for progress effectful
+	- for preservation
+- give cases for main lemmas
+	- some cases same as before
+	- some cases boring
+	- most interesting cases should have an argument or proof
+- example for operational semantics
+	- say that typing constructors and rules are motivated by operational semantics
+- grey box mark dynamic parts
+- light on references and citations
+	- static instances no citation
+	- influenced by paper X
+- abstract
+- discuss handler before continuations
+	- restructuring 2.1 to help with understanding handler
+		- why is continuation relevant to handler
+- maybe reduce examples or explain the relevance of each examples
+- subsections/paragraphs to make examples have a better purpose
+- more explanation for static instances
+- summary at end of chapter 2
+	- failing example for dynamic instances
+	- and then introduce next chapter
+- move ST section from chapter 3 to introduction
+- subsection for comparison with ST in chapter 3
+- introduction chapter 4 needs update
+	- motivation, why should reader care
+	- useful claims like system being sound hold
+	- also note Coq formalization
+- add remark in 4.2 (handler h moves below lambda)
+	- and mention deep handler (why handle is kept)
+- check labels, some are duplicate
+- add formalization to bibliography
+- in order to get a stronger induction hypothesis (instead of in order to proof)
+- 4.3 notion of effect instance is reason for static instance formalization
+- more clear how came up with dynamic things in chapter 5
+- give examples in start of chapter 6
+- list of dynamic effect languages
+- other feature are orthogonal
+- example of reference escape function (example that goes wrong, in related work)
+- \section{conclusion}
+- related work add mechanization
+- future work: implementation
+	- efficient way of compiling cite stuff
+- polymorphic operations take out, or add better example
+- check if instance cannot escape existential type
+	- claim of instances cannot escape
+- preservation voor gesloten context misschien
+- 
+
+
+
+
