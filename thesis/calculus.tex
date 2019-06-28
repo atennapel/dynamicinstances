@@ -48,7 +48,7 @@
 \newcommand\chandle[1]{\mathsf{runscope} ( #1 )}
 \newcommand\chandlen[2]{\mathsf{runscope} ( #1 \rightarrow #2 )}
 \newcommand\chandlec[2]{\mathsf{runscope}^{#1} ( #2 )}
-\newcommand\chandlei[3]{\mathsf{runinst}^{#1} \{ #2 \} ( #3 )}
+\newcommand\chandlei[4]{\mathsf{runinst}^{#1}_{#2} \{ #3 \} ( #4 )}
 
 % handlers
 \newcommand\handler[0]{h}
@@ -111,7 +111,7 @@ Each operation $\op$ has a parameter type $\pty{\op}$ and a return type $\rty{\o
 					&\;|\; \cnew{\eff}{s}{\handler ; \hfinally{x}{\comp}}{x}{\comp}	\\
 					&\;|\; \chandlen{s_{var}}{\comp}							\\
 					&\;|\; \change{\chandlec{s_{loc}}{\comp}}							\\
-					&\;|\; \change{\chandlei{\loc}{\handler}{\comp}}						\\
+					&\;|\; \change{\chandlei{\loc}{s_{loc},\eff}{\handler}{\comp}}						\\
 	\handler \Coloneqq	&\; \hop{\op}{x}{k}{\comp}{\handler} \;|\; \hreturn{x}{\comp}
 \end{align*}
 \label{fig:syntax-calc}
@@ -512,13 +512,12 @@ The type given to the operation call is the return type of the operation $\rty{o
 \and
 \change{
 \inferH{T-HandleInst}{
-	\Delta[\loc] = (s_{loc}, \eff) \\
+	\Delta \vdash s_{loc} \\
+	\Delta,l := (s_{loc}, \eff) ;\Gamma \vdash \comp : \aty{\ty_1}{r} \\
 	\op \in \Op{\eff} \iff \op \in \handler \\
-	\Delta;\Gamma \vdash \comp : \aty{\ty_1}{r} \\
 	\Delta;\Gamma \vdash^{\ty_1} \handler : \aty{\ty_2}{r} \\
-	% s_{loc} \in r
 }{
-	\Delta;\Gamma \vdash \chandlei{\loc}{\handler}{\comp} : \aty{\ty_2}{r}
+	\Delta;\Gamma \vdash \chandlei{\loc}{s_{loc},\eff}{\handler}{\comp} : \aty{\ty_2}{r}
 }
 }
 \and
@@ -739,7 +738,7 @@ Lastly, computations inside instance handlers can be reduced further (\textsc{S-
 	\loc \notin \sigma
 }{
 	\chandlec{s_{loc}}{\cnew{\eff}{s_{loc}}{\handler; \hfinally{y}{\comp'}}{x}{\comp}} \opsem{\sigma} \\
-	\chandlec{s_{loc}}{\cdo{y}{\chandlei{\loc}{\handler}{\comp[x := \vinst{\loc}]}}{\comp'}}
+	\chandlec{s_{loc}}{\cdo{y}{\chandlei{\loc}{s_{loc},\eff}{\handler}{\comp[x := \vinst{\loc}]}}{\comp'}}
 }
 \end{mathpar}
 \label{fig:semantics2-calc}
@@ -756,38 +755,38 @@ Lastly, computations inside instance handlers can be reduced further (\textsc{S-
 \inferH{S-HandleInstCong}{
 	\comp \opsem{\sigma,\loc} \comp'
 }{
-	\chandlei{\loc}{\handler}{\comp} \opsem{\sigma} \chandlei{\loc}{\handler}{\comp'}
+	\chandlei{\loc}{s_{loc},\eff}{\handler}{\comp} \opsem{\sigma} \chandlei{\loc}{s_{loc},\eff}{\handler}{\comp'}
 }
 \and
 \inferH{S-HandleInstNew}{
 }{
-	\chandlei{\loc}{\handler}{\cnew{\eff}{s}{\handler' ; \hfinally{y}{\comp'}}{x}{\comp}} \opsem{\sigma} \\
-	\cnew{\eff}{s}{\handler' ; \hfinally{y}{\comp'}}{x}{\chandlei{\loc}{\handler}{\comp}}
+	\chandlei{\loc}{s_{loc},\eff}{\handler}{\cnew{\eff}{s}{\handler' ; \hfinally{y}{\comp'}}{x}{\comp}} \opsem{\sigma} \\
+	\cnew{\eff}{s}{\handler' ; \hfinally{y}{\comp'}}{x}{\chandlei{\loc}{s_{loc},\eff}{\handler}{\comp}}
 }
 \and
 \inferH{S-HandleInstOpPrepare}{
 }{
-	\chandlei{\loc}{\handler}{\cop{\val_1}{\op}{\val_2}} \opsem{\sigma} \\
-	\chandlei{\loc}{\handler}{\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\creturn{x}}}
+	\chandlei{\loc}{s_{loc},\eff}{\handler}{\cop{\val_1}{\op}{\val_2}} \opsem{\sigma} \\
+	\chandlei{\loc}{s_{loc},\eff}{\handler}{\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\creturn{x}}}
 }
 \and
 \inferH{S-HandleInstOpSkip}{
 	\loc \neq \loc'
 }{
-	\chandlei{\loc}{\handler}{\cdo{x}{\cop{\vinst{\loc'}}{\op}{\val}}{\comp}} \opsem{\sigma} \\
-	(\cdo{x}{\cop{\vinst{\loc'}}{\op}{\val}}{\chandlei{\loc}{\handler}{{\comp}}})
+	\chandlei{\loc}{s_{loc},\eff}{\handler}{\cdo{x}{\cop{\vinst{\loc'}}{\op}{\val}}{\comp}} \opsem{\sigma} \\
+	(\cdo{x}{\cop{\vinst{\loc'}}{\op}{\val}}{\chandlei{\loc}{s_{loc},\eff}{\handler}{{\comp}}})
 }
 \and
 \inferH{S-HandleInstOp}{
 	\handler[\op] = (x, k, \comp_{\op})
 }{
-	\chandlei{\loc}{\handler}{\cdo{y}{\cop{\vinst{\loc}}{\op}{\val}}{\comp}} \opsem{\sigma} \\
-	\comp_{\op}[x := \val, k := (\vabs{y}{\chandlei{\loc}{\handler}{\comp}})]
+	\chandlei{\loc}{s_{loc},\eff}{\handler}{\cdo{y}{\cop{\vinst{\loc}}{\op}{\val}}{\comp}} \opsem{\sigma} \\
+	\comp_{\op}[x := \val, k := (\vabs{y}{\chandlei{\loc}{s_{loc},\eff}{\handler}{\comp}})]
 }
 \and
 \inferH{S-HandleInstReturn}{
 }{
-	\chandlei{\loc}{\handler; \hreturn{x_r}{\comp_r}}{\creturn{\val}} \opsem{\sigma}
+	\chandlei{\loc}{s_{loc},\eff}{\handler; \hreturn{x_r}{\comp_r}}{\creturn{\val}} \opsem{\sigma}
 	\comp_r[x_r := \val]
 }
 \end{mathpar}
