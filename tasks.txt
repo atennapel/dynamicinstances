@@ -126,10 +126,10 @@ Introductie notes
 
 2019-04-17
 - cite logic variables, starrays example papers
-- lose type inference example
-- no type polymorphism
+X lose type inference example
+X no type polymorphism
 
-- write text for the examples 
+X write text for the examples 
 
 2019-05-02
 X work on calculus in parralel
@@ -142,8 +142,8 @@ X "in section 3.1 we are going to..."
 	X " insection 3.3 we are going to show scale ..."
 X always show explicit effect scope variables
 
-/ syntax text X done
-- examples text done
+X syntax text X done
+X examples text done
 
 2019-05-09
 X untyped -> now typed in introduction
@@ -170,23 +170,22 @@ X In "intro to alg effect" put long code on it's own (not inline)
 X try to get rule name above rule instead of to the right
 	X write a good macro for this
 	X use \begin{array} with @
-- try to get rule references to have links
-- in Chapter 5 introduction remind where "stuff" comes from
-- scope location and instance location (not just location)
-- no store with values needed
-	- sigma needed for type system
-	- operational semantics for fresh generation
-- as usual we have Gamma and now we also have
-- theorem for Sigma extension
-	- operational semantics will do a valid extension (monotonic extensions)
-- theorem:
+X in Chapter 5 introduction remind where "stuff" comes from
+X scope location and instance location (not just location)
+X no store with values needed
+	X sigma needed for type system
+	X operational semantics for fresh generation
+X as usual we have Gamma and now we also have
+X fix theorems in background theory
+X maybe mention that I formalize some stuff
+X theorem for Sigma extension
+	X operational semantics will do a valid extension (monotonic extensions)
+X theorem:
 	if G;S |- e : t and S <= S' then G;S' |- e : t
-- fix theorem with non-empty annotation
-	- operation call is possible if non-empty
-- maybe mention that I formalize some stuff
-- point of type soundness
-	- point of lemmas
-- fix theorems in background theory
+X fix theorem with non-empty annotation
+	X operation call is possible if non-empty
+X point of type soundness
+	X point of lemmas
 
 X categorize future work
 X related work
@@ -194,46 +193,116 @@ X related work
 	X compare and contrast
 	X is lifting relevant
 
-- add "default handlers" as future work (global scope?)
-
 2019-06-04
-- conclusion short, 1 page
-	- revise on thesis
+X conclusion short, 1 page
+	X revise on thesis
 - related work:
-	- start with "wide field, lots of areas"
-	- we focus on dynamic effects
-	- zoom in at the start
-	- use \paragraph{Eff}, \paragraph{Koka}, ...
+	X start with "wide field, lots of areas"
+	X we focus on dynamic effects
+	X zoom in at the start
+	X use \paragraph{Eff}, \paragraph{Koka}, ...
 	- better explain local effects
 	- "in our system this is also true" refer better
 	- change first line, better scope on what system
-	- code examples of Eff and Koka
-	- With eff say up front it is not typed
-		- however untyped, can do more, fewer static guaruantees
-		- first high-level then details
-	- Eff: say what eff has and we don't (point to future work)
-		- then discuss the resources
-	- future work: global top scope (would need extra semantics)
+	/ code examples of Eff and Koka
+	X With eff say up front it is not typed
+		X however untyped, can do more, fewer static guaruantees
+		X first high-level then details
+	X Eff: say what eff has and we don't (point to future work)
+		X then discuss the resources
+	X future work: global top scope (would need extra semantics)
 	- OCaml: variant of eff is implemented in OCAml also supports dynamic effects
 		- high level differences and then detail
 		- add the New code piece
 		- "very tedious to work with", remove very explain (require boilerplate, ...)
-	- "you are" -> "one is"
-	- Helium -> "paper shows no evidence of heaps..." (if not found) 
-- add bibtex (use DBLP)
-- future work:
-	- intro text
-	- theory section say something brief about formalization (we used this, debruijn that, resulted in)
-		- labeled subsection
-			- paragraph of detail (mention in contribution)
-	- there all all kinds of other features, and then list of possible extensions
-	- type annotations: "more usefull" more static guaruantees
-		- remove over approximation
-	
+	X "you are" -> "one is"
+	- Helium -> "paper shows no evidence of heaps..." (if not found)
+X future work:
+	X intro text
+	X theory section say something brief about formalization (we used this, debruijn that, resulted in)
+		X labeled subsection
+			X paragraph of detail (mention in contribution)
+	X there all all kinds of other features, and then list of possible extensions
+	X type annotations: "more usefull" more static guaruantees
+		X remove over approximation
+	X update section of combination
+	X add "default handlers" as future work (global scope?)
+		- more comparison with Eff resources.
+
 - introduction: mention Eff resources
 	- mentioned delimeted continuations
 - "this" is bad
-- add summary to Examples chapter 3
-	- what have we seen
-	- conclude
-	- whats next
+X add summary to Examples chapter 3
+	X what have we seen
+	X conclude
+	X whats next
+X process Casper comments in Chapter 3
+- process Casper comments in related work
+X process Casper comments in conclusion
+- process Robbert comments in Chapter 3
+- process Robbert comments in related work
+X process Robbert comments in conclusion
+
+- clean up Coq folder and check that static instances is completed.
+
+- try to get rule references to have links
+- add bibtex (use DBLP)
+X think of name for system!
+- change title maybe
+X fix long chapter titles at the top
+
+2019-06-27
+- answer for why to trust
+- proof sketches
+	- for progress effectful
+	- for preservation
+- give cases for main lemmas
+	- some cases same as before
+	- some cases boring
+	- most interesting cases should have an argument or proof
+- example for operational semantics
+	- say that typing constructors and rules are motivated by operational semantics
+- grey box mark dynamic parts
+- light on references and citations
+	- static instances no citation
+	- influenced by paper X
+- abstract
+- discuss handler before continuations
+	- restructuring 2.1 to help with understanding handler
+		- why is continuation relevant to handler
+- maybe reduce examples or explain the relevance of each examples
+- subsections/paragraphs to make examples have a better purpose
+- more explanation for static instances
+- summary at end of chapter 2
+	- failing example for dynamic instances
+	- and then introduce next chapter
+- move ST section from chapter 3 to introduction
+- subsection for comparison with ST in chapter 3
+- introduction chapter 4 needs update
+	- motivation, why should reader care
+	- useful claims like system being sound hold
+	- also note Coq formalization
+- add remark in 4.2 (handler h moves below lambda)
+	- and mention deep handler (why handle is kept)
+- check labels, some are duplicate
+- add formalization to bibliography
+- in order to get a stronger induction hypothesis (instead of in order to proof)
+- 4.3 notion of effect instance is reason for static instance formalization
+- more clear how came up with dynamic things in chapter 5
+- give examples in start of chapter 6
+- list of dynamic effect languages
+- other feature are orthogonal
+- example of reference escape function (example that goes wrong, in related work)
+- \section{conclusion}
+- related work add mechanization
+- future work: implementation
+	- efficient way of compiling cite stuff
+- polymorphic operations take out, or add better example
+- check if instance cannot escape existential type
+	- claim of instances cannot escape
+- preservation voor gesloten context misschien
+- 
+
+
+
+

@@ -1,7 +1,7 @@
 \iffalse
-In this chapter we will give an introduction to programming with X.
+In this chapter we will give an introduction to programming with \lang{}.
 X is a modification of the algebraic effects system described in Chapter~2.1, extended with a restricted form of the dynamic instances of Chapter~2.3.
-We introduce the novel concepts of X.
+We introduce the novel concepts of \lang{}.
 When create a new instance we have to give handler, this ensures that the instance is always associated with a handler.
 The $\mathsf{runscope}$ construct can handle multiple effects at the same time.
 These effects are collected under a notion of \emph{effect scope}, which is used to group instances together.
@@ -13,27 +13,27 @@ These constructs allows us to write functions which are polymorphic over effect 
 In Chapter~2.3 we saw how dynamic instances allow us to implement mutable references in a system with algebraic effects.
 This system is untyped however, meaning that you can get runtime errors if an operation is unhandled.
 This can happen if an operation is called on a dynamic instance outside of a handler.
-In this chapter we introduce X, which combines algebraic effects and dynamic instances while still remaining typeable.
+In this chapter we introduce \lang{}, which combines algebraic effects and dynamic instances while still remaining typeable.
 In order to achieve this we introduce the notion of an \emph{effect scope}.
 An effect scope groups together instances.
 When creating an instance we give an effect scope to create the instance in.
 Every instance belongs to a specific effect scope.
-Different from the system with dynamic instances from Chapter~2.3, we always have to specify a handler when creating an instance.
-This to make sure every instance has a handler associated with it.
+Different from the system with dynamic instances from Chapter~2.3, we always have to specify a handler when creating an instance, similar to resources in Eff.
+Specifying a handler at the moment of creating an instance ensures that each instance always has a handler associated with it.
 Performing effects is done with a new $\mathsf{runscope}$ construct, similar to how the $\mathsf{handle}$ construct performed effects in Chapter~2.
 $\mathsf{runscope}$ creates a fresh scope and makes it available for use in a given computation.
 After all the instances created on this new scope will actually be instantiated and all the operations called on these instances will be handled.
 In order to allow computations to be polymorphic over effect scopes we also introduce \emph{effect scope polymorpishm} together with \emph{effect scope abstraction} and \emph{effect scope application}.
 \\\\
 We start with explaining all the novel concepts in Section~3.1, using the example of mutable references.
-% After we will show how mutable references can be expressed in X in Section~3.2.
+% After we will show how mutable references can be expressed in \lang{} in Section~3.2.
 Then we will show how mutable vectors can be defined, followed by an implementation of a list shuffling algorithm in Section~3.2.
 \iffalse
 We end the chapter by showing how our system allows for local effects in Section~3.3.
 \fi
 \\\\
 We build on the language used in Chapter~2.1.
-We use a language reminiscent of Haskell with algebraic data types and pattern matching.
+We use syntax reminiscent of Haskell with algebraic data types and pattern matching.
 Type constructors and effect names are uppercase while type variables are lowercase.
 % The language also has parametric polymorphism over effect scopes.
 % We will always explicitly show \ident{forall} for universally quantified effect scope variables.
@@ -79,7 +79,7 @@ result =
 \label{fig:example1}
 \end{figure}
 
-In Figure~\ref{fig:example1} we give an example containing all the novel constructs of X.
+In Figure~\ref{fig:example1} we give an example containing all the novel constructs of \lang{}.
 
 \subsection{Effects}
 
@@ -429,6 +429,13 @@ In this example we can see how we can use other effects in the handler of an ins
 The \ident{Rng} uses an instance of \ident{State} to implement the \ident{rand} operation.
 Both of these effects exist and are handled in the same scope \ident{s}.
 From the type of \ident{runshuffle} (\ident{List -> List}) we can see that all the effects are encapsulated and that the function is pure.
+In the next Chapter we will give a formal account of the system, including a type system and semantics.
+
+In this Chapter we have seen how to program with effect scopes.
+Like the regular algebraic effects (Chapter~2.1) we can use and combine different effects simply by using their operations in a program.
+What is different is that handlers are given when creating instances.
+We have seen that we can abstract over and instantiate effect scopes.
+Lastly we saw how effect scopes enable use to implement mutable references and vectors while still being safe.
 
 \iffalse
 \section{Local effects}
