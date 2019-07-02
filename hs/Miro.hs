@@ -29,6 +29,7 @@ data Type
   | TInst Scope Eff
   | TFun Type CType
   | TForall SVar CType
+  | TPair Type Type
   deriving (Eq)
 
 instance IsString Type where
@@ -39,6 +40,7 @@ instance Show Type where
   show (TInst s e) = "Inst " ++ (show s) ++ " " ++ e
   show (TFun a b) = "(" ++ (show a) ++ " -> " ++ (show b) ++ ")"
   show (TForall x b) = "(forall " ++ x ++ ". " ++ (show b) ++ ")"
+  show (TPair a b) = "(" ++ (show a) ++ ", " ++ (show b) ++ ")"
 
 type Ann = Set.Set Scope
 
@@ -55,7 +57,7 @@ instance IsString CType where
   fromString x = purety (TCon x)
 
 instance Show CType where
-  show (CType t r) = show t ++ (if Set.null r then "" else showAnn r)
+  show (CType t r) = show t ++ (if Set.null r then "" else "!" ++ (showAnn r))
 
 substScope :: SVar -> Scope -> Scope -> Scope
 substScope x s (SVar x') | x == x' = s
@@ -65,6 +67,7 @@ substScopeType :: SVar -> Scope -> Type -> Type
 substScopeType x s (TInst s' e) = TInst (substScope x s s') e
 substScopeType x s (TFun a b) = TFun (substScopeType x s a) (substScopeCType x s b)
 substScopeType x s (TForall x' b) | x /= x' = TForall x' (substScopeCType x s b)
+substScopeType x s (TPair a b) = TPair (substScopeType x s a) (substScopeType x s b)
 substScopeType _ _ t = t
 
 substScopeCType :: SVar -> Scope -> CType -> CType
@@ -74,6 +77,7 @@ containsScopeType :: Scope -> Type -> Bool
 containsScopeType s (TInst s' _) = s == s'
 containsScopeType s (TFun a b) = containsScopeType s a || containsScopeCType s b
 containsScopeType s (TForall s' t) | s /= SVar s' = containsScopeCType s t
+containsScopeType s (TPair a b) = containsScopeType s a || containsScopeType s b
 containsScopeType _ _ = False
 
 containsScopeCType :: Scope -> CType -> Bool
@@ -89,6 +93,7 @@ data Val
   | Abs Var Comp
   | SAbs SVar Comp
   | VAnn Val Type
+  | Pair Val Val
   deriving (Eq)
 
 instance IsString Val where
@@ -100,6 +105,7 @@ instance Show Val where
   show (Abs x b) = "(\\" ++ x ++ " -> " ++ (show b) ++ ")"
   show (SAbs x b) = "(/\\" ++ x ++ " -> " ++ (show b) ++ ")"
   show (VAnn v t) = "(" ++ (show v) ++ " : " ++ (show t) ++ ")"
+  show (Pair a b) = "(" ++ (show a) ++ ", " ++ (show b) ++ ")"
 
 data Comp
   = Return Val
@@ -149,6 +155,7 @@ substVarVal x s v@(Var y) = if x == y then s else v
 substVarVal x s v@(Abs y b) = if x == y then v else Abs y (substVarComp x s b)
 substVarVal x s (SAbs y b) = SAbs y (substVarComp x s b)
 substVarVal x s (VAnn v y) = VAnn (substVarVal x s v) y
+substVarVal x s (Pair a b) = Pair (substVarVal x s a) (substVarVal x s b)
 substVarVal _ _ v = v
 
 substVarComp :: Var -> Val -> Comp -> Comp
@@ -172,6 +179,7 @@ substScopeVal :: SVar -> Scope -> Val -> Val
 substScopeVal x s (Abs y b) = Abs y (substScopeComp x s b)
 substScopeVal x s v@(SAbs y b) = if x == y then v else SAbs y (substScopeComp x s b)
 substScopeVal x s (VAnn v y) = VAnn (substScopeVal x s v) (substScopeType x s y)
+substScopeVal x s (Pair a b) = Pair (substScopeVal x s a) (substScopeVal x s b)
 substScopeVal _ _ v = v
 
 substScopeComp :: SVar -> Scope -> Comp -> Comp
@@ -202,6 +210,7 @@ varsVal (Var x) = Set.singleton x
 varsVal (Abs x b) = Set.union (Set.singleton x) (varsComp b)
 varsVal (SAbs _ b) = varsComp b
 varsVal (VAnn v _) = varsVal v
+varsVal (Pair a b) = Set.union (varsVal a) (varsVal b)
 varsVal _ = Set.empty
 
 varsComp :: Comp -> Set.Set Var
@@ -226,6 +235,7 @@ removeAnnotsVal :: Val -> Val
 removeAnnotsVal (Abs x b) = Abs x (removeAnnotsComp b)
 removeAnnotsVal (SAbs x b) = SAbs x (removeAnnotsComp b)
 removeAnnotsVal (VAnn v _) = removeAnnotsVal v
+removeAnnotsVal (Pair a b) = Pair (removeAnnotsVal a) (removeAnnotsVal b)
 removeAnnotsVal v = v
 
 removeAnnotsComp :: Comp -> Comp
@@ -286,6 +296,9 @@ sub (TFun a1 b1) (TFun a2 b2) = do
   subComp b1 b2
 -- Sub-Forall
 sub (TForall _ t1) (TForall _ t2) = subComp t1 t2
+sub (TPair a1 b1) (TPair a2 b2) = do
+  sub a1 a2
+  sub b1 b2
 sub a b = Left $ "subtyping failed: " ++ (show a) ++ " <: " ++ (show b)
 
 subComp :: CType -> CType -> Err ()
@@ -346,6 +359,9 @@ wfType d (TFun a b) = do
   wfCType d b
 -- WF-Forall
 wfType d (TForall s t) = wfCType (DSVar d s) t
+wfType d (TPair a b) = do
+  wfType d a
+  wfType d b
 
 wfCType :: Delta -> CType -> Err ()
 -- WF-Annot
@@ -375,15 +391,22 @@ tcVal d g (SAbs s c) = do
   return $ TForall s t
 -- T-SubVal
 tcVal d g (VAnn v t) = do
+  wfType d t
   checkVal d g v t
   return t
+tcVal d g (Pair a b) = do
+  t1 <- tcVal d g a
+  t2 <- tcVal d g b
+  return $ TPair t1 t2
 tcVal _ _ v = Left $ "cannot synth " ++ (show v)
 
 checkVal :: Delta -> Gamma -> Val -> Type -> Err ()
 checkVal d g (Abs x c) (TFun a b) = checkComp d (GVar g x a) c b
 checkVal d g (SAbs s c) (TForall s' t) | s == s' = checkComp (DSVar d s) g c t
+checkVal d g (Pair a b) (TPair ta tb) = do
+  checkVal d g a ta
+  checkVal d g b tb
 checkVal d g v t = do
-  wfType d t
   t' <- tcVal d g v
   sub t' t
 
@@ -427,8 +450,9 @@ tcComp d g (New e s h (Finally y c') x c) = do
   wfScope d s
   CType t1 r1 <- tcComp d (GVar g x (TInst s e)) c
   CType t2 r2 <- tcHandler d g t1 h
-  CType t3 r3 <- tcComp d (GVar g y t2) c'
-  return $ CType t3 (Set.unions [r1, r2, r3, Set.singleton s])
+  check (Set.isSubsetOf r2 r1) $ "cannot have extra effects in handler"
+  checkComp d (GVar g y t2) c' (CType t1 r1)
+  return $ CType t1 (Set.unions [r1, Set.singleton s])
 -- T-Handle
 tcComp d g (Runscope s c) = do
   CType t r <- tcComp (DSVar d s) g c
@@ -579,7 +603,7 @@ delta :: Delta
 delta = DEmpty
 
 gamma :: Gamma
-gamma = GVar (GVar (GVar GEmpty "zero" tInt) "Unit" tUnit) "True" tBool
+gamma = GVar (GVar (GVar (GVar GEmpty "one" tInt) "zero" tInt) "Unit" tUnit) "True" tBool
 
 refh :: CType -> Handler
 refh t =
@@ -589,13 +613,27 @@ refh t =
 
 ref :: Scope -> Var -> Val -> CType -> Comp -> Comp
 ref s x v t c =
-  New "State" s (refh t) (Finally "f" (App "f" v)) x c
+  New "State" s (refh t) (Finally "f" $ App "f" v) x c
 
+{-
+runscope(s ->
+  ff <- new State@s {
+    get x k -> \s -> k s s
+    put x k -> \s -> k () x
+    return x -> \s -> x
+    finally f -> f
+  } as r in r);
+  rr <- ff 0;
+  rr#get ()
+-}
 term :: Comp
 term =
   Runscope "s" $
-  Seq "rr" (ref "s" "r" "zero" (purety (TInst "s" "State")) "r") $
-  OpCall "rr" "get" "Unit"
+  Seq "r1" (ref "s" "rx1" "zero" (purety $ TInst "s" "State") "rx1") $
+  Seq "r2" (ref "s" "rx2" "one" (purety $ TInst "s" "State") "rx2") $
+  Seq "xx" (OpCall "r1" "get" "Unit") $
+  Seq "yy" (OpCall "r2" "get" "Unit") $
+  Return $ Pair "xx" "yy" 
 
 main :: IO ()
 main = do
