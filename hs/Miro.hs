@@ -101,7 +101,7 @@ instance IsString Val where
 
 instance Show Val where
   show (Var x) = x
-  show (Inst l) = "inst(" ++ (show l) ++ ")"
+  show (Inst l) = "inst($" ++ (show l) ++ ")"
   show (Abs x b) = "(\\" ++ x ++ " -> " ++ (show b) ++ ")"
   show (SAbs x b) = "(/\\" ++ x ++ " -> " ++ (show b) ++ ")"
   show (VAnn v t) = "(" ++ (show v) ++ " : " ++ (show t) ++ ")"
@@ -115,7 +115,7 @@ data Comp
   | SApp Val Scope
   | New Eff Scope Handler Finally Var Comp
   | Runscope SVar Comp
-  | RunscopeLoc SLoc Comp
+  | RunscopeLoc SLoc (Set.Set Loc) Comp
   | Runinst Loc SLoc Eff Handler Comp
   | CAnn Comp CType
   deriving (Eq)
@@ -131,8 +131,8 @@ instance Show Comp where
   show (SApp a b) = (show a) ++ " [" ++ (show b) ++ "]"
   show (New e s h f x c) = "new " ++ e ++ "@" ++ (show s) ++ " {" ++ (show h) ++ "; " ++ (show f) ++ "} as " ++ x ++ " in " ++ (show c)
   show (Runscope s c) = "runscope(" ++ s ++ " -> " ++ (show c) ++ ")"
-  show (RunscopeLoc s c) = "runscope^" ++ (show s) ++ "(" ++ (show c) ++ ")"
-  show (Runinst l sl e h c) = "runinst^" ++ (show l) ++ "_" ++ (show sl) ++ "," ++ e ++ "{" ++ (show h) ++ "}(" ++ (show c) ++ ")"
+  show (RunscopeLoc s ls c) = "runscope'" ++ (show s) ++ "[" ++ (List.intercalate ", " $ map show $ Set.toList ls) ++ "](" ++ (show c) ++ ")"
+  show (Runinst l sl e h c) = "runinst$" ++ (show l) ++ "['" ++ (show sl) ++ "," ++ e ++ "]{" ++ (show h) ++ "}(" ++ (show c) ++ ")"
   show (CAnn c t) = "(" ++ (show c) ++ " : " ++ (show t) ++ ")"
 
 data Finally = Finally Var Comp
@@ -167,7 +167,7 @@ substVarComp x s (SApp v y) = SApp (substVarVal x s v) y
 substVarComp x s (New s' e h (Finally y c') z c) =
   New s' e (substVarHandler x s h) (Finally y (if x == y then c' else substVarComp x s c')) z (if x == z then c else substVarComp x s c) 
 substVarComp x s (Runscope l c) = Runscope l (substVarComp x s c)
-substVarComp x s (RunscopeLoc l c) = RunscopeLoc l (substVarComp x s c)
+substVarComp x s (RunscopeLoc l ls c) = RunscopeLoc l ls (substVarComp x s c)
 substVarComp x s (Runinst l sl e h c) = Runinst l sl e (substVarHandler x s h) (substVarComp x s c)
 substVarComp x s (CAnn c t) = CAnn (substVarComp x s c) t
 
@@ -191,7 +191,7 @@ substScopeComp x s (SApp v y) = SApp (substScopeVal x s v) (substScope x s y)
 substScopeComp x s (New e s' h (Finally y c') z c) =
   New e (substScope x s s') (substScopeHandler x s h) (Finally y (substScopeComp x s c')) z (substScopeComp x s c) 
 substScopeComp x s v@(Runscope l c) = if x == l then v else Runscope l (substScopeComp x s c)
-substScopeComp x s (RunscopeLoc l c) = RunscopeLoc l (substScopeComp x s c)
+substScopeComp x s (RunscopeLoc l ls c) = RunscopeLoc l ls (substScopeComp x s c)
 substScopeComp x s (Runinst l sl e h c) = Runinst l sl e (substScopeHandler x s h) (substScopeComp x s c)
 substScopeComp x s (CAnn c t) = CAnn (substScopeComp x s c) (substScopeCType x s t)
 
@@ -222,7 +222,7 @@ varsComp (SApp v _) = varsVal v
 varsComp (New _ _ h (Finally y c') x c) =
   Set.unions [varsHandler h, Set.singleton y, varsComp c', Set.singleton x, varsComp c]
 varsComp (Runscope _ c) = varsComp c
-varsComp (RunscopeLoc _ c) = varsComp c
+varsComp (RunscopeLoc _ _ c) = varsComp c
 varsComp (Runinst _ _ _ h c) = Set.union (varsHandler h) (varsComp c)
 varsComp (CAnn c _) = varsComp c
 
@@ -247,7 +247,7 @@ removeAnnotsComp (SApp v s) = SApp (removeAnnotsVal v) s
 removeAnnotsComp (New e s h (Finally y c') x c) =
   New e s (removeAnnotsHandler h) (Finally y (removeAnnotsComp c')) x (removeAnnotsComp c)
 removeAnnotsComp (Runscope x c) = Runscope x (removeAnnotsComp c)
-removeAnnotsComp (RunscopeLoc x c) = RunscopeLoc x (removeAnnotsComp c)
+removeAnnotsComp (RunscopeLoc x ls c) = RunscopeLoc x ls (removeAnnotsComp c)
 removeAnnotsComp (Runinst l sl e h c) = Runinst l sl e (removeAnnotsHandler h) (removeAnnotsComp c)
 removeAnnotsComp (CAnn c _) = removeAnnotsComp c
 
@@ -274,6 +274,9 @@ freshSLoc s = (sigmaMaxSLoc s) + 1
 
 freshLoc :: Sigma -> Loc
 freshLoc s = (sigmaMaxLoc s) + 1
+
+freshLocIn :: Loc -> Set.Set Loc -> Loc
+freshLocIn l s = if Set.member l s then freshLocIn (l + 1) s else l
 
 -- judgments
 type Err t = Either String t
@@ -459,7 +462,7 @@ tcComp d g (Runscope s c) = do
   check (not $ containsScopeType (SVar s) t) $ "scope " ++ (show s) ++ " escaping " ++ (show t)
   return $ CType t (Set.delete (SVar s) r)
 -- T-HandleScope
-tcComp d g (RunscopeLoc s c) = do
+tcComp d g (RunscopeLoc s _ c) = do
   fails (deltaScope d (SLoc s)) $ "duplicate SLoc " ++ (show s)
   CType t r <- tcComp (DSLoc d s) g c
   check (not $ containsScopeType (SLoc s) t) $ "scope " ++ (show s) ++ " escaping " ++ (show t)
@@ -521,25 +524,25 @@ step s (Seq x c1 c2) = do
 -- S-RunScope
 step s (Runscope sv c) =
   let sl = freshSLoc s in
-  return $ RunscopeLoc sl (substScopeComp sv (SLoc sl) c)
+  return $ RunscopeLoc sl (Set.empty) (substScopeComp sv (SLoc sl) c)
 -- S-RunScopeReturn
-step _ (RunscopeLoc _ (Return v)) = return $ Return v
+step _ (RunscopeLoc _ _ (Return v)) = return $ Return v
 -- S-RunScopeOp
-step _ (RunscopeLoc _ (OpCall v1 op v2)) = return $ OpCall v1 op v2
+step _ (RunscopeLoc _ _ (OpCall v1 op v2)) = return $ OpCall v1 op v2
 -- S-RunScopeSeqOp
-step _ (RunscopeLoc sl (Seq x (OpCall v1 op v2) c)) =
-  return $ Seq x (OpCall v1 op v2) (RunscopeLoc sl c)
+step _ (RunscopeLoc sl ls (Seq x (OpCall v1 op v2) c)) =
+  return $ Seq x (OpCall v1 op v2) (RunscopeLoc sl ls c)
 -- S-RunScopeNew
-step s (RunscopeLoc sl (New e sl' h (Finally y c') x c)) | (SLoc sl) == sl' =
-  let l = freshLoc s in
-  return $ RunscopeLoc sl (Seq y (Runinst l sl e h (substVarComp x (Inst l) c)) c')
+step s (RunscopeLoc sl ls (New e sl' h (Finally y c') x c)) | (SLoc sl) == sl' =
+  let l = freshLocIn (freshLoc s) ls in
+  return $ RunscopeLoc sl (Set.insert l ls) (Seq y (Runinst l sl e h (substVarComp x (Inst l) c)) c')
 -- S-RunScopeNewSkip
-step _ (RunscopeLoc sl (New e sl' h f x c)) =
-  return $ New e sl' h f x (RunscopeLoc sl c)
+step _ (RunscopeLoc sl ls (New e sl' h f x c)) =
+  return $ New e sl' h f x (RunscopeLoc sl ls c)
 -- S-RunScopeCong
-step s (RunscopeLoc sl c) = do
+step s (RunscopeLoc sl ls c) = do
   c' <- step (SgSLoc s sl) c
-  return $ RunscopeLoc sl c'
+  return $ RunscopeLoc sl ls c'
 -- S-RunInstNew
 step _ (Runinst l sl e h (New e' s h' f x c)) =
   return $ New e' s h' f x (Runinst l sl e h c)
@@ -628,12 +631,14 @@ runscope(s ->
 -}
 term :: Comp
 term =
-  Runscope "s" $
-  Seq "r1" (ref "s" "rx1" "zero" (purety $ TInst "s" "State") "rx1") $
-  Seq "r2" (ref "s" "rx2" "one" (purety $ TInst "s" "State") "rx2") $
+  Runscope "s1" $
+  Seq "r1" (ref "s1" "rx1" "zero" (purety $ TInst "s1" "State") "rx1") $
+  Runscope "s2" $
+  Seq "r2" (ref "s2" "rx2" "zero" (purety $ TInst "s2" "State") "rx2") $
+  Seq "_" (OpCall "r2" "put" "one") $
   Seq "xx" (OpCall "r1" "get" "Unit") $
   Seq "yy" (OpCall "r2" "get" "Unit") $
-  Return $ Pair "xx" "yy" 
+  Return $ Pair "xx" "yy"
 
 main :: IO ()
 main = do
