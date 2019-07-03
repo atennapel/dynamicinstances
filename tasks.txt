@@ -301,8 +301,7 @@ X fix long chapter titles at the top
 - check if instance cannot escape existential type
 	- claim of instances cannot escape
 - preservation voor gesloten context misschien
-- 
 
-
-
-
+2019-07-03
+- add list of locations to runscope^sl
+- restrict finally to t1!r

@@ -4,6 +4,8 @@ import GHC.Exts (IsString(..))
 import qualified Data.Set as Set
 import qualified Data.List as List
 
+import Debug.Trace (trace, traceShow, traceShowId)
+
 -- Effects
 type Eff = String
 type Op = String
@@ -129,10 +131,10 @@ instance Show Comp where
   show (Seq x a b) = "(" ++ x ++ " <- " ++ (show a) ++ "; " ++ (show b) ++ ")"
   show (OpCall v1 op v2) = (show v1) ++ "#" ++ op ++ "(" ++ (show v2) ++ ")"
   show (SApp a b) = (show a) ++ " [" ++ (show b) ++ "]"
-  show (New e s h f x c) = "new " ++ e ++ "@" ++ (show s) ++ " {" ++ (show h) ++ "; " ++ (show f) ++ "} as " ++ x ++ " in " ++ (show c)
+  show (New e s h f x c) = "new " ++ e ++ "@" ++ (show s) ++ " {" {-++ (show h) ++ "; " ++ (show f) ++-}++"..."++ "} as " ++ x ++ " in " ++ (show c)
   show (Runscope s c) = "runscope(" ++ s ++ " -> " ++ (show c) ++ ")"
   show (RunscopeLoc s ls c) = "runscope'" ++ (show s) ++ "[" ++ (List.intercalate ", " $ map show $ Set.toList ls) ++ "](" ++ (show c) ++ ")"
-  show (Runinst l sl e h c) = "runinst$" ++ (show l) ++ "['" ++ (show sl) ++ "," ++ e ++ "]{" ++ (show h) ++ "}(" ++ (show c) ++ ")"
+  show (Runinst l sl e h c) = "runinst$" ++ (show l) ++ "['" ++ (show sl) ++ "," ++ e ++ "]{" {-++ (show h) ++-}++"..."++ "}(" ++ (show c) ++ ")"
   show (CAnn c t) = "(" ++ (show c) ++ " : " ++ (show t) ++ ")"
 
 data Finally = Finally Var Comp
@@ -258,15 +260,20 @@ removeAnnotsHandler (HReturn x c) = HReturn x (removeAnnotsComp c)
 
 -- environments
 data Gamma = GEmpty | GVar Gamma Var Type
+  deriving (Show)
 data Delta = DEmpty | DSVar Delta SVar | DSLoc Delta SLoc | DLoc Delta Loc SLoc Eff
+  deriving (Show)
 data Sigma = SgEmpty | SgSLoc Sigma SLoc | SgLoc Sigma Loc
+  deriving (Show)
 
 sigmaMaxSLoc :: Sigma -> Int
 sigmaMaxSLoc (SgSLoc r l) = max (sigmaMaxSLoc r) l
+sigmaMaxSLoc (SgLoc r _) = sigmaMaxSLoc r
 sigmaMaxSLoc _ = -1
 
 sigmaMaxLoc :: Sigma -> Int
 sigmaMaxLoc (SgLoc r l) = max (sigmaMaxLoc r) l
+sigmaMaxLoc (SgSLoc r _) = sigmaMaxLoc r
 sigmaMaxLoc _ = -1
 
 freshSLoc :: Sigma -> SLoc
@@ -524,7 +531,7 @@ step s (Seq x c1 c2) = do
 -- S-RunScope
 step s (Runscope sv c) =
   let sl = freshSLoc s in
-  return $ RunscopeLoc sl (Set.empty) (substScopeComp sv (SLoc sl) c)
+  return $ RunscopeLoc sl Set.empty (substScopeComp sv (SLoc sl) c)
 -- S-RunScopeReturn
 step _ (RunscopeLoc _ _ (Return v)) = return $ Return v
 -- S-RunScopeOp
@@ -606,7 +613,7 @@ delta :: Delta
 delta = DEmpty
 
 gamma :: Gamma
-gamma = GVar (GVar (GVar (GVar GEmpty "one" tInt) "zero" tInt) "Unit" tUnit) "True" tBool
+gamma = GVar (GVar (GVar (GVar (GVar (GVar GEmpty "False" tBool) "two" tInt) "one" tInt) "zero" tInt) "Unit" tUnit) "True" tBool
 
 refh :: CType -> Handler
 refh t =
@@ -617,6 +624,15 @@ refh t =
 ref :: Scope -> Var -> Val -> CType -> Comp -> Comp
 ref s x v t c =
   New "State" s (refh t) (Finally "f" $ App "f" v) x c
+
+fliph :: Handler
+fliph =
+  HOp "flip" "x" "k" (App "k" "True") $
+  HReturn "x" "x"
+
+newflip :: Scope -> Var -> Comp -> Comp
+newflip s x c =
+  New "Flip" s fliph (Finally "x" "x") x c
 
 {-
 runscope(s ->
@@ -635,10 +651,13 @@ term =
   Seq "r1" (ref "s1" "rx1" "zero" (purety $ TInst "s1" "State") "rx1") $
   Runscope "s2" $
   Seq "r2" (ref "s2" "rx2" "zero" (purety $ TInst "s2" "State") "rx2") $
-  Seq "_" (OpCall "r2" "put" "one") $
+  Seq "r3" (ref "s2" "rx3" "two" (purety $ TInst "s2" "State") (Seq "_" (OpCall "r1" "put" "one") "rx3")) $
+  Seq "f1" (newflip "s1" "f1" "f1") $
   Seq "xx" (OpCall "r1" "get" "Unit") $
   Seq "yy" (OpCall "r2" "get" "Unit") $
-  Return $ Pair "xx" "yy"
+  Seq "zz" (OpCall "r3" "get" "Unit") $
+  Seq "aa" (OpCall "f1" "flip" "Unit") $
+  Return $ Pair "xx" $ Pair "yy" $ Pair "zz" "aa"
 
 main :: IO ()
 main = do
