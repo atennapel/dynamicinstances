@@ -1,5 +1,5 @@
 {
-\newcommand\change[1]{\colorbox{lightgray}{$#1$}}
+\newcommand\dynpart[1]{\colorbox{lightgray}{$#1$}}
 \def\msquare{\mathord{\scalerel*{\Box}{gX}}}
 
 % effects
@@ -103,15 +103,15 @@ Each operation $\op$ has a parameter type $\pty{\op}$ and a return type $\rty{\o
 \fbox{
 \begin{minipage}{10 cm}
 \begin{align*}
-	s \Coloneqq		&\; s_{var} \;|\; \change{s_{loc}} \\
+	s \Coloneqq		&\; s_{var} \;|\; \dynpart{s_{loc}} \\
 	\ty \Coloneqq 		&\; \tinst{s}{\eff} \;|\; \tarr{\ty}{\cty} \;|\; \tforall{s_{var}}{\cty} \\
 	\cty \Coloneqq 		&\; \aty{\ty}{r} \\
-	\val \Coloneqq		&\; x, y, z, k \;|\; \change{\vinst{\loc}} \;|\; \vabs{x}{\comp} \;|\; \vabst{s_{var}}{\comp} \\
+	\val \Coloneqq		&\; x, y, z, k \;|\; \dynpart{\vinst{\loc}} \;|\; \vabs{x}{\comp} \;|\; \vabst{s_{var}}{\comp} \\
 	\comp \Coloneqq	&\; \creturn{\val} \;|\; \capp{\val}{\val} \;|\; \cdo{x}{\comp}{\comp} \;|\; \cop{\val}{\op}{\val} \;|\; \cappt{\val}{s} \\
 					&\;|\; \cnew{\eff}{s}{\handler ; \hfinally{x}{\comp}}{x}{\comp}	\\
 					&\;|\; \chandlen{s_{var}}{\comp}							\\
-					&\;|\; \change{\chandlec{s_{loc}}{\comp}}							\\
-					&\;|\; \change{\chandlei{\loc}{s_{loc},\eff}{\handler}{\comp}}						\\
+					&\;|\; \dynpart{\chandlec{s_{loc}}{\comp}}							\\
+					&\;|\; \dynpart{\chandlei{\loc}{s_{loc},\eff}{\handler}{\comp}}						\\
 	\handler \Coloneqq	&\; \hop{\op}{x}{k}{\comp}{\handler} \;|\; \hreturn{x}{\comp}
 \end{align*}
 \label{fig:syntax-calc}
@@ -390,7 +390,7 @@ Then we check that each effect scope in the annotation $r$ is valid.
 	\Delta;\Gamma \vdash x : \ty
 }
 \and
-\change{
+\dynpart{
 \inferH{T-Inst}{
 	\vdash \Delta \\
 	\Delta[\loc] = (s_{loc}, \eff)
@@ -500,7 +500,7 @@ The type given to the operation call is the return type of the operation $\rty{o
 	\Delta;\Gamma \vdash \chandlen{s_{var}}{\comp} : \aty{\ty}{(r \setminus \{ s_{var} \})}
 }
 \and
-\change{
+\dynpart{
 \inferH{T-RunscopeLoc}{
 	s_{loc} \notin \Delta \\
 	\Delta,s_{loc};\Gamma \vdash \comp : \aty{\ty}{r} \\
@@ -510,7 +510,7 @@ The type given to the operation call is the return type of the operation $\rty{o
 }
 }
 \and
-\change{
+\dynpart{
 \inferH{T-Runinst}{
 	\Delta \vdash s_{loc} \\
 	\Delta,l := (s_{loc}, \eff) ;\Gamma \vdash \comp : \aty{\ty_1}{r} \\
@@ -656,7 +656,7 @@ $\sigma$ will always be monotically extended by $\rightsquigarrow$.
 	 \cnew{\eff}{s}{\handler ; \hfinally{z}{\comp_3}}{y}{(\cdo{x}{\comp_1}{\comp_2})}
 }
 \and
-\change{
+\dynpart{
 \inferH{S-Runscope}{
 	s_{loc} \notin \sigma
 }{

@@ -1,5 +1,5 @@
 {
-\newcommand\change[1]{\colorbox{lightgray}{$#1$}}
+\newcommand\synchange[1]{\colorbox{lightgray}{$#1$}}
 
 \newcommand\eff[0]{\epsilon}
 \newcommand\Eff[0]{E}
@@ -341,8 +341,8 @@ For example $\Op{\mathsf{Flip}} = \{ \mathsf{flip} \}$ and $\Op{\mathsf{State}} 
 \begin{minipage}{10 cm}
 \begin{align*}
 & \val \Coloneqq x, y, z, k \;|\; \vabs{x}{\comp}	\;|\; \vunit \\
-& \comp \Coloneqq \creturn{\val} \;|\; \capp{\val}{\val} \;|\; \cdo{x}{\comp}{\comp} \;|\; \change{\cop{op}{\val} \;|\; \chandle{\comp}{h}} \\
-& \change{h \Coloneqq \hop{op}{x}{k}{\comp}{h} \;|\; \hreturn{x}{\comp}} \\
+& \comp \Coloneqq \creturn{\val} \;|\; \capp{\val}{\val} \;|\; \cdo{x}{\comp}{\comp} \;|\; \synchange{\cop{op}{\val} \;|\; \chandle{\comp}{h}} \\
+& \synchange{h \Coloneqq \hop{op}{x}{k}{\comp}{h} \;|\; \hreturn{x}{\comp}} \\
 \end{align*}
 \label{fig:syntax-algeff}
 \end{minipage}
@@ -680,9 +680,9 @@ The syntax of the system with algebraic effects and handlers is extended in Figu
 \fbox{
 \begin{minipage}{12 cm}
 \begin{align*}
-& \val \Coloneqq x, y, z, k \;|\; \vabs{x}{\comp} \;|\; \vunit\;|\; \change{\vinst} \\
+& \val \Coloneqq x, y, z, k \;|\; \vabs{x}{\comp} \;|\; \vunit\;|\; \synchange{\vinst} \\
 & \comp \Coloneqq \creturn{\val} \;|\; \capp{\val}{\val} \;|\; \cdo{x}{\comp}{\comp} \;|\;
-		\change{\copi{\val}{op}{\val} \;|\; \chandlei{\val}{\comp}{h}} \\
+		\synchange{\copi{\val}{op}{\val} \;|\; \chandlei{\val}{\comp}{h}} \\
 & h \Coloneqq \hop{op}{x}{k}{\comp}{h} \;|\; \hreturn{x}{\comp}
 \end{align*}
 \label{fig:syntax-static}
@@ -743,9 +743,9 @@ The effect annotation on the computation types are now sets of instance names in
 \fbox{
 \begin{minipage}{8 cm}
 \begin{align*}
-& \ty \Coloneqq \tunit \;|\; \change{\tinst{\vinst}} \;|\; \tarr{\ty}{\cty} \\
+& \ty \Coloneqq \tunit \;|\; \synchange{\tinst{\vinst}} \;|\; \tarr{\ty}{\cty} \\
 & \cty \Coloneqq \aty{\ty}{r} \\
-&\change{ r \Coloneqq \{ \vinst_1, ..., \vinst_n \} }
+&\synchange{ r \Coloneqq \{ \vinst_1, ..., \vinst_n \} }
 \end{align*}
 \label{fig:types-static}
 \end{minipage}

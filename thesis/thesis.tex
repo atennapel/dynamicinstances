@@ -1,26 +1,32 @@
-\documentclass[12pt]{book}
+\RequirePackage{snapshot}
+\documentclass[twoside,a4paper,11pt]{memoir}
+\usepackage{thesis}
 
-\usepackage{xcolor}
+\addbibresource{bib.bib}
+
+\input{metadata}
+
+%\usepackage{xcolor}
 \usepackage{mdframed}
 %\usepackage{colorbox}
 \usepackage{listings}
 \usepackage{mathtools}
-\usepackage{amsmath}
+%\usepackage{amsmath}
 \usepackage{amssymb}
-\usepackage{tabularx}
+%\usepackage{tabularx}
 \usepackage{adjustbox}
 \usepackage{amsthm}
 \usepackage{capt-of}
 \usepackage{minted}
 \usepackage{fitch}
-\usepackage[parfill]{parskip}
+%\usepackage[parfill]{parskip}
 \usepackage{empheq}
 \usepackage{multicol}
 \usepackage{mathpartir}
 \usepackage{scalerel}
 
 % infer macros
-\usepackage{hyperref}
+%\usepackage{hyperref}
 \usepackage{pftools}
 \usepackage{locallabel}
 
@@ -54,12 +60,16 @@
 	breaklines=false
 }
 
-\title{A type system for algebraic effects and handlers with dynamic instances}
-\author{Albert ten Napel}
-\date{}
+% \title{A type system for algebraic effects and handlers with dynamic instances}
+% \author{Albert ten Napel}
+% \date{}
 
 \begin{document}
+
+\frontmatter
+\thispagestyle{empty}
 \maketitle
+\makeformaltitlepages{\input{abstract}}
 
 \tableofcontents
 \newpage
@@ -87,9 +97,6 @@
 % \input{features.tex}
 
 \newpage
-
-\bibliography{bib}
-\bibliographystyle{apalike}
 
 \iffalse
 \begin{thebibliography}{100}
