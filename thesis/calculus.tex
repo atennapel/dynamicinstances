@@ -405,7 +405,7 @@ Then we check that each effect scope in the annotation $r$ is valid.
 	\Delta;\Gamma \vdash \vabs{x}{\comp} : \tarr{\ty}{\cty}
 }
 \and
-\inferH{T-TAbs}{
+\inferH{T-SAbs}{
 	\Delta,s_{var};\Gamma \vdash \comp : \cty
 }{
 	\Delta;\Gamma \vdash \vabst{s_{var}}{\comp} : \tforall{s_{var}}{\cty}
@@ -460,7 +460,7 @@ The type given to the operation call is the return type of the operation $\rty{o
 	\Delta;\Gamma \vdash \capp{\val_1}{\val_2} : \cty
 }
 \and
-\inferH{T-TApp}{
+\inferH{T-SApp}{
 	\Delta \vdash s \\
 	\Delta;\Gamma \vdash \val : \tforall{s'_{var}}{\cty}
 }{
@@ -488,12 +488,12 @@ The type given to the operation call is the return type of the operation $\rty{o
 	\Delta;\Gamma,x:\tinst{s}{\eff} \vdash \comp : \aty{\ty_1}{r} \\
 	\Delta;\Gamma \vdash^{\ty_1} \handler : \aty{\ty_2}{r} \\
 	s \in r \\
-	\Delta;\Gamma,y : \ty_2 \vdash \comp' : \aty{\ty_3}{r} \\
+	\Delta;\Gamma,y : \ty_2 \vdash \comp' : \aty{\ty_1}{r} \\
 }{
-	\Delta;\Gamma \vdash \cnew{\eff}{s}{\handler; \hfinally{y}{\comp'}}{x}{\comp} : \aty{\ty_3}{r}
+	\Delta;\Gamma \vdash \cnew{\eff}{s}{\handler; \hfinally{y}{\comp'}}{x}{\comp} : \aty{\ty_1}{r}
 }
 \and
-\inferH{T-Handle}{
+\inferH{T-Runscope}{
 	\Delta,s_{var};\Gamma \vdash \comp : \aty{\ty}{r} \\
 	s_{var} \notin \ty
 }{
@@ -501,7 +501,7 @@ The type given to the operation call is the return type of the operation $\rty{o
 }
 \and
 \change{
-\inferH{T-HandleScope}{
+\inferH{T-RunscopeLoc}{
 	s_{loc} \notin \Delta \\
 	\Delta,s_{loc};\Gamma \vdash \comp : \aty{\ty}{r} \\
 	s_{loc} \notin \ty \\
@@ -511,7 +511,7 @@ The type given to the operation call is the return type of the operation $\rty{o
 }
 \and
 \change{
-\inferH{T-HandleInst}{
+\inferH{T-Runinst}{
 	\Delta \vdash s_{loc} \\
 	\Delta,l := (s_{loc}, \eff) ;\Gamma \vdash \comp : \aty{\ty_1}{r} \\
 	\op \in \Op{\eff} \iff \op \in \handler \\
@@ -628,7 +628,7 @@ $\sigma$ will always be monotically extended by $\rightsquigarrow$.
 	\capp{(\vabs{x}{\comp})}{\val} \opsem{\sigma} \comp[x := \val]
 }
 \and
-\inferH{S-TApp}{
+\inferH{S-SApp}{
 }{
 	\cappt{(\vabst{s_{var}}{\comp})}{s'} \opsem{\sigma} \comp[s_{var} := s']
 }
@@ -656,10 +656,12 @@ $\sigma$ will always be monotically extended by $\rightsquigarrow$.
 	 \cnew{\eff}{s}{\handler ; \hfinally{z}{\comp_3}}{y}{(\cdo{x}{\comp_1}{\comp_2})}
 }
 \and
-\inferH{S-RunScope}{
+\change{
+\inferH{S-Runscope}{
 	s_{loc} \notin \sigma
 }{
 	\chandlen{s_{var}}{\comp} \opsem{\sigma} \chandlec{s_{loc}}{\comp[s_{var} := s_{loc}]}
+}
 }
 \end{mathpar}
 \label{fig:semantics1-calc}
@@ -703,39 +705,41 @@ Lastly, computations inside instance handlers can be reduced further (\textsc{S-
 \fbox{
 \begin{minipage}{12 cm}
 \begin{mathpar}
-\inferH{S-HandleScopeCong}{
+\inferH{S-RunscopeCong}{
 	\comp \opsem{\sigma,s_{loc}} \comp'
 }{
 	\chandlec{s_{loc}}{\comp} \opsem{\sigma} \chandlec{s_{loc}}{\comp'}
 }
 \and
-\inferH{S-HandleScopeReturn}{
+\inferH{S-RunscopeReturn}{
 }{
 	\chandlec{s_{loc}}{\creturn{\val}} \opsem{\sigma}
 	\creturn{\val}
 }
 \and
-\inferH{S-HandleScopeOp}{
+\inferH{S-RunscopeOp}{
 }{
 	\chandlec{s_{loc}}{\cop{\val_1}{\op}{\val_2}} \opsem{\sigma}
 	\cop{\val_1}{\op}{\val_2}
 }
 \and
-\inferH{S-HandleScopeSeqOp}{
+\inferH{S-RunscopeSeqOp}{
 }{
 	\chandlec{s_{loc}}{\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\comp}} \opsem{\sigma} \\
 	(\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\chandlec{s_{loc}}{\comp}})
 }
 \and
-\inferH{S-HandleScopeNewSkip}{
+\inferH{S-RunscopeNewSkip}{
 	s_{loc} \neq s'_{loc}
 }{
 	\chandlec{s_{loc}}{\cnew{\eff}{s'_{loc}}{\handler ; \hfinally{y}{\comp'}}{x}{\comp}} \opsem{\sigma} \\
 	\cnew{\eff}{s'_{loc}}{\handler ; \hfinally{y}{\comp'}}{x}{\chandlec{s_{loc}}{\comp}}
 }
 \and
-\inferH{S-HandleScopeNew}{
-	\loc \notin \sigma
+\inferH{S-RunscopeNew}{
+	\loc \notin \sigma \\
+	\loc \notin \comp \\
+	\loc \notin \comp'
 }{
 	\chandlec{s_{loc}}{\cnew{\eff}{s_{loc}}{\handler; \hfinally{y}{\comp'}}{x}{\comp}} \opsem{\sigma} \\
 	\chandlec{s_{loc}}{\cdo{y}{\chandlei{\loc}{s_{loc},\eff}{\handler}{\comp[x := \vinst{\loc}]}}{\comp'}}
@@ -752,39 +756,39 @@ Lastly, computations inside instance handlers can be reduced further (\textsc{S-
 \fbox{
 \begin{minipage}{12 cm}
 \begin{mathpar}
-\inferH{S-HandleInstCong}{
+\inferH{S-RuninstCong}{
 	\comp \opsem{\sigma,\loc} \comp'
 }{
 	\chandlei{\loc}{s_{loc},\eff}{\handler}{\comp} \opsem{\sigma} \chandlei{\loc}{s_{loc},\eff}{\handler}{\comp'}
 }
 \and
-\inferH{S-HandleInstNew}{
+\inferH{S-RuninstNew}{
 }{
 	\chandlei{\loc}{s_{loc},\eff}{\handler}{\cnew{\eff}{s}{\handler' ; \hfinally{y}{\comp'}}{x}{\comp}} \opsem{\sigma} \\
 	\cnew{\eff}{s}{\handler' ; \hfinally{y}{\comp'}}{x}{\chandlei{\loc}{s_{loc},\eff}{\handler}{\comp}}
 }
 \and
-\inferH{S-HandleInstOpPrepare}{
+\inferH{S-RuninstOpPrepare}{
 }{
 	\chandlei{\loc}{s_{loc},\eff}{\handler}{\cop{\val_1}{\op}{\val_2}} \opsem{\sigma} \\
 	\chandlei{\loc}{s_{loc},\eff}{\handler}{\cdo{x}{\cop{\val_1}{\op}{\val_2}}{\creturn{x}}}
 }
 \and
-\inferH{S-HandleInstOpSkip}{
+\inferH{S-RuninstOpSkip}{
 	\loc \neq \loc'
 }{
 	\chandlei{\loc}{s_{loc},\eff}{\handler}{\cdo{x}{\cop{\vinst{\loc'}}{\op}{\val}}{\comp}} \opsem{\sigma} \\
 	(\cdo{x}{\cop{\vinst{\loc'}}{\op}{\val}}{\chandlei{\loc}{s_{loc},\eff}{\handler}{{\comp}}})
 }
 \and
-\inferH{S-HandleInstOp}{
+\inferH{S-RuninstOp}{
 	\handler[\op] = (x, k, \comp_{\op})
 }{
 	\chandlei{\loc}{s_{loc},\eff}{\handler}{\cdo{y}{\cop{\vinst{\loc}}{\op}{\val}}{\comp}} \opsem{\sigma} \\
 	\comp_{\op}[x := \val, k := (\vabs{y}{\chandlei{\loc}{s_{loc},\eff}{\handler}{\comp}})]
 }
 \and
-\inferH{S-HandleInstReturn}{
+\inferH{S-RuninstReturn}{
 }{
 	\chandlei{\loc}{s_{loc},\eff}{\handler; \hreturn{x_r}{\comp_r}}{\creturn{\val}} \opsem{\sigma}
 	\comp_r[x_r := \val]
@@ -796,6 +800,63 @@ Lastly, computations inside instance handlers can be reduced further (\textsc{S-
 \end{figure}
 
 % TODO: add example derivation
+
+\paragraph{Example semantics derivation}
+\begin{align*}
+& \handler = \\
+	&\hspace{1cm} \hop{get}{x}{k}{\creturn{(\vabs{st}{\cdo{f}{\capp{k}{st}}{\capp{f}{st}}})}}{\\
+	&\hspace{1cm} \hop{put}{x}{k}{\creturn{(\vabs{st}{\cdo{f}{\capp{k}{()}}{\capp{f}{x}}})}}{\\
+	&\hspace{1cm} \hreturn{x}{\creturn{(\vabs{st}{\creturn{x}})}}}} \\
+&\chandlen{s}{\cnew{\mathsf{State}}{s}{\handler ; \hfinally{f}{\capp{f}{0}}}{r}{\\
+	&\hspace{1cm} \cdo{x}{\cop{r}{\mathsf{get}}{}}{\cdo{\_}{\cop{r}{\mathsf{put}}{x + 1}}{\cop{r}{\mathsf{get}}{}}}}} \\
+& \opsem{} \tag{\textsc{S-Runscope}} \\
+& \chandlec{s}{\cnew{\mathsf{State}}{s}{\handler ; \hfinally{f}{\capp{f}{0}}}{r}{\\
+	&\hspace{1cm} \cdo{x}{\cop{r}{\mathsf{get}}{}}{\cdo{\_}{\cop{r}{\mathsf{put}}{x + 1}}{\cop{r}{\mathsf{get}}{}}}}} \\
+& \opsem{} \tag{\textsc{S-RunscopeNew}} \\
+& \chandlec{s}{\cdo{f}{\chandlei{l}{s,\mathsf{State}}{h}{\\
+	&\hspace{1cm} \cdo{x}{\cop{\vinst{l}}{\mathsf{get}}{}}{\cdo{\_}{\cop{\vinst{l}}{\mathsf{put}}{x + 1}}{\cop{\vinst{l}}{\mathsf{get}}{}}}}}{\capp{f}{0}}} \\
+& \opsem{} \tag{\textsc{S-RunscopeCong, S-Seq, S-RuninstOp}} \\
+& \chandlec{s}{\cdo{f}{\creturn{(\vabs{st}{\cdo{f}{\capp{(\vabs{x}{\chandlei{l}{s,\mathsf{State}}{h}{\\
+	&\hspace{1cm} \cdo{\_}{\cop{\vinst{l}}{\mathsf{put}}{x + 1}}{\cop{\vinst{l}}{\mathsf{get}}{}}}})}{st}}{\capp{f}{st}}})}}{f 0}} \\
+& \opsem{} \tag{\textsc{S-RunscopeCong, S-SeqReturn}} \\
+& \chandlec{s}{\capp{(\vabs{st}{\cdo{f}{\capp{(\vabs{x}{\chandlei{l}{s,\mathsf{State}}{h}{\\
+	&\hspace{1cm} \cdo{\_}{\cop{\vinst{l}}{\mathsf{put}}{x + 1}}{\cop{\vinst{l}}{\mathsf{get}}{}}}})}{st}}{\capp{f}{st}}})}{0}} \\
+& \opsem{} \tag{\textsc{S-RunscopeCong, S-App}} \\
+& \chandlec{s}{\cdo{f}{\capp{(\vabs{x}{\chandlei{l}{s,\mathsf{State}}{h}{\\
+	&\hspace{1cm} \cdo{\_}{\cop{\vinst{l}}{\mathsf{put}}{x + 1}}{\cop{\vinst{l}}{\mathsf{get}}{}}}})}{0}}{\capp{f}{0}}} \\
+& \opsem{} \tag{\textsc{S-RunscopeCong, S-Seq, S-App}} \\
+& \chandlec{s}{\cdo{f}{\chandlei{l}{s,\mathsf{State}}{h}{\\
+	&\hspace{1cm} \cdo{\_}{\cop{\vinst{l}}{\mathsf{put}}{0 + 1}}{\cop{\vinst{l}}{\mathsf{get}}{}}}}{\capp{f}{0}}} \\
+& \opsem{} \tag{\textsc{S-RunscopeCong, S-Seq, S-RuninstOp}} \\
+& \chandlec{s}{\cdo{f}{(\creturn{(\vabs{st}{\cdo{f}{\capp{(\vabs{\_}{\chandlei{l}{s,\mathsf{State}}{h}{\\
+	&\hspace{1cm} \cop{\vinst{l}}{\mathsf{get}}{}}})}{()}}{\capp{f}{(0 + 1)}}})})}{\capp{f}{0}}} \\
+\end{align*}
+\begin{align*}
+& \opsem{} \tag{\textsc{S-RunscopeCong, S-SeqReturn}} \\
+& \chandlec{s}{\capp{(\vabs{st}{\cdo{f}{\capp{(\vabs{\_}{\chandlei{l}{s,\mathsf{State}}{h}{\cop{\vinst{l}}{\mathsf{get}}{}}})}{()}}{\capp{f}{(0 + 1)}}})}{0}} \\
+& \opsem{} \tag{\textsc{S-RunscopeCong, S-App}} \\
+& \chandlec{s}{\cdo{f}{\capp{(\vabs{\_}{\chandlei{l}{s,\mathsf{State}}{h}{\cop{\vinst{l}}{\mathsf{get}}{}}})}{()}}{\capp{f}{(0 + 1)}}} \\
+& \opsem{} \tag{\textsc{S-RunscopeCong, S-Seq, S-App}} \\
+& \chandlec{s}{\cdo{f}{\chandlei{l}{s,\mathsf{State}}{h}{\cop{\vinst{l}}{\mathsf{get}}{}}}{\capp{f}{(0 + 1)}}} \\
+& \opsem{} \tag{\textsc{S-RunscopeCong, S-Seq, S-RuninstOpPrepare}} \\
+& \chandlec{s}{\cdo{f}{\chandlei{l}{s,\mathsf{State}}{h}{\cdo{x}{\cop{\vinst{l}}{\mathsf{get}}{}}{\creturn{x}}}}{\capp{f}{(0 + 1)}}} \\
+& \opsem{} \tag{\textsc{S-RunscopeCong, S-Seq, S-RuninstOp}} \\
+& \chandlec{s}{\cdo{f}{(\creturn{(\vabs{st}{\cdo{f}{\capp{(\vabs{x}{\chandlei{l}{s,\mathsf{State}}{h}{\creturn{x}}})}{st}}{\capp{f}{st}}})})}{\capp{f}{(0 + 1)}}} \\
+& \opsem{} \tag{\textsc{S-RunscopeCong, S-SeqReturn}} \\
+& \chandlec{s}{\capp{(\vabs{st}{\cdo{f}{\capp{(\vabs{x}{\chandlei{l}{s,\mathsf{State}}{h}{\creturn{x}}})}{st}}{\capp{f}{st}}})}{(0 + 1)}} \\
+& \opsem{} \tag{\textsc{S-RunscopeCong, S-App}} \\
+& \chandlec{s}{\cdo{f}{\capp{(\vabs{x}{\chandlei{l}{s,\mathsf{State}}{h}{\creturn{x}}})}{(0 + 1)}}{\capp{f}{(0 + 1)}}} \\
+& \opsem{} \tag{\textsc{S-RunscopeCong, S-Seq, S-App}} \\
+& \chandlec{s}{\cdo{f}{\chandlei{l}{s,\mathsf{State}}{h}{\creturn{(0 + 1)}}}{\capp{f}{(0 + 1)}}} \\
+& \opsem{} \tag{\textsc{S-RunscopeCong, S-Seq, S-Runinst}} \\
+& \chandlec{s}{\cdo{f}{\creturn (\vabs{st}{\creturn{(0 + 1)}})}{\capp{f}{(0 + 1)}}} \\
+& \opsem{} \tag{\textsc{S-RunscopeCong, S-SeqReturn}} \\
+& \chandlec{s}{\capp{(\vabs{st}{\creturn{(0 + 1)}})}{(0 + 1)}} \\
+& \opsem{} \tag{\textsc{S-RunscopeCong, S-App}} \\
+& \chandlec{s}{\creturn{(0 + 1)}} \\
+& \opsem{} \tag{\textsc{S-RunscopeCong, S-RunscopeReturn}} \\
+& \creturn{(0 + 1)}
+\end{align*}
 
 \section{Type soundness}
 \label{sec:theorems}
