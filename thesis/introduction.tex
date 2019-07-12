@@ -34,15 +34,15 @@ This is because every invocation of the same function with the same arguments ma
 Furthermore side-effectful programs can also be difficult to optimize, since the compiler does not have much freedom in rearranging parts of the program.
 \\\\
 Any function that includes such side-effects is called \emph{impure}, while functions whose only effect is computing a result are called \emph{pure}.
-Pure functions on the other hand do not rely on any global state and thus can be reasoned about in isolation of the rest of the program.
+Pure functions do not rely on any global state and thus can be reasoned about in isolation of the rest of the program.
 Every time a pure function is called with the same input, it will return the same output.
 This means those functions are easier to understand, test, and debug.
 \\\\
 There has been a lot of work on programming languages that allow more control over the pure and impure parts of a program.
-Examples include Haskell~\cite{haskell}, Eff~\cite{eff1}, Koka~\cite{koka2}, and Links~\cite{links}.
+Examples include Haskell~\autocite{haskell}, Eff~\autocite{eff1}, Koka~\autocite{koka2}, and Links~\autocite{links}.
 These languages, in one way or another, give the programmer more control over which parts of their program are pure and which parts are impure.
 By factoring out the pure parts from the impure parts, we can still gain the benefits of pure functions for many parts of our programs.
-In addition these languages allow to keep track of which effects exactly are used by which function.
+In addition these languages allow one to keep track of which effects exactly are used by which function.
 They also allow some side-effects to be encapsulated, meaning that the use of a particular side-effect can be completely hidden such that the function still appears to be pure to the outside world.
 \\\\
 Type systems play an essential role in enforcing the distinction between pure and impure code.
@@ -52,6 +52,7 @@ For example pure function calls may be reordered in any way that the compiler se
 These \emph{effect systems} can have different levels of granularity.
 For example one system could only keep track of a single bit per function, whether the function is impure or not.
 More fine-grained systems are also possible, where each function is annotated with a set of effects that is used, where the set of possible effects is defined by the language.
+\iffalse
 For example in Koka a function which prints something to the console may be given the type:
 \begin{minted}[tabsize=2]{haskell}
 string -> <console> () 
@@ -59,18 +60,17 @@ string -> <console> ()
 Where \textsc{console} shows the use of the console.
 User-defined effects are also supported in languages such as Koka and Eff.
 Users, in those systems, can define the effects with which the functions are annotated.
+\fi
 \\\\
-Algebraic effects and handlers~\cite{algeff} are an approach to programming with side-effects that has many of the desirable properties previously described.
-Algebraic effects provide a way to factor out the pure parts, the operation calls, from the impure parts.
+Algebraic effects and handlers~\autocite{algeff} are an approach to programming with side-effects that has many of the desirable properties previously described.
+Algebraic effects provide a way to factor out the pure parts from the impure parts.
 Users can define effects and easily use them in functions, with different effects composing without any extra effort.
-Algebraic effects also easily admit typing, with different type-and-effect already proposed~\cite{eff2,koka,links}.
-Each effect is defined as a set of operations, for example nondeterminism can be represented by an operation which takes to values and chooses one.
+Each effect in a system with algebraic effects is defined as a set of operations.
+For example nondeterminism can be represented by an operation which takes to values and chooses one.
 Similarly, state can be defined as two operations, get and put, where get is meant to return the current value of the state and put is meant to change this value.
-Functions are tagged by the set of effects they may use.
 These operations can then be called anywhere in a function.
 Handlers take a program that calls operations and for each operation call defines how to proceed.
-For example the following piece of code defines an effect called \textit{State} which simulates a single mutable state cell.
-The function \mintinline{haskell}{postInc} increments the current value in the state cell and returns the previous value.
+For example the following piece of (pseudo)code defines an effect called \textit{State} which simulates a single mutable state cell:
 \begin{minted}[tabsize=2]{haskell}
 effect State {
 	get : () -> Int
@@ -82,12 +82,26 @@ postInc =
 	x <- get ();
 	put (x + 1);
 	return x
+	
+handlePostInc : Int
+handlePostInc =
+	f <- handle (postInc) {
+		get _ k -> \st -> k st st
+		put newst k -> \st -> k () newst
+		return x -> \st -> return x
+	};
+	f 42
 \end{minted}
+The function \mintinline{haskell}{postInc} increments the current value in the state cell and returns the previous value.
+We then handle the calls to get and put of \mintinline{haskell}{postInc} in \mintinline{haskell}{handlePostInc} using a handler.
+The handler transforms get and put calls to a function expecting the current state.
+We name this function \mintinline{haskell}{f} and pass it 42 as the initial state.
 
+\paragraph{The problem}
 While algebraic effects and handlers have many of the desirable properties we would like, they are is unable to express multiple mutable state cells.
 In the previous example it can be seen that \mintinline{haskell}{postInc} does not refer to any variables, but instead can only manipulate the mutable state using the get and put operations.
-In Haskell the the so-called ``ST monad''~\cite{runst} can be used to safely implement multiple mutable state cells in such a way that stateful computations can be encapsulated and that the references to the mutable objects are not leaked outside of the function. 
-A feature called dynamic instances was introduced by the Eff programming language~\cite{eff1}.
+In Haskell the the so-called ``ST monad''~\autocite{runst} can be used to safely implement multiple mutable state cells in such a way that stateful computations can be encapsulated and that the references to the mutable objects are not leaked outside of the function. 
+A feature called dynamic instances was introduced by the Eff programming language~\autocite{eff1}.
 With dynamic instances multiple different instances of the same effect can be dynamically created.
 Using this multiple state cells can be implemented.
 \iffalse
@@ -95,16 +109,24 @@ Eff also introduced a construct called \emph{resources}.
 Resources are an effect instance with a globally scoped handler associated.
 Having a globally scoped handler means operation calls on an instance with a resource can never escape their scope and will always be handled.
 \fi
-Unfortunately there is no type-and-effect for dynamic instances, using them can results in runtime errors when operation calls do not have an associated handler.
+Unfortunately there is no type-and-effect for dynamic instances, and using them can results in runtime errors when operation calls do not have an associated handler.
 \\\\
 In this thesis we define a calculus named \lang{} based on algebraic effects and handlers which allows for the definition of side-effects such as local references, local exceptions, and the dynamic opening of channels.
-Using this system we can implement a system similar to the ``ST monad'' in Haskell.
-This system gives full control of which parts of a program are pure and impure.
-Functions also compose easily, irrelevant of which side-effects they use.
-Using a type-and-effect system every function keeps track of which effects it may use.
-We also statically ensure that side-effects are encapsulated.
-We give examples of programs using these side-effects in \lang{} and show how to implement local mutable references in this system.
-We give a formal description of the syntax, typing rules and semantics of the system.
+Using this system we can implement a system similar to the ST monad from Haskell.
+We introduce a notion of effect scopes, which encapsulates the creation and usage of dynamically created effect instances.
+Each function is statically annotated with the effect scopes that are used in the function.
+Using the effect scopes we statically ensure that effects are encapsulated.
+We give examples of programs using these side-effects in \lang{} and show how to implement local mutable references.
+We give a formal description of the syntax, typing rules and semantics of a core calculus for \lang{}.
+\\\\
+Proving type safety for \lang{} turns out to be more difficult than anticipated.
+It is common to prove type safety by first proving a type preservation lemma.
+Type preservation states that if a term is well-typed and if we take a step (using the small-step semantics) then the resulting term is also well-typed (with the same type as before).
+This lemma is not straightforwardly provable for \lang{}.
+The problem is that effect instances can still escape their scope if they are not used and not returned from a function.
+These effect instance are not well-typed any longer after they have escaped their scoped and so type preservation does not hold.
+The escaped instances do however have no computational effect and so type safety might still be provable in other ways.
+In this thesis we will show the problems with proving type preservation for \lang{} and we will discuss other approaches that may allow us to prove type safety.
 
 \section*{Contributions}
 \begin{itemize}
@@ -113,13 +135,14 @@ We give a formal description of the syntax, typing rules and semantics of the sy
 We define a language named \lang{} based on algebraic effects and handlers that can handle a form of dynamic effect instances.
 
 \item \textbf{Mutable references.}
-We give examples in \lang{} that would be difficult or impossible to express with just algebraic effects.
+We give examples in \lang{} that would be difficult or impossible to express with ordinary algebraic effects.
 
 \item \textbf{Operational semantics and type system.}
 We define a core calculus of \lang{} together with a small-step operational semantics and a type system.
 
-\item \textbf{Type soundness.}
-We give a type soundness theorem for our type system with respect to the operational semantics via type preservation and progress for the core calculus.
+\item \textbf{Research on type safety for dynamic instances.}
+We show the problems we encountered when trying to prove type safety for \lang{}.
+We discuss the other approaches that may allow us to prove type safety.
 
 \item \textbf{Formalizations.}
 We have formalized algebraic effects and handlers with and without static instances and have proven type soundness in Coq.
@@ -128,9 +151,9 @@ We have formalized algebraic effects and handlers with and without static instan
 
 \section*{Thesis structure}
 The thesis is structured as follows.
-Chapter 2 gives an introduction to algebraic effects and handlers, and static and dynamic instances.
-Chapter 3 gives an introduction to \lang{}.
-Chapter 4 gives formal definitions of systems with algebraic effecst and handlers, and static instances.
-Chapter 5 gives a formal account of \lang{}.
+Chapter 2 gives an introduction to ordinary algebraic effects and handlers, and static and dynamic instances.
+Chapter 3 gives an introduction to our new language \lang{}.
+Chapter 4 gives formal definitions of systems with ordinary algebraic effects and handlers, and static instances.
+Chapter 5 gives a formal account of \lang{}, we also discuss the problem with proving type safety.
 Chapter 6 discusses related work.
 Chapter 7 concludes the thesis and discusses future work.

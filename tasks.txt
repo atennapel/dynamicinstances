@@ -303,10 +303,10 @@ X fix long chapter titles at the top
 - preservation voor gesloten context misschien
 
 2019-07-03
-- add list of locations to runscope^sl
-- restrict finally to t1!r
+X add list of locations to runscope^sl
+X restrict finally to t1!r
 
-
+2019-07-12
 - type safety.
 	- preservation fails
 	- it was just an attempt
