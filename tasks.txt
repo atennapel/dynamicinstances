@@ -305,3 +305,13 @@ X fix long chapter titles at the top
 2019-07-03
 - add list of locations to runscope^sl
 - restrict finally to t1!r
+
+
+- type safety.
+	- preservation fails
+	- it was just an attempt
+	- it does not mean the system is not safety
+	- my attempt can be inspiration for future work
+- add section on the haskell implementation
+- add more tests to haskell implementation
+- explain other option: using heap-like
