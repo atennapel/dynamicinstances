@@ -1,3 +1,5 @@
+\chapter{\label{chap:algintro}An introduction to algebraic effects and handlers}
+
 Side-effects are an essential part of a programming language. Without side-effects the program would have no way to print a result to the screen, ask for user input or change global state. We consider a function pure if it does not perform any side-effects and unpure if it does. A pure function always gives the same result for the same inputs. A pure function can be much easier to reason about than an unpure one because you know that it won't do anything else but compute, it won't have any hidden inputs or outputs. Because of this property testing pure functions is also easier, we can just give dummy inputs to the functions and observe the output. As already said programs without side-effects are useless, we would not be able to actually observe the result of a function call without side-effects such as printing to the screen. So we would the benefits of pure functions but still have side-effects. We could give up and simply add some form of side-effects to our language but that would immediately make our function impure, since any function might perform side-effects. This would make us lose the benefits of pure functions.
 \\\\
 Algebraic effects and handlers are a structured way to introduce side-effects to a programming language.
@@ -8,11 +10,12 @@ Instead, similar to exceptions where exceptions can be thrown and caught, operat
 Different from exceptions however the handler also has access to a continuation which can be used to continue the computation at the point where the operation was called.
 \\\\
 In this chapter we will introduce algebraic effects and handlers through examples.
-Starting with simple algebraic effects and handlers (\cref{section:background-algeff}).
-After we will continue with static instances (\cref{section:background-staticinst}) which allows for multiple static instances of the same effect to be used in a program.
-We end with dynamic instances (\cref{section:background-dynamicinst}) which allows for the dynamic creation of effect instances. The examples are written in a statically typed functional programming language with algebraic effects and handlers with syntax reminiscent to Haskell but semantically more similar to Koka\cite{koka2}.
+Starting with simple algebraic effects and handlers (\cref{sec:background-algeff}).
+After we will continue with static instances (\cref{sec:background-staticinst}) which allows for multiple static instances of the same effect to be used in a program.
+We end with dynamic instances (\cref{sec:background-dynamicinst}) which allows for the dynamic creation of effect instances. The examples are written in a statically typed functional programming language with algebraic effects and handlers with syntax reminiscent to Haskell but semantically more similar to Koka~\autocite{koka2}.
 
-\section{Algebraic effects and handlers} \label{section:background-algeff}
+\section{Algebraic effects and handlers}
+\label{sec:background-algeff}
 We will start with the familiar exceptions. We define an \ident{Exc} effect interface with a single operation \ident{throw}.
 
 \begin{minted}[tabsize=2]{haskell}
@@ -282,13 +285,14 @@ sumRange a b =
 	f 0 -- initial sum value is 0
 \end{minted}
 
-\section{Static instances} \label{section:background-staticinst}
+\section{Static instances}
+\label{sec:background-staticinst}
 
 Static instances extend algebraic effects by allowing multiple instances of the same effect to co-exist.
 These instances be handled independently of each other.
 Operations in such a system are always called on a specific instance and handlers also have to note instance they are handling.
-We will write operation calls as \ident{inst#op(v)} where \ident{inst} is the instance.
-Handlers are modified to take an instance parameter as follows \ident{handle#inst(comp) { ... }}.
+We will write operation calls as \allowhash{\ident{inst#op(v)}} where \ident{inst} is the instance.
+Handlers are modified to take an instance parameter as follows \allowhash{\ident{handle#inst(comp) { ... }}}.
 \\\\
 As an example let us take another look at the \ident{safeDiv} function.
 
@@ -346,7 +350,8 @@ defaultTo0 c =
 	}
 \end{minted}
 
-\section{Dynamic instances} \label{section:background-dynamicinst}
+\section{Dynamic instances}
+\label{sec:background-dynamicinst}
 
 Having to predeclare every instance we are going to use is very inconvenient, especially when we have effects such as reference cells or communication channels. The global namespace would be littered with all references and channels the program would ever use. Furthermore we do not always know how many references we need. Take for example a function which creates a list of reference cells giving a length $l$. We do not know statically what the length of the list will be and so we do not know ahead how many instances we have to declare.
 Furthermore because all the instances would be predeclared some information about the implementation of a function would be leaked to the global namespace. This means it is impossible to fully encapsulate the use of an effect when using static instances.
@@ -384,6 +389,7 @@ In the recursive case of \ident{factorialLoop} the value in \ident{ref} is modif
 The call to \ident{factorialLoop} in \ident{factorial} is wrapped in the \ident{State} handler explained earlier, chosing \ident{1} as the initial value of \ident{ref}.
 \ident{factorial} thus computes the factorial of a number by using a locally created instance, but the use of this instance or the \ident{State} effect in general never escapes the function, it is completely encapsulated.
 
+\pagebreak
 \begin{minted}[tabsize=2]{haskell}
 factorialLoop ref n =
 	if n == 0 then
@@ -395,7 +401,7 @@ factorialLoop ref n =
 
 factorial n =
 	ref <- new State;
-	statefn <- handle#r (factorialLoop ref n) {
+	statefn <- handle#ref (factorialLoop ref n) {
 		get () k -> return (\s -> (f <- k s; return f s))
 		put v k -> return (\s -> (f <- k (); return f v))
 		return v -> return (\s -> return v)
@@ -403,7 +409,7 @@ factorial n =
 	statefn 1 -- use 1 as the initial value of ref
 \end{minted}
 
-Next we will implement references more generally similar to the ones available in Standard ML\cite{standardml}, in our case specialized to \ident{Int}.
+Next we will implement references more generally similar to the ones available in Standard ML~\autocite{standardml}, in our case specialized to \ident{Int}.
 In the previous example we see a pattern of creating a \ident{State} instance and then calling some function with it wrapped with a handler.
 This is the pattern we want to use when implementing references.
 To implement this pattern more generally this we first introduce a new effect named \ident{Heap}.
@@ -435,6 +441,7 @@ In the following example we create two references and swap their values using a 
 First \ident{main} creates a new \ident{Heap} instance \ident{heap} and then calls \ident{runRefs} with this instance.
 The computation given to \ident{runRefs} is the function \ident{program} called with \ident{heap}.
 
+\pagebreak
 \begin{minted}[tabsize=2]{haskell}
 swap r1 r2 =
 	x <- r1#get ();
@@ -455,7 +462,7 @@ main =
 	runRefs heap (program heap) -- returns (2, 1)
 \end{minted}
 
-In the Haskell programming language the ST monad\ref{runst} can be used to implement algorithms that internally use mutable state.
+In the Haskell programming language the ST monad~\autocite{runst} can be used to implement algorithms that internally use mutable state.
 The type system, using the \ident{runST} function, will make sure that the mutable state does not leak outside of the function.
 For example the following function \ident{fibST} implements the Fibonacci function in constant space by creating two mutable references.
 
@@ -513,4 +520,4 @@ fibRec n x y =
     fibRec (n - 1) x y
 \end{minted}
 
-Dynamic instances have one big problem though: they are too dynamic. Similar to how in general it is undecidable to know whether a reference has escaped its scope, it is also not possible to know whether an instance has a handler associated with it. This makes it hard to think of a type system for dynamic instances which ensures that there are no unhandled operations. Earlier versions of the Eff programming language\cite{eff1} had dynamic instances but its type system underapproximated the uses of dynamic instances which meant you could still get a runtime error if any operation calls were left unhandled.
+Dynamic instances have one big problem though: they are too dynamic. Similar to how in general it is undecidable to know whether a reference has escaped its scope, it is also not possible to know whether an instance has a handler associated with it. This makes it hard to think of a type system for dynamic instances which ensures that there are no unhandled operations. Earlier versions of the Eff programming language~\autocite{eff1} had dynamic instances but its type system underapproximated the uses of dynamic instances which meant you could still get a runtime error if any operation calls were left unhandled.

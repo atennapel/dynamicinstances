@@ -1,6 +1,6 @@
 \iffalse
 In this chapter we will give an introduction to programming with \lang{}.
-X is a modification of the algebraic effects system described in Chapter~2.1, extended with a restricted form of the dynamic instances of Chapter~2.3.
+X is a modification of the algebraic effects system described in \cref{sec:background-algeff}, extended with a restricted form of the dynamic instances of \cref{sec:background-dynamicinst}.
 We introduce the novel concepts of \lang{}.
 When create a new instance we have to give handler, this ensures that the instance is always associated with a handler.
 The $\mathsf{runscope}$ construct can handle multiple effects at the same time.
@@ -10,7 +10,9 @@ We introduce \emph{effect scope polymorphism} together with \emph{effect scope a
 These constructs allows us to write functions which are polymorphic over effect scopes.
 \fi
 
-In Chapter~2.3 we saw how dynamic instances allow us to implement mutable references in a system with algebraic effects.
+\chapter{\label{chap:langintro}Introduction to \lang{}}
+
+In \cref{sec:background-dynamicinst} we saw how dynamic instances allow us to implement mutable references in a system with algebraic effects.
 This system is untyped however, meaning that you can get runtime errors if an operation is unhandled.
 This can happen if an operation is called on a dynamic instance outside of a handler.
 In this chapter we introduce \lang{}, which combines algebraic effects and dynamic instances while still remaining typeable.
@@ -18,28 +20,28 @@ In order to achieve this we introduce the notion of an \emph{effect scope}.
 An effect scope groups together instances.
 When creating an instance we give an effect scope to create the instance in.
 Every instance belongs to a specific effect scope.
-Different from the system with dynamic instances from Chapter~2.3, we always have to specify a handler when creating an instance, similar to resources in Eff.
+Different from the system with dynamic instances from \cref{sec:background-dynamicinst}, we always have to specify a handler when creating an instance, similar to resources in Eff.
 Specifying a handler at the moment of creating an instance ensures that each instance always has a handler associated with it.
-Performing effects is done with a new $\mathsf{runscope}$ construct, similar to how the $\mathsf{handle}$ construct performed effects in Chapter~2.
+Performing effects is done with a new $\mathsf{runscope}$ construct, similar to how the $\mathsf{handle}$ construct performed effects in \cref{chap:algintro}.
 $\mathsf{runscope}$ creates a fresh scope and makes it available for use in a given computation.
 After all the instances created on this new scope will actually be instantiated and all the operations called on these instances will be handled.
 In order to allow computations to be polymorphic over effect scopes we also introduce \emph{effect scope polymorpishm} together with \emph{effect scope abstraction} and \emph{effect scope application}.
 \\\\
-We start with explaining all the novel concepts in Section~3.1, using the example of mutable references.
+We start with explaining all the novel concepts in \cref{sec:lang-basics}, using the example of mutable references.
 % After we will show how mutable references can be expressed in \lang{} in Section~3.2.
-Then we will show how mutable vectors can be defined, followed by an implementation of a list shuffling algorithm in Section~3.2.
+Then we will show how mutable vectors can be defined, followed by an implementation of a list shuffling algorithm in \cref{sec:lang-vectors}.
 \iffalse
 We end the chapter by showing how our system allows for local effects in Section~3.3.
 \fi
 \\\\
-We build on the language used in Chapter~2.1.
+We build on the language used in \cref{sec:background-algeff}.
 We use syntax reminiscent of Haskell with algebraic data types and pattern matching.
 Type constructors and effect names are uppercase while type variables are lowercase.
 % The language also has parametric polymorphism over effect scopes.
 % We will always explicitly show \ident{forall} for universally quantified effect scope variables.
 
 \section{Effects, effect scopes and instances}
-\label{section:basics}
+\label{sec:lang-basics}
 
 \begin{figure}
 \caption{Example of all the novel constructs}
@@ -79,13 +81,13 @@ result =
 \label{fig:example1}
 \end{figure}
 
-In Figure~\ref{fig:example1} we give an example containing all the novel constructs of \lang{}.
+In \cref{fig:example1} we give an example containing all the novel constructs of \lang{}.
 
 \subsection{Effects}
 
 To start off we define a \ident{State} effect specialized to \ident{Int}s.
-\ident{State} is meant to represent a mutable reference to a single value of type \ident{Int}.
-This definition is exactly the same as the \ident{State} effect definition in Chapter~2.1, in the basic algebraic effects system.
+The \ident{State} effect is meant to represent a mutable reference to a single value of type \ident{Int}.
+This definition is exactly the same as the \ident{State} effect definition in \cref{sec:background-algeff}, in the basic algebraic effects system.
 With the \ident{effect} keyword we declare a new effect called \ident{State} with two operations: \ident{get} and \ident{put}.
 For each operation we give parameter and return types. For \ident{get} we give the unit type \ident{()} as the parameter type.
 As the return type we give \ident{Int}, meaning that calling the \ident{get} operation will return a integer value.
@@ -93,7 +95,7 @@ For the \ident{put} operation it is the other way around.
 As the parameter type we have \ident{Int}, meaning that \ident{put} requires an integer value when called, and the return type is \ident{()}, calling \ident{put} will give back the unit value.
 
 \subsection{Effect instances}
-In Figure~\ref{fig:example1} the function \ident{ref} creates a new \emph{effect instance} of the \ident{State} effect.
+In \cref{fig:example1} the function \ident{ref} creates a new \emph{effect instance} of the \ident{State} effect.
 We can create a fresh instance of an effect using the \ident{new} keyword.
 The construct \ident{new State@s { ... }} can be read as ``Create a fresh \ident{State} instance in the effect scope \ident{s}''.
 Here we have to give a specific scope \ident{s} to create the instance on.
@@ -102,7 +104,7 @@ The newly-created instance is available in the body of the \ident{new} construct
 When creating an instance we have to give a \emph{handler}.
 The handler specifies what should happen when the operations are called.
 The handler is defined within curly braces and consists of a case for each operation of the effect, plus a \ident{return} case and a \ident{finally} case.
-The handler given in the example is the same as the handler given in Chapter~2.1, implementing a single mutable reference.
+The handler given in the example is the same as the handler given in \cref{sec:background-algeff}, implementing a single mutable reference.
 In addition we also have to define a \ident{finally} case.
 In there we can perform an extra computation after the handler is performed.
 In the case of the handler given this is necessary because the return type of the handler is \ident{Int -> T} for some return type \ident{T}.
@@ -139,8 +141,8 @@ Using \ident{ref} we can fully emulate multiple mutable references.
 We have the added guarantee that the references will not escape their effect scope, they will not escape their corresponding \ident{runscope}.
 Adding parametric polymorphism to the effects to give \ident{State t} for any type \ident{t} will enable us to emulate references of any type.
 With references of different types coexisting.
-This is very similar to how the ST monad works in Haskell~\cite{runst}.
-Using mutable references have interesting applications such as meta variables in unification algorithms and typed logic variables~\cite{typedlogic}.
+This is very similar to how the ST monad works in Haskell~\autocite{runst}.
+Using mutable references have interesting applications such as meta variables in unification algorithms and typed logic variables~\autocite{typedlogic}.
 \\\\
 Looking at the type of creating mutable references using the ST monad in Haskell (\ident{newSTRef}), we can see that the type of \ident{ref} is very similar
 (we explicitly wrote down the quantification and specialized \ident{newSTRef} to \ident{Int}):
@@ -151,13 +153,13 @@ newSTRef :: forall s. Int -> ST s (STRef s Int)
 \end{minted}
 
 Here \ident{ST s} serves the same purpose as \ident{!{s}} in our system.
-\ident{STRef s Int} is the type of a mutable reference in the ST monad in Haskell.
-\ident{s} is some ``state thread'', the purpose if this type variable is to statically ensure that references do not escape their scope.
+The type \ident{STRef s Int} is the type of a mutable reference in the ST monad in Haskell.
+The type variable \ident{s} is some ``state thread'', the purpose if this type variable is to statically ensure that references do not escape their scope.
 This is exactly like the \ident{s} type variable in our system, but we generalize ``state threads'' to effect scopes, where any algebraic effect may be performed.
 
 \subsection{Using effect instances}
 \label{subsection:instances}
-In Figure~\ref{fig:example1} the function \ident{postInc} shows how an effect instance can actually be used:
+In \cref{fig:example1} the function \ident{postInc} shows how an effect instance can actually be used:
 \begin{minted}[tabsize=2]{haskell}
 postInc : forall s. Inst s State -> Int!{s}
 postInc [s] inst =
@@ -175,9 +177,9 @@ Effects can be used by calling operations.
 Operations are always called on an effect instance.
 Without an instance we are unable to perform operations.
 In the case of \ident{postInc} we get an instance as an argument to the function.
-Operation can be called on an instance using the syntax \ident{instance\#operation(argument)}.
-We write \ident{instance\#operation()} to mean \ident{instance\#operation(())}, when the unit value \ident{()} is given as the argument.
-\ident{postInc} implements the traditional ``post increment'' operation on a mutable reference.
+Operation can be called on an instance using the syntax \allowhash{\ident{instance#operation(argument)}}.
+We write \allowhash{\ident{instance#operation()}} to mean \allowhash{\ident{instance#operation(())}}, when the unit value \ident{()} is given as the argument.
+The function \ident{postInc} implements the traditional ``post increment'' operation on a mutable reference.
 In the C language this is written \ident{x++} for some reference \ident{x}.
 We first call the \ident{get} operation on \ident{inst}.
 We get back a value of type \ident{Int}, which we name \ident{x}.
@@ -226,7 +228,7 @@ In the future we will omit writing \ident{!{}} if a computation does not have an
 \\\\
 The \ident{runscope(s' -> ...)} construct provides a new scope, which we named \ident{s1} and \ident{s2} in our case, which can be used in its body.
 Inside \ident{runscope} we can create and use instances in this new scope.
-\ident{runscope} will make sure that any instances that are created on its scope will actually be created and that any operation calls on these instances will be handled.
+The \ident{runscope} will make sure that any instances that are created on its scope will actually be created and that any operation calls on these instances will be handled.
 \\\\
 In \ident{result} we use two nested scope.
 First we create a scope called \ident{s1}.
@@ -250,6 +252,7 @@ After this the scope \ident{s1} is done and any effect in it will be handled.
 This leaves us with a computation of type \ident{Int!{}} with no remaining effects.
 
 \section{Mutable vectors}
+\label{sec:lang-vectors}
 \begin{figure}[h]
 \caption{Mutable vectors}
 \begin{minted}[tabsize=2,frame=single,linenos]{haskell}
@@ -279,8 +282,8 @@ vset [s] n v (VCons _ t) = vset [s] (n - 1) v t
 
 In the previous section we have defined mutable references using the \ident{ref} function.
 We will now build on them to define mutable vectors.
-In Figure~\ref{fig:vectors} we define the \ident{Vector} datatype.
-\ident{Vector} is a list of \ident{State} instances and is indexed by the scope of instances: \ident{s}.
+In \cref{fig:vectors} we define the \ident{Vector} datatype.
+The type \ident{Vector} is a list of \ident{State} instances and is indexed by the scope of instances: \ident{s}.
 We define three functions on \ident{Vector}: \ident{vlength}, \ident{vget}, and \ident{vset}.
 With \ident{vlength} we can get the length of a vector.
 With \ident{vget} we can retrieve a value from a vector by giving an index.
@@ -292,9 +295,9 @@ We define both functions by recursion on the index.
 \\\\
 As an example application we will write a shuffling algorithm for vectors.
 This simple algorithm will shuffle a vector by randomly swapping two random elements of the vector and repeating this some amount of times.
-In Figure~\ref{fig:shuffle} we show the algorithm.
+In \cref{fig:shuffle} we show the algorithm.
 First we define an effect \ident{Rng} in order to abstract out the generation of random numbers.
-\ident{Rng} has a single operation \ident{rand} which returns a random integer between \ident{0} and \ident{n} given an integer \ident{n}.
+The effect \ident{Rng} has a single operation \ident{rand} which returns a random integer between \ident{0} and \ident{n} given an integer \ident{n}.
 We define a function \ident{vlength} to get the length of the vector.
 \\\\
 We then define the actually shuffling function \ident{shuffleVector}.
@@ -303,7 +306,7 @@ As arguments we take an instance of \ident{Rng}, in order to generate random num
 By taking a seperate scope for the \ident{Rng} instance we are more flexible when handling the computation.
 We can handle the effects on the vector while leaving the \ident{Rng} effects to be handled higher up.
 \\\\
-\ident{shuffleVector} proceeds as follows.
+The function \ident{shuffleVector} proceeds as follows.
 If the amount of times we want to shuffle is \ident{0} we stop and return the vector.
 If not then we first get the length of the vector.
 Then we generate two random numbers, \ident{i} and \ident{j}, between \ident{0} and this length.
@@ -311,6 +314,23 @@ These two numbers will be the two elements we will swap.
 We then get the current values at these indeces.
 And we swap the values at these indeces in the vector.
 We then recurse, subtracting the amount of times to shuffle by one.
+\\\\
+Using \ident{shuffleVector} we can implement a function to shuffle a list in \cref{fig:listshuffle}.
+We first define the usual \ident{List} datatype, with \ident{Nil} and \ident{Cons} cases.
+Then we define two functions \ident{toVector} and \ident{toList} to convert between lists and vectors.
+The function \ident{toVector} simply recurses on the list and creates fresh mutable references for each element of the list, initialized with the value of the element.
+The function \ident{toList} converts a vector to a list by getting the current values of each reference in the vector.
+The function \ident{shuffle} implements the actual shuffling.
+It takes an effect scope, a \ident{Rng} instance \ident{rng} in this scope and a list \ident{lst}.
+We first convert the list to a mutable vector.
+Then we use \ident{shuffleVector} to shuffle the vector 100 times, passing \ident{rng} for generating the random numbers.
+Finally we convert the vector back to a list and return this result.
+We wrap this computation in \ident{runscope} to handle the effects of the mutable vector.
+The use of mutable vectors is not leaked outside of the function, from the type and behaviour of \ident{shuffleVector} we are unable to find out if mutable vectors are used.
+We say that the use of the \ident{State} effect is completely \emph{encapsulated}.
+The type system ensures that \ident{runscope} actually does encapsulate all effects in its scope.
+Note that we do not handle the scope of \ident{rng}, we leave the \ident{Rng} to be handled higher up by the caller of \ident{shuffle}.
+
 
 \begin{figure}[H]
 \caption{Vector shuffling}
@@ -342,21 +362,7 @@ shuffleVector [s] [s'] rng n vec =
 \label{fig:shuffle}
 \end{figure}
 
-Using \ident{shuffleVector} we can implement a function to shuffle a list in Figure~\ref{fig:listshuffle}.
-We first define the usual \ident{List} datatype, with \ident{Nil} and \ident{Cons} cases.
-Then we define two functions \ident{toVector} and \ident{toList} to convert between lists and vectors.
-\ident{toVector} simply recurses on the list and creates fresh mutable references for each element of the list, initialized with the value of the element.
-\ident{toList} converts a vector to a list by getting the current values of each reference in the vector.
-The function \ident{shuffle} implements the actual shuffling.
-It takes an effect scope, a \ident{Rng} instance \ident{rng} in this scope and a list \ident{lst}.
-We first convert the list to a mutable vector.
-Then we use \ident{shuffleVector} to shuffle the vector 100 times, passing \ident{rng} for generating the random numbers.
-Finally we convert the vector back to a list and return this result.
-We wrap this computation in \ident{runscope} to handle the effects of the mutable vector.
-The use of mutable vectors is not leaked outside of the function, from the type and behaviour of \ident{shuffleVector} we are unable to find out if mutable vectors are used.
-We say that the use of the \ident{State} effect is completely \emph{encapsulated}.
-The type system ensures that \ident{runscope} actually does encapsulate all effects in its scope.
-Note that we do not handle the scope of \ident{rng}, we leave the \ident{Rng} to be handled higher up by the caller of \ident{shuffle}.
+
 
 \begin{figure}
 \caption{List shuffling}
@@ -416,7 +422,7 @@ runshuffle lst =
 \label{fig:rng}
 \end{figure}
 
-In Figure~\ref{fig:rng} we define the function \ident{runshuffle} which can shuffle a list \ident{lst}.
+In \cref{fig:rng} we define the function \ident{runshuffle} which can shuffle a list \ident{lst}.
 We use a naive implementation of random number generation using a linear congruential generator.
 Inside of a new scope \ident{s} we first create a mutable reference called \ident{seedref}, which we set to a random intial seed value.
 This reference will store the current state of the random number generator, which we call the seed.
@@ -430,9 +436,9 @@ The \ident{Rng} uses an instance of \ident{State} to implement the \ident{rand} 
 Both of these effects exist and are handled in the same scope \ident{s}.
 From the type of \ident{runshuffle} (\ident{List -> List}) we can see that all the effects are encapsulated and that the function is pure.
 In the next Chapter we will give a formal account of the system, including a type system and semantics.
-
+\\\\
 In this Chapter we have seen how to program with effect scopes.
-Like the regular algebraic effects (Chapter~2.1) we can use and combine different effects simply by using their operations in a program.
+Like the regular algebraic effects (\cref{sec:background-algeff}) we can use and combine different effects simply by using their operations in a program.
 What is different is that handlers are given when creating instances.
 We have seen that we can abstract over and instantiate effect scopes.
 Lastly we saw how effect scopes enable use to implement mutable references and vectors while still being safe.
@@ -444,7 +450,7 @@ This means we want to have \emph{local effects} in those functions.
 Effects which do not leak outside of the functions and which do not interfere with any other effects used.
 Using effect instances we can generate effects which are local and unique.
 \\\\
-In Figure~\ref{fig:localeffects} we 
+In \cref{fig:localeffects} we 
 
 \begin{figure}[h]
 \caption{Folding with early exit}

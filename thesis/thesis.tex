@@ -12,7 +12,6 @@
 \usepackage{listings}
 \usepackage{mathtools}
 %\usepackage{amsmath}
-\usepackage{amssymb}
 %\usepackage{tabularx}
 \usepackage{adjustbox}
 \usepackage{amsthm}
@@ -33,10 +32,10 @@
 \usepackage{enumitem}
 \setlist{nolistsep}
 
-\usepackage{cleveref}
-\crefname{section}{§}{§§}
-\Crefname{section}{§}{§§}
-\crefformat{section}{§#2#1#3}
+%\usepackage{cleveref}
+%\crefname{section}{§}{§§}
+%\Crefname{section}{§}{§§}
+%\crefformat{section}{§#2#1#3}
 
 \setminted{
 	breaklines=false,
@@ -44,15 +43,27 @@
 	breakbytoken=false,
 }
 
+\setlength{\parindent}{0pt}
+
 \newtheorem{lemma}{Lemma}
 \newtheorem{sublemma}{Lemma}[lemma]
 
 \newtheorem{theorem}{Theorem}
 
+\def\allowhash{%%%%
+    \bgroup\everyeof{\egroup}\catcode35=11\relax\scantokens}%
+
 \newcommand\ident[1]{\mintinline{haskell}{#1}}
 \newcommand\identp[1]{\mintinline{text}{#1}}
 
 \newcommand{\lang}{Miro}
+
+\undef\ulcorner
+\undef\urcorner
+\undef\llcorner
+\undef\lrcorner
+\usepackage{amssymb}
+%\newcommand{\varnothing}{\emptyset}
 
 \lstset{
 	frame = single,
@@ -73,33 +84,25 @@
 
 \pagenumbering{arabic}
 
-\tableofcontents
+\cleardoublepage\tableofcontents
+\cleardoublepage\mainmatter{}
 
+\include{introduction}
 
+\include{background}
 
-\chapter{Introduction}
-\input{introduction.tex}
+\include{examples}
 
-\chapter[Algebraic effects introduction]{An introduction to algebraic effects and handlers}
-\input{background.tex}
+\include{background-theory}
 
-\chapter{Introduction to \lang{}}
-\input{examples.tex}
+\include{calculus}
 
-\chapter[Algebraic effects theory]{Semantics and types of algebraic effects and handlers}
-\input{background-theory.tex}
+\include{related}
 
-\chapter{Semantics and types of \lang{}}
-\input{calculus.tex}
-
-\chapter{Related work}
-\input{related.tex}
-
-\chapter{Conclusion and future work}
-\input{conclusion.tex}
+\include{conclusion}
 % \input{features.tex}
 
-\newpage
+%\newpage
 
 \printbibliography{}
 
