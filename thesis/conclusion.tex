@@ -2,14 +2,14 @@
 
 We conclude with a brief discussion of what we have presented and discuss possible future work.
 \\\\
-In Chapter~2 we have seen that algebraic effects and handlers are a composable approach to programming with side-effects.
+In \cref{chap:algintro} we have seen that algebraic effects and handlers are a composable approach to programming with side-effects.
 Using algebraic effects effects we can keep functions pure until we handle the effects within them.
 We have also seen that we are unable to express mutable references within algebraic effects and handlers.
 Dynamic instances, as introduced by Bauer and Pretnar in Eff, allow the programmer to dynamically generate instances of effects.
 Using dynamic instances one can implement dynamic effects such as mutable references and the dynamic opening of channels.
 Unfortunately the type system of Eff under-approximates the uses of effects, which can lead to runtime errors.
 \\\\
-In Chapter~3 we have presented a new language \lang{} with algebraic effects and handlers, and dynamic instaces.
+In \cref{chap:langintro} we have presented a new language \lang{} with algebraic effects and handlers, and dynamic instaces.
 Using a notion of effect scopes we are able to safely use dynamically created instances, ensuring that no instance will escape the scope of their handler.
 We have shown how we can implement mutable references and vectors in \lang{}.
  \\\\
@@ -24,8 +24,8 @@ Using the notion of an effect scope and effect scope variables we can ensure tha
 By enabling the definition of dynamic effects, such as mutable references, algebraic effects and handlers can be useful in more situations.
  
 \section{Future work}
-We currently have formalized the system with static instances of Chapter~2.1 and 2.2 and have proven type soundness in Coq~\footnote{https://github.com/atennapel/dynamicinstances}.
-This formalization is briefly discussed in Chapter~\ref{sec:formalization}.
+We currently have formalized the system with static instances of \cref{sec:background-algeff} and \cref{sec:background-staticinst} and have proven type soundness in Coq~\footnote{https://github.com/atennapel/dynamicinstances}.
+This formalization is briefly discussed in \cref{sec:formalization}.
 Due to time constraints we were unable to also provide a formalization for \lang{}.
 It would be beneficial to also formalize \lang{} to gain more certainty the system is safe.
 \\\\
@@ -75,7 +75,7 @@ We do not see any difficulty in extending the annotations in this way.
 \paragraph{Combine with regular algebraic effects and handlers.}
 In \lang{} handlers are given when creating instances.
 These handlers are necessary in order to make sure that every instance has a handler, which completely handles the effects of that specific instance.
-In regular algebraic effects (Chapter~2.1) operation calls can be called anywhere and can also be handled anywhere higher up.
+In regular algebraic effects (\cref{sec:background-algeff}) operation calls can be called anywhere and can also be handled anywhere higher up.
 
 These are two different ways of using algebraic effects.
 We could combine \lang{} with the regular algebraic effects and handlers.
@@ -89,10 +89,10 @@ combination [s] r =
 
 The function \ident{combination} takes as argument a \ident{State} instance on some effect scope \ident{s}.
 We then call the \ident{get} operation, but not on an instance and call this value \ident{x}.
-We then store \ident{x} in the reference argument \ident{r}, by calling the \ident{r#put}.
+We then store \ident{x} in the reference argument \ident{r}, by calling the \allowhash{\ident{r#put}}.
 From the effect annotation on the type of \ident{combination} we can see we are both using the effect scope \ident{s} and \ident{State} without a scope.
-While \ident{r} already has a handler associated with it, because one has to be given when creating it, the \ident{#get} operation does not.
-We still have to give a handler for \ident{#get} higher up, like one would do with regular algebraic effects and handlers.
+While \ident{r} already has a handler associated with it, because one has to be given when creating it, the \allowhash{\ident{#get}} operation does not.
+We still have to give a handler for \allowhash{\ident{#get}} higher up, like one would do with regular algebraic effects and handlers.
 Effect interfaces can be used for both systems as we do not change these from the regular algebraic effects system in \lang{}.
 It is not clear how difficult it is to combine these two systems as they can interact, regular operations can be called within an effect scope.
 
@@ -101,7 +101,7 @@ Usually mutable references are globally scoped, meaning they are valid for the e
 In \lang{} we have to explicitly scope instances using \ident{runscope}.
 In order to fully emulate global mutable references we could add a special scope location \ident{global}.
 Instances created on the \ident{global} scope are globally scoped and can be used anywhere.
-We can modify the \ident{ref} function from Chapter~3.1 to create globally scoped mutable references.
+We can modify the \ident{ref} function from \cref{sec:lang-basics} to create globally scoped mutable references.
 \begin{minted}[tabsize=2]{haskell}
 globalref : Int -> (Inst global State)!{global}
 globalref v =
@@ -120,5 +120,5 @@ Care would have to be taken to ensure global instances cannot escape, we have to
 Questions remain on what limitations we need on the global handlers.
 Should we be allowed to call other effects in the handlers?
 Should we be allowed to invoke the continuation zero or multiple times?
-This idea is similar to the concept of resources in the Eff programming language, as discussed in the related work in Chapter~\ref{sec:eff}.
+This idea is similar to the concept of resources in the Eff programming language, as discussed in the related work in \cref{sec:eff}.
 Handlers on the global scope are similar to default handlers.

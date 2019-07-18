@@ -4,18 +4,18 @@ Algebraic effects and handlers is a wide field with many different areas and fea
 We will focus only on languages which have support for dynamic effects.
 
 \paragraph{Eff} \label{sec:eff}
-The Eff programming language~\cite{eff1} was the first language with support for algebraic effects and handlers.
-It featured fully dynamic instances (Chapter~\ref{section:background-dynamicinst}) allowing for dynamic effects.
+The Eff programming language~\autocite{eff1} was the first language with support for algebraic effects and handlers.
+It featured fully dynamic instances (\cref{sec:background-dynamicinst}) allowing for dynamic effects.
 Eff did not feature an effect typing system initially.
 Having no effect typing system means there are fewer restrictions on what one can do, but there are also fewer static guarantees.
 For example it is not statically guaranteed all operation call will be handled, resulting in runtime errors.
-An effect typing system was proposed~\cite{eff2} but it did not feature dynamic instances, only static instances (Chapter~\ref{section:background-staticinst} and Chapter~\ref{section:staticinst}).
+An effect typing system was proposed~\autocite{eff2} but it did not feature dynamic instances, only static instances (\cref{sec:background-staticinst} and \cref{sec:theory-staticinst}).
 The current version of Eff does not have dynamic instances since they were considered too difficult in the theory.
 Dynamic instances in Eff can be introduced without an associated handler, different than \lang{}.
 In most language mutable references are globally scoped.
 Eff supports these kinds of globally scoped dynamic effects using \emph{resources},
-taking an example from ``Programming with algebraic effects and handlers''\cite{eff1}:
-\newpage
+taking an example from ``Programming with algebraic effects and handlers''~\autocite{eff1}:
+
 \begin{minted}[tabsize=2]{ocaml}
 let ref x =
 	new ref @ x with
@@ -30,17 +30,18 @@ Resources always have a handler associated with them.
 These special handlers are globally scoped and are more restricted than regular handlers and have different semantics.
 Because the handler is globally scoped any operation call on an instance with a resource will always be handled.
 Such handlers are also sometimes called \emph{default handlers}.
-In the future work we discuss the possibility of adding default handlers to \lang{} in Chapter~\ref{sec:globalscopes}.
+In the future work we discuss the possibility of adding default handlers to \lang{} in \cref{sec:globalscopes}.
 \\\\
+\pagebreak
 \paragraph{OCaml embedding}
-A variant of Eff was implemented as an embedding in OCaml~\cite{effdirectly}.
+A variant of Eff was implemented as an embedding in OCaml~\autocite{effdirectly}.
 This embedding features algebraic effects and handlers and dynamic instances, again without an effect typing system.
 The implementation relies on multi-prompt delimited control in OCaml.
 The embedding does not implement the resources or default handlers from Eff.
 Instead the observation is made that dynamic effects can be seen as just another effect, which are called \emph{higher-order effects}.
 A effect called \identp{New} is defined with a \identp{new} operation.
 We give the definition of \identp{New} here but refer to the paper for a full explanation.
-\newpage
+
 \begin{minted}[tabsize=2]{ocaml}
 type eff handler t = {h: forall w. eff result prompt -> (unit -> w) -> w}
 type dyn instance =
@@ -66,11 +67,11 @@ This restriction allows use to give a type system which make sure no instance es
 In the OCaml embedding no such restrictions are made and just like Eff one has no static guarantees that all operations will be handled.
 \\\\
 \paragraph{Koka}
-Koka is a programming language with effect inference using row polymorphism~\cite{koka}.
-Later algebraic effects and handler were also added~\cite{koka2}.
-Extending the language with a \identp{lift} (also called \identp{inject}) operation to inject effects, skipping a handler, some notion of mutable references can be implemented~\cite{handlewithcare}.
+Koka is a programming language with effect inference using row polymorphism~\autocite{koka}.
+Later algebraic effects and handler were also added~\autocite{koka2}.
+Extending the language with a \identp{lift} (also called \identp{inject}) operation to inject effects, skipping a handler, some notion of mutable references can be implemented~\autocite{handlewithcare}.
 References implemented using this technique are very limited though, being unable to escape even single functions.
-Leijen proposed an extension for Koka with dynamic effect handlers~\cite{kokadynamic}.
+Leijen proposed an extension for Koka with dynamic effect handlers~\autocite{kokadynamic}.
 This extension introduces \emph{umbrella effects}, which are effects that can contain dynamic effects.
 For example an umbrella effect \identp{heap} can be defined which contains dynamic effects of type \identp{ref} (mutable references).
 \begin{minted}[tabsize=2]{text}
@@ -82,6 +83,8 @@ effect dynamic ref<a> in heap {
 	fun set(x : a) : ()
 }
 \end{minted}
+
+\pagebreak
 Values of type \identp{ref} can then created using by defining a dynamic handler.
 \begin{minted}[tabsize=2]{text}
 fun with-ref(init:a, action:ref<a> -> e b ) : e b {
@@ -116,7 +119,7 @@ A function parameter of a higher-order function may interfere with the effects u
 If the function argument is used inside of handled computation then the effects in the function may be handled, even if the function itself is polymorphic with regards to these effects.
 In Eff dynamic instances solve this problem because one cannot handle an instance if they do not have access to this instance.
 In \lang{} this is also true, a handler is defined when creating an instance and so we cannot accidentally handle an effect we are unaware of.
-The two papers ``Abstracting Algebraic Effects''~\ref{abstractingalgeffects} and ``Abstraction-safe effect handlers via tunneling''~\ref{tunneling} both address the same problem in different ways.
+The two papers ``Abstracting Algebraic Effects''~\autocite{abstractingalgeffects} and ``Abstraction-safe effect handlers via tunneling''~\autocite{tunneling} both address the same problem in different ways.
 The first of these allows for the definition of local effects.
 These local effects are guaranteed to not interfere with any other effects.
 This allows for abstraction-safe functions.
