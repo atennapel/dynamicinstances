@@ -1,6 +1,6 @@
 \chapter{\label{chap:algintro}An introduction to algebraic effects and handlers}
 
-Side-effects are an essential part of a programming language. Without side-effects the program would have no way to print a result to the screen, ask for user input or change global state. We consider a function pure if it does not perform any side-effects and unpure if it does. A pure function always gives the same result for the same inputs. A pure function can be much easier to reason about than an unpure one because you know that it won't do anything else but compute, it won't have any hidden inputs or outputs. Because of this property testing pure functions is also easier, we can just give dummy inputs to the functions and observe the output. As already said programs without side-effects are useless, we would not be able to actually observe the result of a function call without side-effects such as printing to the screen. So we would the benefits of pure functions but still have side-effects. We could give up and simply add some form of side-effects to our language but that would immediately make our function impure, since any function might perform side-effects. This would make us lose the benefits of pure functions.
+Side-effects are an essential part of a programming language. Without side-effects the program would have no way to print a result to the screen, ask for user input or change global state. We consider a function pure if it does not perform any side-effects and unpure if it does. A pure function always gives the same result for the same inputs. A pure function can be much easier to reason about than an unpure one because you know that it will not do anything else but compute, it will not have any hidden inputs or outputs. Because of this property testing pure functions is also easier, we can just give dummy inputs to the functions and observe the output. So we would like the benefits of pure functions but still have side-effects. We could give up and simply add some form of side-effects to our language but that would immediately make our function impure, since any function might perform side-effects. This would make us lose the benefits of pure functions.
 \\\\
 Algebraic effects and handlers are a structured way to introduce side-effects to a programming language.
 The basic idea is that side-effects can be described by sets of operations, called the interface of the effect.
@@ -11,12 +11,12 @@ Different from exceptions however the handler also has access to a continuation 
 \\\\
 In this chapter we will introduce algebraic effects and handlers through examples.
 Starting with simple algebraic effects and handlers (\cref{sec:background-algeff}).
-After we will continue with static instances (\cref{sec:background-staticinst}) which allows for multiple static instances of the same effect to be used in a program.
-We end with dynamic instances (\cref{sec:background-dynamicinst}) which allows for the dynamic creation of effect instances. The examples are written in a statically typed functional programming language with algebraic effects and handlers with syntax reminiscent to Haskell but semantically more similar to Koka~\autocite{koka2}.
+Afterwards we will continue with static instances (\cref{sec:background-staticinst}) which allows for multiple static instances of the same effect to be used in a program.
+We end with dynamic instances (\cref{sec:background-dynamicinst}) which allows for the dynamic creation of effect instances. The examples are written in a statically typed functional programming language with algebraic effects and handlers with syntax reminiscent to Haskell but semantically similar to Koka~\autocite{koka2}.
 
 \section{Algebraic effects and handlers}
 \label{sec:background-algeff}
-We will start with the familiar exceptions. We define an \ident{Exc} effect interface with a single operation \ident{throw}.
+We will start with exceptions. We define an \ident{Exc} effect interface with a single operation \ident{throw}.
 
 \begin{minted}[tabsize=2]{haskell}
 effect Exc {

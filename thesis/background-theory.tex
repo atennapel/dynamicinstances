@@ -45,7 +45,7 @@
 
 \chapter{\label{chap:algtheory}Semantics and types of algebraic effects and handlers}
 
-In this chapter we will give a theoretical basics for algebraic effects and handlers.
+In this chapter we will give a theoretical basics for algebraic effects and handlers as introduced in \cref{chap:algintro}.
 We do this in order to ease the reader in to the theoretical calculus for \lang{} (given in \cref{chap:langtheory}) which is based on the calculus for algebraic effects given in this chapter.
 We will start with the simply-typed lambda calculus (\cref{sec:theory-stlc}) and then add algebraic effects (\cref{sec:theory-algeff}) and static instances (\cref{sec:theory-staticinst}) to it.
 
@@ -80,10 +80,10 @@ Values are pieces of data that have no effects, while computations are terms tha
 
 \paragraph{Values} We have $x$, $y$, $z$, $k$ ranging over variables, where we will use $k$ for variables that denote continuations later on.
 Lambda abstractions are denoted as $\vabs{x}{\comp}$, note that the body $\comp$ of the abstraction is restricted to be a computation as opposed to the ordinary lambda calculus where the body can be any expression.
-To keep things simple we take unit $\vunit$ as our only base value, this because adding more base values will not complicate the theory.
+To keep things simple we take unit $\vunit$ as our only base value. Adding more base values will not complicate the theory.
 Using the unit value we can also delay computations by wrapping them in an abstraction that takes a unit value.
 \\\\
-\paragraph{Computations} For any value $\val$ we have $\creturn{\val}$ for the computation that simply returns a value without performing any effects. We have function application $(\capp{\val}{\val})$, where both the function and argument have to be values. Sequencing computations is done with $(\cdo{x}{\comp}{\comp})$. Normally in the lambda calculus the function and the argument in an application could be any term and so a choice would have to be made in what order these have to be evaluated or whether to evaluate the argument at all before substitution. In the fine-grained calculus both the function and argument in $(\capp{\val}{\val})$ are values so there's no choice of evaluation order. The order is made explicit by the sequencing syntax $(\cdo{x}{\comp}{\comp})$.
+\paragraph{Computations} For any value $\val$ we have $\creturn{\val}$ for the computation that simply returns a value without performing any effects. We have function application $(\capp{\val}{\val})$, where both the function and argument have to be values. Sequencing computations is done with $(\cdo{x}{\comp}{\comp})$. Normally in the lambda calculus the function and the argument in an application could be any term and so a choice would have to be made in what order these have to be evaluated or whether to evaluate the argument at all before substitution. In the fine-grained calculus both the function and argument in $(\capp{\val}{\val})$ are values so there is no choice of evaluation order. The order is made explicit by the sequencing syntax $(\cdo{x}{\comp}{\comp})$.
 
 %\subsection{Semantics}
 
@@ -123,7 +123,7 @@ In {\footnotesize\textsc{S-SeqReturn}} we sequence a computation that just retur
 Lastly, in {\footnotesize\textsc{S-Seq}} we can reduce a sequence of two computations, $\comp_1$ and $\comp_2$ by reducing the first, $\comp_1$.
 \\\\
 We define $\rightsquigarrow^*$ as the transitive-reflexive closure of $\rightsquigarrow$.
-Meaning that $\comp$ in $\comp \rightsquigarrow^* \comp$ can reach $\comp'$ in zero or more steps, while $\comp$ in $\comp \rightsquigarrow \comp'$ reaches $\comp'$ in exactly on step.
+Meaning that $\comp$ in $\comp \rightsquigarrow^* \comp'$ can reach $\comp'$ in zero or more steps, while $\comp$ in $\comp \rightsquigarrow \comp'$ reaches $\comp'$ in exactly on step.
 
 %\subsection{Type system}
 
@@ -417,6 +417,9 @@ The last four rules are used to handle a computation.
 \textsc{S-HandleOp} and \textsc{S-HandleOpSkip} handle computations of the form $(\cdo{x}{\cop{op}{\val}}{\comp})$.
 If the operation $op$ is contained in the handler $h$ then the rule \textsc{S-HandleOp} substitutes the value $\val$ of the operation call in the body of the matching operation case $\comp'$.
 We also substitute a continuation in $\comp'$, which continues with the computation $\comp$ wrapped by the same handler $h$.
+Because rewrap the handler $h$ in the continuation we implement what are called \emph{deep} handlers.
+Another approach is to omit $h$ from the continuation, which are called \emph{shallow} handlers~\autocite{shallowhandlers}.
+We chose to define deep handlers because shallow handlers require explicit recursion to implement the example handlers we gave in \cref{chap:algintro}. 
 If the operation $op$ is not contained in the handler then we float out the operation call $\cop{op}{\val}$ and wrap the handler $h$ around the continuing computation $\comp$.
 Lastly, \textsc{S-Handle} is able to reduce a computation in the handle computation.
 
@@ -577,7 +580,7 @@ We have three judgements:
 \begin{enumerate}
 \item $\Gamma \vdash \val : \ty$, which types the value $\val$ with the value type $\ty$
 \item $\Gamma \vdash \comp : \cty$, which types the computation $\comp$ with the computation type $\cty$
-\item $\Gamma \vdash^{\ty} h : \cty$ which types the handler $h$ with the computation type $\cty$ given some value type $\ty$
+\item $\Gamma \vdash^{\ty} h : \cty$, which types the handler $h$ with the computation type $\cty$ given some value type $\ty$
 \end{enumerate}
 We can get the type of a variable from the context using $\Gamma[x] = \ty$.
 For each operation $op$ we have a parameter type $\ty^1_{op}$ and a return type $\ty^2_{op}$.
@@ -677,7 +680,9 @@ We briefly discuss the formalization in \cref{sec:formalization}.
 
 \section{Static instances} \label{sec:theory-staticinst}
 
-Finally we extend algebraic effects with static instances. We assume there exists a set of instances $I = \{ \vinst_1, ..., \vinst_n \}$, where each instance belongs to a single effect $\eff$, written as $E[\vinst] = \eff$.
+Finally we extend algebraic effects with static instances.
+Adding static instances brings the system one step closer towards the calculus of \lang{}, as we will see in \cref{langtheory}.
+We assume there exists a set of instances $I = \{ \vinst_1, ..., \vinst_n \}$, where each instance belongs to a single effect $\eff$, written as $E[\vinst] = \eff$.
 
 \paragraph{Syntax}
 The syntax of the system with algebraic effects and handlers is extended in \cref{fig:syntax-static}, changes and new additions are shown in gray. For values we add instances, these are taking from the set of instances $I$. We also change the operation call and handle computations to take an extra value term, which is the instance they are operating on.
@@ -762,7 +767,7 @@ The effect annotation on the computation types are now sets of instance names in
 \end{figure}
 
 \paragraph{Subtyping}
-For subtyping we keep the rules from the previous system but we add a rule for the instance types (\cref{fig:subtyping-algeff}).
+For subtyping we keep the rules from the previous system but we add a rule for the instance types (\cref{fig:subtyping-static}).
 
 \begin{figure}
 \caption{Subtyping rules of algebraic effects with static instances}
@@ -775,13 +780,13 @@ For subtyping we keep the rules from the previous system but we add a rule for t
 	\tinst{\vinst} <: \tinst{\vinst}
 }
 \end{mathpar}
-\label{fig:subtyping-algeff}
+\label{fig:subtyping-static}
 \end{minipage}
 }
 \end{figure}
 
 \paragraph{Typing rules}
-The typing rules from the previous system mostly stay the same except for the rules \textsc{T-OP} and \textsc{T-Handle}, they are showin in \cref{fig:typing-algeff}.
+The typing rules from the previous system mostly stay the same except for the rules \textsc{T-OP} and \textsc{T-Handle}, they are showin in \cref{fig:typing-static}.
 We also had a rule to type instances (\textsc{T-Inst}), this rule simply types an instance as a instance type with the same name.
 For both \textsc{T-OP} and \textsc{T-Handle} we just have to check that the added value term is an instance and that the effect of that instance matches the operations.
 
@@ -815,7 +820,7 @@ For both \textsc{T-OP} and \textsc{T-Handle} we just have to check that the adde
 	\Gamma \vdash \chandlei{\val}{\comp}{h} :\aty{\ty_2}{((r_1 \setminus \{\vinst\}) \cup r_2)}
 }
 \end{mathpar}
-\label{fig:typing-algeff}
+\label{fig:typing-static}
 \end{minipage}
 }
 \end{figure}
@@ -842,7 +847,7 @@ We can reuse the notion of a computation being a value $\mathsf{value}$ without 
 Again we use progress and preservation lemmas to prove the type soundness theorem.
 These lemmas are exactly the same as the ones in \cref{sec:theory-algeff}.
 We only need to slightly update our $\mathsf{effectful}$ notion, because operation calls are now called on instances.
-\[ \mathsf{effectful}(\comp) \;\mathsf{if}\; (\exists \vinst \; op \; \val. \comp = \copi{\vinst}{op}{\val}) \;\mathsf{or}\; (\exists \vinst \; x \; op \; \val \; \comp'. \comp = \cdo{x}{\copi{\vinst}{op}{\val}}{\comp'}) \]
+\[ \mathsf{effectful}(\comp) \triangleq \big(\exists \vinst \; op \; \val. \comp = \copi{\vinst}{op}{\val}\big) \;\mathsf{or}\; \big(\exists \vinst \; x \; op \; \val \; \comp'. \comp = \cdo{x}{\copi{\vinst}{op}{\val}}{\comp'}\big) \]
 
 We formalized the system with static instances and have proven the type soundness theorem in Coq.
 We will now discuss the formalizations of the different systems.
@@ -859,6 +864,6 @@ Operation calls are of the form $op(\val, x. \comp)$, carrying around a continua
 Also handlers are first-class values of type $\cty \Rightarrow \cty$.
 These changes make the proofs easier.
 Having continations inside operation calls means we can move operation calls over sequencing, so the $\mathsf{effectful}$ predicate only has one form:
-\[ \mathsf{effectful}(\comp) \;\mathsf{if}\; \exists op \; \val \; \comp'. \comp = op(\val, x. \comp') \]
+\[ \mathsf{effectful}(\comp) \triangleq \exists op \; \val \; \comp'. \comp = op(\val, x. \comp') \]
 Adding static instances did not result in much added complexity.
 }

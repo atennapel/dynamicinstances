@@ -8,6 +8,9 @@ thesis/*.toc
 thesis/*.log
 thesis/*.synctex.gz
 thesis/_minted-*
+thesis/*.bcf
+thesis/*.run.xml
+thesis/*.dep
 coq/.coqdeps.d
 
 thesis/*.bbl

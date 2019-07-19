@@ -310,7 +310,7 @@ X restrict finally to t1!r
 - type safety.
 	- preservation fails
 	- it was just an attempt
-	- it does not mean the system is not safety
+	- it does not mean the system is not safe
 	- my attempt can be inspiration for future work
 - add section on the haskell implementation
 - add more tests to haskell implementation
@@ -319,12 +319,13 @@ X restrict finally to t1!r
 
 TODO:
 X process small fixes from Robbert
-- process small fixes from Casper
+X process small fixes from Casper
+X Fix future work (polymorphic operations)
+X fix/remove cover picture
 - Fix intro
 - Fix calculus chapter
+- Fix conclusion
 - Fix background chapter
 - Check other chapters
-- Fix future work (polymorphic operations)
 - abstract
-- fix/remove cover picture
 - acknowledgments

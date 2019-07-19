@@ -1,6 +1,6 @@
 \chapter{\label{chap:conclusion}Conclusion and future work}
 
-We conclude with a brief discussion of what we have presented and discuss possible future work.
+We conclude with a brief discussion of what we presented in this thesis and discuss possible future work.
 
 \section{Conclusion}
 In \cref{chap:algintro} we have seen that algebraic effects and handlers are a composable approach to programming with side-effects.
@@ -10,8 +10,8 @@ Dynamic instances, as introduced by Bauer and Pretnar in Eff~\autocite{eff1}, al
 Using dynamic instances one can implement dynamic effects such as mutable references and the dynamic opening of channels.
 Unfortunately the type system of Eff under-approximates the uses of effects, which can lead to runtime errors.
 \\\\
-In \cref{chap:langintro} we have presented a new language \lang{} with algebraic effects and handlers, and dynamic instances.
-Using a notion of effect scopes we are able to safely use dynamically created instances, ensuring that no instance will escape the scope of their handler.
+In \cref{chap:langintro} we presented a new language \lang{} with algebraic effects and handlers, and dynamic instances.
+Using a notion of effect scopes we are able to safely use dynamically created instances, ensuring that all operation calls are handled.
 We have shown how we can implement mutable references and vectors in \lang{}.
 \\\\
 In \cref{chap:algtheory} we presented formal accounts of algebraic effects and handler, with and without static instances, giving a type system and operational semantics.
@@ -44,7 +44,7 @@ We will now discuss possible extensions to \lang{}.
 In order to keep the system simple and to only focus on the novel elements, \lang{} only supports parametric polymorphism over effect scopes.
 It would be very useful in practice to allow quantification over any type.
 We do not think that adding this will interfere with the other elements of the system.
-\\\\
+
 \paragraph{Polymorphic effects.}
 Having added polymorphism over any type it makes sense to also allow for polymorphic effects.
 In our examples we have defined a \ident{State} effect with \ident{Int} values.
@@ -60,7 +60,8 @@ effect State t {
 Using this effect we can have fully polymorphic mutable references.
 For example, the type of a reference holding an integer value would be \ident{Inst s (State Int)}.
 Given that each reference carries the type of the value in the reference, \ident{get} and \ident{put} can be type safe.
-\\\\
+
+\iffalse
 \paragraph{Polymorphic operations.}
 Polymorphism in operations can also be useful for some effects.
 For example an exception effect:
@@ -73,13 +74,23 @@ Here, because we do not expect to continue a computation after an exception has 
 This makes it convenient to throw errors, for example in an if-expression where the type of both branches have to match.
 Adding polymorphic operations takes some more thought because in the case of operations like \ident{throw} we cannot allow a handler to call the continuation.
 \\\\
+Another example is if we define an effect that is suppose to wrap the creation of a \ident{State} instance:
+\begin{minted}[tabsize=2]{haskell}
+effect CreateRef {
+	ref : forall s. Int -> Inst s State
+}
+\end{minted}
+Here, we want to call the \ident{ref} operation to create a new instance.
+
+\fi
+
 \paragraph{Improved effect annotations.}
 Currently the effect annotation of a computation type is a set of effect scopes.
 We could make these annotations more precise by also noting which effects are used on each scope.
 For example, from \ident{Int!{s1, s2}} to \ident{Int!{{State, Flip}@s1, {Rng}@s2}}.
 We could also allow users to restrict which effects occur on which effect scope in this way, giving more static guarantees.
 We do not see any difficulty in extending the annotations in this way.
-\\\\
+
 \paragraph{Combine with regular algebraic effects and handlers.}
 In \lang{} handlers are given when creating instances.
 These handlers are necessary in order to make sure that every instance has a handler, which completely handles the effects of that specific instance.
