@@ -45,7 +45,9 @@
 
 \chapter{\label{chap:algtheory}Semantics and types of algebraic effects and handlers}
 
-In this chapter we will show the basics of algebraic effects and handlers. We will start with the simply-typed lambda calculus (\cref{sec:theory-stlc}) and add algebraic effects (\cref{sec:theory-algeff}) and static instances (\cref{sec:theory-staticinst}) to it.
+In this chapter we will give a theoretical basics for algebraic effects and handlers.
+We do this in order to ease the reader in to the theoretical calculus for \lang{} (given in \cref{chap:langtheory}) which is based on the calculus for algebraic effects given in this chapter.
+We will start with the simply-typed lambda calculus (\cref{sec:theory-stlc}) and then add algebraic effects (\cref{sec:theory-algeff}) and static instances (\cref{sec:theory-staticinst}) to it.
 
 \section{Simply-typed lambda calculus} \label{sec:theory-stlc}
 
@@ -324,19 +326,22 @@ We can prove this theorem using the following lemmas:
 \]
 \end{lemma}
 
-Where the progress lemma states that given a well-typed computation $\comp$ then either $\comp$ is a value or $\comp$ can take a  step. The preservation lemma states that given a well-typed computation $\comp$ and if $\comp$ can take a step to $\comp'$ then $\comp'$ is also well-typed. We can prove both these by induction on the typing derivations. Note again that the context has to be empty for the Progress lemma, again because the computation could get stuck on free variables. For the Preservation lemma the context can be anything however, since the operational semantics will not introduce any new free variables that are not already in the context.
+Where the Progress lemma states that given a well-typed computation $\comp$ then either $\comp$ is a value or $\comp$ can take a  step.
+The Preservation lemma states that given a well-typed computation $\comp$ and if $\comp$ can take a step to $\comp'$, then $\comp'$ is also well-typed.
+We can prove both these by induction on the typing derivations.
+Note again that the context has to be empty for the Progress lemma, again because the computation could get stuck on free variables.
+For the Preservation lemma the context can be anything however, since the operational semantics will not introduce any new free variables that are not already in the context.
 \\\\
 We formalized the fine-grained simply-typed lambda calculus and have proven the type soundness theorem in the Coq proof assistant.
 We briefly discuss the formalization in \cref{sec:formalization}.
 
-\newpage
 \section{Algebraic effects} \label{sec:theory-algeff}
 
 We now extend the previous calculus with algebraic effects and handlers.
 We assume there is a set of effect names $\mathsf{EffName}$ with $\Eff \subseteq \mathsf{EffName}$, for example $\Eff = \{ \mathsf{Flip}, \mathsf{State}, ... \}$. For each effect $\eff$ there assume there is a non-empty set of operations $\Op{\eff}$.
 For example $\Op{\mathsf{Flip}} = \{ \mathsf{flip} \}$ and $\Op{\mathsf{State}} = \{ \mathsf{get}, \mathsf{put} \}$.
 
-\begin{figure}
+\begin{figure}[H]
 \caption{Syntax of algebraic effects}
 \centering
 \fbox{
@@ -615,7 +620,7 @@ We can defined a type soundness theorem very similar to the one for the simply-t
 The theorem states that if a computation $\comp$ is typed in the empty context with an empty effect annotation and we take some amount of steps, then the computation is value or we can take another step.
 This theorem only works with the empty effect annotation, because if an effect is in the annotation then there may be an unhandled operation call and the computation would not be able to proceed.
 \\\\
-We can proof the type soundness theorem using progress and preservation lemmas.
+We can prove the type soundness theorem using progress and preservation lemmas.
 We first give the preservation lemma, which is exactly the same as the one from the simply-typed lambda calculus.
 
 \begin{lemma}[Preservation]
@@ -643,10 +648,10 @@ Again because we could get stuck if any operation calls are unhandled.
 \]
 \end{lemma}
 
-We need a more general version of the progress lemma in order to prove it.
+We need a more general version of the progress lemma in order to get a strong enough induction hypothesis to be able to prove it.
 We define a computation $\comp$ to be effectful if $\comp$ has unhandled operations.
-Formally we define this as follows.
-	\[ \mathsf{effectful}(\comp) \;\mathsf{if}\; (\exists op \; \val. \comp = \cop{op}{\val}) \;\mathsf{or}\; (\exists x \; op \; \val \; \comp'. \comp = \cdo{x}{\cop{op}{\val}}{\comp'}) \]
+Formally we define this as follows:
+	\[ \mathsf{effectful}(\comp) \triangleq \big(\exists op \; \val. \comp = \cop{op}{\val}\big) \;\mathsf{or}\; \big(\exists x \; op \; \val \; \comp'. \comp = \cdo{x}{\cop{op}{\val}}{\comp'}\big) \]
 
 We can now give the generalized version of the progress lemma:
 
@@ -663,20 +668,21 @@ We can now give the generalized version of the progress lemma:
 \]
 \end{lemma}
 
-This lemma allows $\comp$ to be typed with any effect annotation, by adding the possibility that $\comp$ has unhandled operations.
+This lemma generalizes $\aty{\ty}{\varnothing}$ to $\aty{\ty}{r}$ in the Progress lemma above.
+This allows $\comp$ to be typed with any effect annotation, by adding the possibility that $\comp$ has unhandled operations.
+We need this generalization or else the induction hypothesis is too weak and we would get stuck if we used any effects.
 \\\\
 We formalized the algebraic effect and handler system and have proven the type soundness theorem in the Coq proof assistant.
 We briefly discuss the formalization in \cref{sec:formalization}.
 
-\newpage
 \section{Static instances} \label{sec:theory-staticinst}
 
-Finally extend algebraic effects with static instances. We assume there exists a set of instances $I = \{ \vinst_1, ..., \vinst_n \}$, where each instance belongs to a single effect $\eff$, written as $E[\vinst] = \eff$.
+Finally we extend algebraic effects with static instances. We assume there exists a set of instances $I = \{ \vinst_1, ..., \vinst_n \}$, where each instance belongs to a single effect $\eff$, written as $E[\vinst] = \eff$.
 
 \paragraph{Syntax}
 The syntax of the system with algebraic effects and handlers is extended in \cref{fig:syntax-static}, changes and new additions are shown in gray. For values we add instances, these are taking from the set of instances $I$. We also change the operation call and handle computations to take an extra value term, which is the instance they are operating on.
 
-\begin{figure}
+\begin{figure}[H]
 \caption{Syntax of algebraic effects with static instances}
 \centering
 \fbox{
@@ -844,8 +850,8 @@ We will now discuss the formalizations of the different systems.
 \section{Formalization}
 \label{sec:formalization}
 
-We have formalized and proven type soundness for all the three systems discussed in this chapter.
-We used DeBruijn indeces to deal with naming and substitution.
+We have formalized and proven type soundness for all the three systems discussed in this chapter in Coq~\footnote{https://github.com/atennapel/dynamicinstances}.
+We used DeBruijn indices to deal with naming and substitution.
 We also restrict effects to only have one operation, modeled as a natural number.
 Handlers can only handle a single operation.
 The system formalized slightly differs in that we follow the syntax from Bauer and Pretnar \autocite{eff2}.

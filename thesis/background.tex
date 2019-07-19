@@ -520,4 +520,24 @@ fibRec n x y =
     fibRec (n - 1) x y
 \end{minted}
 
-Dynamic instances have one big problem though: they are too dynamic. Similar to how in general it is undecidable to know whether a reference has escaped its scope, it is also not possible to know whether an instance has a handler associated with it. This makes it hard to think of a type system for dynamic instances which ensures that there are no unhandled operations. Earlier versions of the Eff programming language~\autocite{eff1} had dynamic instances but its type system underapproximated the uses of dynamic instances which meant you could still get a runtime error if any operation calls were left unhandled.
+Dynamic instances have one big problem though: they are too dynamic. Similar to how in general it is undecidable to know whether a reference has escaped its scope, it is also not possible to know whether an instance has a handler associated with it. 
+For example:
+\begin{minted}[tabsize=2]{haskell}
+escapeRef =
+	heap <- new Heap;
+	escapedRef <- runRefs heap (
+		r <- heap#ref 42;
+		return r
+	);
+	escapedRef#get () // unhandled operation call!
+\end{minted}
+
+Here we create a new heap and handle a computation on it using \ident{runRefs}.
+The computation creates a new reference and returns it.
+After \ident{runRefs} is done the reference is returned and named \ident{escapedRef}.
+This reference has no handler associated with it anymore.
+We then call the \ident{get} operation resuling in an unhandled operation call which is a runtime error.
+\\\\
+Because we cannot statically know whether we are calling an operation on an escaped instance, it is hard to think of a type system for dynamic instances which ensures that there are no unhandled operations. Earlier versions of the Eff programming language~\autocite{eff1} had dynamic instances but its type system underapproximated the uses of dynamic instances which meant you could still get a runtime error if any operation calls were left unhandled.
+\\\\
+In the next chapter (\cref{chap:langintro}) we will introduce our new language \lang{}. By restricting how dynamic instances can be created and handled we are able to give a type system which ensures that all operation calls are handled.

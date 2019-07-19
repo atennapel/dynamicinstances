@@ -47,22 +47,19 @@ By factoring out the pure parts from the impure parts, we can still gain the ben
 In addition these languages allow one to keep track of which effects exactly are used by which function.
 They also allow some side-effects to be encapsulated, meaning that the use of a particular side-effect can be completely hidden such that the function still appears to be pure to the outside world.
 \\\\
-Type systems play an essential role in enforcing the distinction between pure and impure code.
+Using type systems we can statically rule out programs that may lead to runtime errors.
+Type systems can also play an essential role in enforcing the distinction between pure and impure code.
 By extending type systems to also show which effects a function may use, we can statically enforce which functions are pure and which are not.
 This gives insight to the user to what a function may do when called, and also allows a compiler to do more interesting optimizations.
 For example pure function calls may be reordered in any way that the compiler sees fit, while impure function calls may not, since the effects may interact.
 These \emph{effect systems} can have different levels of granularity.
 For example one system could only keep track of a single bit per function, whether the function is impure or not.
 More fine-grained systems are also possible, where each function is annotated with a set of effects that is used, where the set of possible effects is defined by the language.
-\iffalse
-For example in Koka a function which prints something to the console may be given the type:
+For example in Koka~\autocite{koka2} a function which prints something to the console may be given the type:
 \begin{minted}[tabsize=2]{haskell}
 string -> <console> () 
 \end{minted}
 Where \textsc{console} shows the use of the console.
-User-defined effects are also supported in languages such as Koka and Eff.
-Users, in those systems, can define the effects with which the functions are annotated.
-\fi
 \\\\
 Algebraic effects and handlers~\autocite{algeff} are an approach to programming with side-effects that has many of the desirable properties previously described.
 Algebraic effects provide a way to factor out the pure parts from the impure parts.
@@ -100,20 +97,24 @@ The handler transforms get and put calls to a function expecting the current sta
 We name this function \mintinline{haskell}{f} and pass it 42 as the initial state.
 
 \paragraph{The problem}
-While algebraic effects and handlers have many of the desirable properties we would like, they are is unable to express multiple mutable state cells.
-In the previous example it can be seen that \mintinline{haskell}{postInc} does not refer to any variables, but instead can only manipulate the mutable state using the get and put operations.
-In Haskell the the so-called ``ST monad''~\autocite{runst} can be used to safely implement multiple mutable state cells in such a way that stateful computations can be encapsulated and that the references to the mutable objects are not leaked outside of the function. 
-A feature called dynamic instances was introduced by the Eff programming language~\autocite{eff1}.
+While algebraic effects and handlers have many of the desirable properties we would like, they are is unable to express multiple mutable references.
+Mutable references have interesting applications such as meta variables in unification algorithms and typed logic variables~\autocite{typedlogic}.
+In the previous example it can be seen that \mintinline{haskell}{postInc} does not refer to any specific reference, but instead can only manipulate one ambient reference using the get and put operations.
+Dynamic instances were introduced by the Eff programming language~\autocite{eff1} to solve this problem.
 With dynamic instances multiple different instances of the same effect can be dynamically created.
-Using this multiple state cells can be implemented.
-\iffalse
-Eff also introduced a construct called \emph{resources}.
-Resources are an effect instance with a globally scoped handler associated.
-Having a globally scoped handler means operation calls on an instance with a resource can never escape their scope and will always be handled.
-\fi
-Unfortunately there is no type-and-effect for dynamic instances, and using them can results in runtime errors when operation calls do not have an associated handler.
+Using this multiple mutable references can be implemented by dynamically creating instances of the \mintinline{haskell}{State} effect (we give an example in \cref{sec:background-dynamicinst}).
+Unfortunately theses dynamic instances can escape the scope of their handler.
+Any operation called on one of these escaped instances will result in a runtime error, since this operation call will be unhandled.
+Eff also introduces \emph{resources}, these are effect instances with a globally scoped handler associated.
+Because the handler is globally scoped the instance can never escape its scope and any operation call will always be handled.
+Unfortunately there is no type system given for dynamic instances, so we have no static guarantees that there will be no unhandled operation calls.
 \\\\
-In this thesis we define a calculus named \lang{} based on algebraic effects and handlers which allows for the definition of side-effects such as local references, local exceptions, and the dynamic opening of channels.
+In Haskell the the so-called ``ST monad''~\autocite{runst} can be used to safely manipulate multiple references in such a way that stateful computations can be encapsulated and that the references are not leaked outside of the function.
+Mutable references can be dynamically created and manipulated.
+Computations using these references can be made pure by passing them to a function called \mintinline{haskell}{runST}.
+This function will statically ensure that no references will escape their scope and that the mutation effects are encapsulated.
+\\\\
+In this thesis we define a new language named \lang{} based on algebraic effects and handlers which allows for the definition of side-effects such as local references, local exceptions, and the dynamic opening of channels.
 Using this system we can implement a system similar to the ST monad from Haskell.
 We introduce a notion of effect scopes, which encapsulates the creation and usage of dynamically created effect instances.
 Each function is statically annotated with the effect scopes that are used in the function.
@@ -147,7 +148,7 @@ We show the problems we encountered when trying to prove type safety for \lang{}
 We discuss the other approaches that may allow us to prove type safety.
 
 \item \textbf{Formalizations.}
-We have formalized algebraic effects and handlers with and without static instances and have proven type soundness in Coq.
+We have formalized algebraic effects and handlers with and without static instances and have proven type soundness in Coq~\footnote{https://github.com/atennapel/dynamicinstances}.
 
 \end{itemize}
 

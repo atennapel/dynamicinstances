@@ -315,3 +315,15 @@ X restrict finally to t1!r
 - add section on the haskell implementation
 - add more tests to haskell implementation
 - explain other option: using heap-like
+
+
+TODO:
+- process small fixes from Robbert
+- process small fixes from Casper
+- Fix intro
+- Fix calculus chapter
+- Fix background chapter
+- Check other chapters
+- abstract
+- fix/remove cover picture
+- acknowledgments
