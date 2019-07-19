@@ -318,12 +318,13 @@ X restrict finally to t1!r
 
 
 TODO:
-- process small fixes from Robbert
+X process small fixes from Robbert
 - process small fixes from Casper
 - Fix intro
 - Fix calculus chapter
 - Fix background chapter
 - Check other chapters
+- Fix future work (polymorphic operations)
 - abstract
 - fix/remove cover picture
 - acknowledgments

@@ -8,7 +8,7 @@ The Eff programming language~\autocite{eff1} was the first language with support
 It featured fully dynamic instances (\cref{sec:background-dynamicinst}) allowing for dynamic effects.
 Eff did not feature an effect typing system initially.
 Having no effect typing system means there are fewer restrictions on what one can do, but there are also fewer static guarantees.
-For example it is not statically guaranteed all operation call will be handled, resulting in runtime errors.
+For example it is not statically guaranteed that all operation call will be handled, which could result in runtime errors (as we have shown in \cref{par:dyninstproblem}).
 An effect typing system was proposed~\autocite{eff2} but it did not feature dynamic instances, only static instances (\cref{sec:background-staticinst} and \cref{sec:theory-staticinst}).
 The current version of Eff does not have dynamic instances since they were considered too difficult in the theory.
 Dynamic instances in Eff can be introduced without an associated handler, different than \lang{}.
@@ -27,7 +27,7 @@ Here the \ident{new E @ x with h} syntax creates a new instance of effect \ident
 The \ident{x} is a piece of state that the handler is allowed to manipulate.
 In the example the \ident{ref} function creates a new instance of the \ident{ref} effect with initial value \ident{x}.
 Resources always have a handler associated with them.
-These special handlers are globally scoped and are more restricted than regular handlers and have different semantics.
+These special handlers are globally scoped (they are wrapped around the whole program) and are more restricted than regular handlers and have different semantics.
 Because the handler is globally scoped any operation call on an instance with a resource will always be handled.
 Such handlers are also sometimes called \emph{default handlers}.
 In the future work we discuss the possibility of adding default handlers to \lang{} in \cref{sec:globalscopes}.
@@ -58,7 +58,7 @@ let pnew = new prompt ()
 let newref s0 = new instance pnew {h = handle ref s0}
 \end{minted}
 
-This \identp{new} operation takes as arguments an effect and a handler.
+The \identp{new} operation takes as arguments an effect and a handler.
 Then a handler for \identp{New} is defined which creates instances for each \identp{new} operation and wraps the continuation in the handler that was given as argument.
 We use a very similar technique to implement creation of instances.
 Our $\mathsf{runscope}$ construct is similar to the handler of \identp{New} in the Eff embedding.
@@ -68,8 +68,8 @@ In the OCaml embedding no such restrictions are made and just like Eff one has n
 \\\\
 \paragraph{Koka}
 Koka is a programming language with effect inference using row polymorphism~\autocite{koka}.
-Later algebraic effects and handler were also added~\autocite{koka2}.
-Extending the language with a \identp{lift} (also called \identp{inject}) operation to inject effects, skipping a handler, some notion of mutable references can be implemented~\autocite{handlewithcare}.
+Later algebraic effects and handlers were also added~\autocite{koka2}.
+Some notion of mutable references can be implemented~\autocite{handlewithcare} by extending the language with a \identp{lift} (also called \identp{inject}) operation to inject effects, skipping a handler.
 References implemented using this technique are very limited though, being unable to escape even single functions.
 Leijen proposed an extension for Koka with dynamic effect handlers~\autocite{kokadynamic}.
 This extension introduces \emph{umbrella effects}, which are effects that can contain dynamic effects.

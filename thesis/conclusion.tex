@@ -1,33 +1,41 @@
 \chapter{\label{chap:conclusion}Conclusion and future work}
 
 We conclude with a brief discussion of what we have presented and discuss possible future work.
-\\\\
+
+\section{Conclusion}
 In \cref{chap:algintro} we have seen that algebraic effects and handlers are a composable approach to programming with side-effects.
 Using algebraic effects effects we can keep functions pure until we handle the effects within them.
 We have also seen that we are unable to express mutable references within algebraic effects and handlers.
-Dynamic instances, as introduced by Bauer and Pretnar in Eff, allow the programmer to dynamically generate instances of effects.
+Dynamic instances, as introduced by Bauer and Pretnar in Eff~\autocite{eff1}, allow the programmer to dynamically generate instances of effects.
 Using dynamic instances one can implement dynamic effects such as mutable references and the dynamic opening of channels.
 Unfortunately the type system of Eff under-approximates the uses of effects, which can lead to runtime errors.
 \\\\
-In \cref{chap:langintro} we have presented a new language \lang{} with algebraic effects and handlers, and dynamic instaces.
+In \cref{chap:langintro} we have presented a new language \lang{} with algebraic effects and handlers, and dynamic instances.
 Using a notion of effect scopes we are able to safely use dynamically created instances, ensuring that no instance will escape the scope of their handler.
 We have shown how we can implement mutable references and vectors in \lang{}.
- \\\\
- We presented formal accounts of algebraic effects and handler, with and without static instances, giving a type system and operational semantics.
- We have formalized these systems and proven type soundness in Coq.
- \\\\
- Finally we have presented a type system and operational semantics for the core language of \lang{}.
- We also gave a type soundness theorem for the type system with respect to the semantics.
- \\\\
- In this thesis we have shown that we can safely combine algebraic effects with dynamic instances by giving an explicit scope for the use of an instance.
+\\\\
+In \cref{chap:algtheory} we presented formal accounts of algebraic effects and handler, with and without static instances, giving a type system and operational semantics.
+We have formalized these systems and proven type soundness in Coq.
+\\\\
+Finally, in \cref{chap:langtheory} we have presented a type system and operational semantics for the core language of \lang{}.
+We also gave a type soundness theorem for the type system with respect to the semantics.
+\\\\
+In this thesis we have shown that we can safely combine algebraic effects with dynamic instances by giving an explicit scope for the use of an instance.
 Using the notion of an effect scope and effect scope variables we can ensure that no operation call will be left unhandled and we can avoid runtime errors.
 By enabling the definition of dynamic effects, such as mutable references, algebraic effects and handlers can be useful in more situations.
  
 \section{Future work}
-We currently have formalized the system with static instances of \cref{sec:background-algeff} and \cref{sec:background-staticinst} and have proven type soundness in Coq~\footnote{https://github.com/atennapel/dynamicinstances}.
+
+\paragraph{Mechanization}
+We currently have formalized the system with static instances of \cref{sec:background-algeff} and \cref{sec:background-staticinst} and have proven type soundness in Coq\footnote{https://github.com/atennapel/dynamicinstances}.
 This formalization is briefly discussed in \cref{sec:formalization}.
 Due to time constraints we were unable to also provide a formalization for \lang{}.
-It would be beneficial to also formalize \lang{} to gain more certainty the system is safe.
+It would be beneficial to also formalize the syntax, semantics and typing rules \lang{} and to prove type soundness, in order to gain more certainty the system is safe.
+\\\\
+We have implemented a prototype of \lang{} in Haskell\footnote{https://github.com/atennapel/dynamicinstances/tree/master/hs}.
+We implemented the typing rules in a bidirectional~\autocite{bidirectionaltyping} style.
+We also implemented the small-step operation semantics.
+Using the prototype we can typecheck and run \lang{} programs and verify our ideas.
 \\\\
 There are many kinds of features possible which increase the expressiveness and guarantees of \lang{}.
 We will now discuss possible extensions to \lang{}.

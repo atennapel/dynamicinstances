@@ -520,6 +520,8 @@ fibRec n x y =
     fibRec (n - 1) x y
 \end{minted}
 
+\paragraph{The problem with dynamic instances}
+\label{par:dyninstproblem}
 Dynamic instances have one big problem though: they are too dynamic. Similar to how in general it is undecidable to know whether a reference has escaped its scope, it is also not possible to know whether an instance has a handler associated with it. 
 For example:
 \begin{minted}[tabsize=2]{haskell}
