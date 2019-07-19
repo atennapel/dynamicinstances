@@ -126,7 +126,7 @@ Proving type safety for \lang{} turns out to be more difficult than anticipated.
 It is common to prove type safety by first proving a type preservation lemma.
 Type preservation states that if a term is well-typed and if we take a step (using the semantics) then the resulting term is also well-typed (with the same type as before).
 Our language introduces some intermediate forms used by the small-step operational semantics.
-These intermediate forms are introduced by the semantics during the process of evaluation and do not occur in the source language.
+These intermediate forms are introduced by the semantics during the process of evaluation and do not appear in the source language.
 In order to prove the preservation lemma one also has to give typing rules for these intermediate forms.
 We will call these the \emph{dynamic} typing rules.
 The difficulty in coming up with dynamic typing rules is that effect instances can still escape their effect scope if they are not used and not returned from a function.
@@ -152,7 +152,7 @@ We show the problems we encountered when trying to prove type safety for \lang{}
 We discuss the other approaches that may allow us to prove type safety.
 
 \item \textbf{Formalizations.}
-We have formalized algebraic effects and handlers with and without static instances and have proven type soundness in Coq\footnote{https://github.com/atennapel/dynamicinstances}.
+We have formalized algebraic effects and handlers with and without static instances and have proven type safety in Coq\footnote{https://github.com/atennapel/dynamicinstances}.
 
 \end{itemize}
 

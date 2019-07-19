@@ -278,13 +278,13 @@ Because we have eliminated the lambda abstraction there is no translation corres
 \fi
 
 % \subsection{Theorems}
-\paragraph{Type soundness}
-In order to prove type soundness for the previously defined calculus we first have define what it means for a computation to be a value.
+\paragraph{Type safety}
+In order to prove type safety for the previously defined calculus we first have define what it means for a computation to be a value.
 We define a computation $\comp$ to be a value if $\comp$ is of the form $\creturn{\val}$ for some value $\val$.
 	\[ \mathsf{value}(\comp) \;\mathsf{if}\; \exists \val. \comp = \creturn{\val} \]
-Using this definition we can state the following type soundness theorem for the fine-grained simply typed lambda calculus.
+Using this definition we can state the following type safety theorem for the fine-grained simply typed lambda calculus.
 
-\begin{theorem}[Type soundness]
+\begin{theorem}[Type safety]
 \[
 	\mathsf{if}\;
 		\cdot \vdash \comp : \cty
@@ -332,7 +332,7 @@ We can prove both these by induction on the typing derivations.
 Note again that the context has to be empty for the Progress lemma, again because the computation could get stuck on free variables.
 For the Preservation lemma the context can be anything however, since the operational semantics will not introduce any new free variables that are not already in the context.
 \\\\
-We formalized the fine-grained simply-typed lambda calculus and have proven the type soundness theorem in the Coq proof assistant.
+We formalized the fine-grained simply-typed lambda calculus and have proven the type safety theorem in the Coq proof assistant.
 We briefly discuss the formalization in \cref{sec:formalization}.
 
 \section{Algebraic effects} \label{sec:theory-algeff}
@@ -604,10 +604,10 @@ Finally the rules \textsc{T-HOp} and \textsc{T-HReturn} type the two cases of a 
 \textsc{T-HOp} first checks the rest of the handler. Then the parameter and return types of the operation $op$ are retrieved.
 Finally we add the parameter $x$ of the operation and the continuation $k$ to $\Gamma$ and check that the type of the computation $\comp$ agrees with the return type of the rest of the handler.
 
-\paragraph{Type soundness}
-We can defined a type soundness theorem very similar to the one for the simply-typed lambda calculus.
+\paragraph{Type safety}
+We can defined a type safety theorem very similar to the one for the simply-typed lambda calculus.
 
-\begin{theorem}[Type soundness]
+\begin{theorem}[Type safety]
 \[
 	\mathsf{if}\;
 		\cdot \vdash \comp : \aty{\ty}{\varnothing}
@@ -623,7 +623,7 @@ We can defined a type soundness theorem very similar to the one for the simply-t
 The theorem states that if a computation $\comp$ is typed in the empty context with an empty effect annotation and we take some amount of steps, then the computation is value or we can take another step.
 This theorem only works with the empty effect annotation, because if an effect is in the annotation then there may be an unhandled operation call and the computation would not be able to proceed.
 \\\\
-We can prove the type soundness theorem using progress and preservation lemmas.
+We can prove the type safety theorem using progress and preservation lemmas.
 We first give the preservation lemma, which is exactly the same as the one from the simply-typed lambda calculus.
 
 \begin{lemma}[Preservation]
@@ -675,7 +675,7 @@ This lemma generalizes $\aty{\ty}{\varnothing}$ to $\aty{\ty}{r}$ in the Progres
 This allows $\comp$ to be typed with any effect annotation, by adding the possibility that $\comp$ has unhandled operations.
 We need this generalization or else the induction hypothesis is too weak and we would get stuck if we used any effects.
 \\\\
-We formalized the algebraic effect and handler system and have proven the type soundness theorem in the Coq proof assistant.
+We formalized the algebraic effect and handler system and have proven the type safety theorem in the Coq proof assistant.
 We briefly discuss the formalization in \cref{sec:formalization}.
 
 \section{Static instances} \label{sec:theory-staticinst}
@@ -825,10 +825,10 @@ For both \textsc{T-OP} and \textsc{T-Handle} we just have to check that the adde
 }
 \end{figure}
 
-\paragraph{Type soundness}
-We give a type soundness theorem for the system with static instances.
+\paragraph{Type safety}
+We give a type safety theorem for the system with static instances.
 
-\begin{theorem}[Type soundness]
+\begin{theorem}[Type safety]
 \[
 	\mathsf{if}\;
 		\cdot \vdash \comp : \aty{\ty}{\varnothing}
@@ -844,18 +844,18 @@ We give a type soundness theorem for the system with static instances.
 This theorem is exactly the same as the one for algebraic effects in \cref{sec:theory-algeff}.
 We can reuse the notion of a computation being a value $\mathsf{value}$ without any modifications.
 \\\\
-Again we use progress and preservation lemmas to prove the type soundness theorem.
+Again we use progress and preservation lemmas to prove the type safety theorem.
 These lemmas are exactly the same as the ones in \cref{sec:theory-algeff}.
 We only need to slightly update our $\mathsf{effectful}$ notion, because operation calls are now called on instances.
 \[ \mathsf{effectful}(\comp) \triangleq \big(\exists \vinst \; op \; \val. \comp = \copi{\vinst}{op}{\val}\big) \;\mathsf{or}\; \big(\exists \vinst \; x \; op \; \val \; \comp'. \comp = \cdo{x}{\copi{\vinst}{op}{\val}}{\comp'}\big) \]
 
-We formalized the system with static instances and have proven the type soundness theorem in Coq.
+We formalized the system with static instances and have proven the type safety theorem in Coq.
 We will now discuss the formalizations of the different systems.
 
 \section{Formalization}
 \label{sec:formalization}
 
-We have formalized and proven type soundness for all the three systems discussed in this chapter in Coq\footnote{https://github.com/atennapel/dynamicinstances}.
+We have formalized and proven type safety for all the three systems discussed in this chapter in Coq\footnote{https://github.com/atennapel/dynamicinstances}.
 We used DeBruijn indices to deal with naming and substitution.
 We also restrict effects to only have one operation, modeled as a natural number.
 Handlers can only handle a single operation.

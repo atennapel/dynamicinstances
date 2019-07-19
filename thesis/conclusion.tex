@@ -15,22 +15,23 @@ Using a notion of effect scopes we are able to safely use dynamically created in
 We have shown how we can implement mutable references and vectors in \lang{}.
 \\\\
 In \cref{chap:algtheory} we presented formal accounts of algebraic effects and handler, with and without static instances, giving a type system and operational semantics.
-We have formalized these systems and proven type soundness in Coq.
+We have formalized these systems and proven type safety in Coq.
 \\\\
 Finally, in \cref{chap:langtheory} we have presented a type system and operational semantics for the core language of \lang{}.
-We also gave a type soundness theorem for the type system with respect to the semantics.
+We ended the chapter with a discussion on the difficulties of proving type safety for \lang{} and gave possible approaches that might allow us to make progress on these proofs.
 \\\\
-In this thesis we have shown that we can safely combine algebraic effects with dynamic instances by giving an explicit scope for the use of an instance.
+In this thesis we have shown that we can safely combine algebraic effects with a restricted form of dynamic instances by giving an explicit scope for the use of an instance.
 Using the notion of an effect scope and effect scope variables we can ensure that no operation call will be left unhandled and we can avoid runtime errors.
+We have also discussed the difficulties in proving type safety for such a system.
 By enabling the definition of dynamic effects, such as mutable references, algebraic effects and handlers can be useful in more situations.
  
 \section{Future work}
 
 \paragraph{Mechanization}
-We currently have formalized the system with static instances of \cref{sec:background-algeff} and \cref{sec:background-staticinst} and have proven type soundness in Coq\footnote{https://github.com/atennapel/dynamicinstances}.
+We currently have formalized the system with static instances of \cref{sec:background-algeff} and \cref{sec:background-staticinst} and have proven type safety in Coq\footnote{https://github.com/atennapel/dynamicinstances}.
 This formalization is briefly discussed in \cref{sec:formalization}.
 Due to time constraints we were unable to also provide a formalization for \lang{}.
-It would be beneficial to also formalize the syntax, semantics and typing rules \lang{} and to prove type soundness, in order to gain more certainty the system is safe.
+It would be beneficial to also formalize the syntax, semantics and typing rules \lang{} and to prove type safety, in order to gain more certainty the system is safe.
 \\\\
 We have implemented a prototype of \lang{} in Haskell\footnote{https://github.com/atennapel/dynamicinstances/tree/master/hs}.
 We implemented the typing rules in a bidirectional~\autocite{bidirectionaltyping} style.

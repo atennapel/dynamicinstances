@@ -1,2 +1,15 @@
 % !TEX root = thesis.tex
-bla bla bla
+Side-effect are ubiquitous in programming. Examples include mutable state, exceptions, nondeterminism, and user input.
+Algebraic effects and handlers are an approach to programming that gives a structured way of programming with effects.
+Each effect in a system with algebraic effects is defined by a set of operations.
+These operations can then be called anywhere in a program.
+Using a handler we can give an interpretation for the operations used.
+Unfortunately we are unable to express dynamic effects such as the dynamic creation of mutable references using regular algebraic effects.
+Extending algebraic effects with effect instances enabled us to express dynamic effects.
+These effect instances can be dynamically created and operations called on them are distinct from the same operation called on a different instance.
+Without a type system these dynamic instances may result in runtime errors, because operations may
+Because of their dynamic nature it is hard to give a type system for these dynamic instances though.
+In this thesis we present a new language, \lang{}, which extends algebraic effects and handlers with a restricted form of effect instances.
+We introduce the notion of an \emph{effect scope} which encapsulates the creation and usage of dynamically created effect instances. We give a formal description of the syntax and semantics of \lang{}.
+We also give a type system which ensures that all operation calls are handled, so that we will not have runtime errors.
+Because effect instances can still escape their effect scope, in computationally irrelevant parts, we encounter difficulties in proving type safety for \lang{}. We discuss these difficulties and give possible approaches to prove type safety in the future.

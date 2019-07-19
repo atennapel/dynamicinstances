@@ -323,9 +323,10 @@ X process small fixes from Casper
 X Fix future work (polymorphic operations)
 X fix/remove cover picture
 X Fix intro
+X Fix calculus chapter
 X acknowledgments
-- Fix calculus chapter
-- Fix conclusion
+X Fix conclusion
+X abstract
+- write type safety part for Miro
 - Fix background chapter
 - Check other chapters
-- abstract
