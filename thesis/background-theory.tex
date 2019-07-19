@@ -287,9 +287,9 @@ Using this definition we can state the following type safety theorem for the fin
 \begin{theorem}[Type safety]
 \[
 	\mathsf{if}\;
-		\cdot \vdash \comp : \cty
+		(\cdot \vdash \comp : \cty)
 		\;\mathsf{and}\;
-		\comp \rightsquigarrow^* \comp'
+		(\comp \rightsquigarrow^* \comp')
 	\;\mathsf{then}\;
 		\mathsf{value}(\comp')
 		\;\mathsf{or}\;
@@ -307,7 +307,7 @@ We can prove this theorem using the following lemmas:
 \begin{lemma}[Progress]
 \[
 	\mathsf{if}\;
-		\cdot \vdash \comp : \cty
+		(\cdot \vdash \comp : \cty)
 	\;\mathsf{then}\;
 		\mathsf{value}(\comp)
 		\;\mathsf{or}\;
@@ -318,11 +318,11 @@ We can prove this theorem using the following lemmas:
 \begin{lemma}[Preservation]
 \[
 	\mathsf{if}\;
-		\Gamma \vdash \comp : \cty
+		(\Gamma \vdash \comp : \cty)
 		\;\mathsf{and}\;
-		\comp \rightsquigarrow \comp'
+		(\comp \rightsquigarrow \comp')
 	\;\mathsf{then}\;
-		\Gamma \vdash \comp' : \cty
+		(\Gamma \vdash \comp' : \cty)
 \]
 \end{lemma}
 
@@ -610,9 +610,9 @@ We can defined a type safety theorem very similar to the one for the simply-type
 \begin{theorem}[Type safety]
 \[
 	\mathsf{if}\;
-		\cdot \vdash \comp : \aty{\ty}{\varnothing}
+		(\cdot \vdash \comp : \aty{\ty}{\varnothing})
 		\;\mathsf{and}\;
-		\comp \rightsquigarrow^* \comp'
+		(\comp \rightsquigarrow^* \comp')
 	\;\mathsf{then}\;
 		\mathsf{value}(\comp')
 		\;\mathsf{or}\;
@@ -629,11 +629,11 @@ We first give the preservation lemma, which is exactly the same as the one from 
 \begin{lemma}[Preservation]
 \[
 	\mathsf{if}\;
-		\Gamma \vdash \comp : \cty
+		(\Gamma \vdash \comp : \cty)
 		\;\mathsf{and}\;
-		\comp \rightsquigarrow \comp'
+		(\comp \rightsquigarrow \comp')
 	\;\mathsf{then}\;
-		\Gamma \vdash \comp' : \cty
+		(\Gamma \vdash \comp' : \cty)
 \]
 \end{lemma}
 
@@ -643,7 +643,7 @@ Again because we could get stuck if any operation calls are unhandled.
 \begin{lemma}[Progress]
 \[
 	\mathsf{if}\;
-		\cdot \vdash \comp : \aty{\ty}{\varnothing}
+		(\cdot \vdash \comp : \aty{\ty}{\varnothing})
 	\;\mathsf{then}\;
 		\mathsf{value}(\comp)
 		\;\mathsf{or}\;
@@ -661,7 +661,7 @@ We can now give the generalized version of the progress lemma:
 \begin{lemma}[Progress effectful]
 \[
 	\mathsf{if}\;
-		\cdot \vdash \comp : \aty{\ty}{r}
+		(\cdot \vdash \comp : \aty{\ty}{r})
 	\;\mathsf{then}\;
 		\mathsf{value}(\comp)
 		\;\mathsf{or}\;
@@ -831,9 +831,9 @@ We give a type safety theorem for the system with static instances.
 \begin{theorem}[Type safety]
 \[
 	\mathsf{if}\;
-		\cdot \vdash \comp : \aty{\ty}{\varnothing}
+		(\cdot \vdash \comp : \aty{\ty}{\varnothing})
 		\;\mathsf{and}\;
-		\comp \rightsquigarrow^* \comp'
+		(\comp \rightsquigarrow^* \comp')
 	\;\mathsf{then}\;
 		\mathsf{value}(\comp')
 		\;\mathsf{or}\;

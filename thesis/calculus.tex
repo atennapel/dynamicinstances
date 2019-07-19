@@ -860,7 +860,7 @@ For example $(\textsc{S-RunscopeCong, S-SeqReturn})$ means we use $\textsc{S-Seq
 & \chandlec{s}{\cdo{f}{\capp{(\vabs{x}{\chandlei{l}{s,\mathsf{State}}{h}{\creturn{x}}})}{(0 + 1)}}{\capp{f}{(0 + 1)}}} \\
 & \opsem{} \tag{\textsc{S-RunscopeCong, S-Seq, S-App}} \\
 & \chandlec{s}{\cdo{f}{\chandlei{l}{s,\mathsf{State}}{h}{\creturn{(0 + 1)}}}{\capp{f}{(0 + 1)}}} \\
-& \opsem{} \tag{\textsc{S-RunscopeCong, S-Seq, S-Runinst}} \\
+& \opsem{} \tag{\textsc{S-RunscopeCong, S-Seq, S-RuninstReturn}} \\
 & \chandlec{s}{\cdo{f}{\creturn (\vabs{st}{\creturn{(0 + 1)}})}{\capp{f}{(0 + 1)}}} \\
 & \opsem{} \tag{\textsc{S-RunscopeCong, S-SeqReturn}} \\
 & \chandlec{s}{\capp{(\vabs{st}{\creturn{(0 + 1)}})}{(0 + 1)}} \\
@@ -875,100 +875,91 @@ One thing to notice from this derivation is that $\chandlec{s_{loc}}{...}$ remai
 \section{The problem with type safety}
 \label{sec:typesafety}
 
-Because our initial goal was to find a safe type system for dynamic instances, it is important to establish that our system is actually type safe.
-We will now give a precise main type soundness theorem.
-We will also give lemmas that are necessary in order to prove this theorem.
+Because our initial goal was to give a type safe language with algebraic effects and dynamic instances, it is important to formally proof type safety, in order to gain absolute certainty that our system is actually type safe. 
+Like in \cref{sec:theory-algeff} we can give a Type safety theorem and a Preservation lemma:
 
-\begin{theorem}[Type soundness]
+\begin{theorem}[Type safety]
 \[
 	\mathsf{if}\;
-		(\cdot;\cdot;\cdot \vdash \comp : \aty{\ty}{\varnothing})
+		(\cdot;\cdot \vdash \comp : \aty{\ty}{\varnothing})
 		\;\mathsf{and}\;
-		(\comp \;|\; \cdot \rightsquigarrow^* \comp' \;|\; \Sigma)
+		(\comp \opsem{\cdot}^* \comp')
 	\;\mathsf{then}\;
 		\mathsf{value}(\comp')
 		\;\mathsf{or}\;
-		(\exists \comp'' \; \Sigma'.\; \comp' \;|\; \Sigma \rightsquigarrow \comp'' \;|\; \Sigma')
+		(\exists \comp''.\; \comp' \opsem{\cdot} \comp'')
 \]
 \end{theorem}
-
-The type soundness theorem states that if a computation typechecks with no effects in the annotation and we take some amount of steps, then either the computation is a value or we can take another step.
-This means that if a computation typechecks with no effects then we cannot get stuck on an operation call.
-
-\begin{lemma}[Progress]
-\[
-	\mathsf{if}\;
-		(\cdot;\Sigma;\cdot \vdash \comp : \aty{\ty}{\varnothing})
-	\;\mathsf{then}\;
-		\mathsf{value}(\comp)
-		\;\mathsf{or}\;
-		(\exists \comp' \; \Sigma'.\; \comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma')
-\]
-\end{lemma}
 
 \begin{lemma}[Preservation]
 \[
 	\mathsf{if}\;
-		(\Delta;\Sigma;\Gamma \vdash \comp : \cty)
+		(\Delta;\Gamma \vdash \comp : \cty)
 		\;\mathsf{and}\;
-		(\comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma')
+		(\comp \opsem{\cdot} \comp')
 	\;\mathsf{then}\;
-		\Delta;\Sigma';\Gamma \vdash \comp' : \cty
+		(\Delta;\Gamma \vdash \comp' : \cty)
 \]
 \end{lemma}
 
-Just like the algebraic effects systems of \cref{chap:algtheory} we can prove the type soundness theorem using progress and preservation lemmas.
-The progress lemma states that given a well-typed computation with no effects then either the computation is a value or we can take a step.
-The preservation lemma states that when taking a step on a well-typed computation, the result will still be well-typed.
+However because effect instances can escape their effect scope, Preservation does not hold for our given typing rules and semantics.
+As a counter-example consider the following program (where $h$ is the handler from the example semantics derivation given earlier):
+\[ \chandlen{s}{\cnew{\mathsf{State}}{s}{\handler ; \hfinally{f}{\capp{f}{0}}}{r}{\creturn{(\vabs{\_}{\cdo{r'}{\creturn{r}}{\creturn{42}}})}}} \]
+
+This program creates a new scope and creates a $\mathsf{State}$ instance named $r$ in it.
+We then return a lambda abstraction which contains but does not use $r$, instead it returns $42$.
+We can easily see that this program is of type $\tarr{()}{\aty{\mathsf{Int}}{\varnothing}}$.
+We will give the semantics derivation for this program:
+\newpage
+\begin{align*}
+&\chandlen{s}{\cnew{\mathsf{State}}{s}{\handler ; \hfinally{f}{\capp{f}{0}}}{r}{\creturn{(\vabs{\_}{\cdo{r'}{\creturn{r}}{\creturn{42}}})}}} \\
+& \opsem{} \tag{\textsc{S-Runscope}} \\
+&\chandlec{s}{\cnew{\mathsf{State}}{s}{\handler ; \hfinally{f}{\capp{f}{0}}}{r}{\creturn{(\vabs{\_}{\cdo{r'}{\creturn{r}}{\creturn{42}}})}}} \\
+& \opsem{} \tag{\textsc{S-RunscopeNew}} \\
+& \chandlec{s}{\cdo{f}{\chandlei{l}{s,\mathsf{State}}{h}{
+		\creturn{(\vabs{\_}{\cdo{r'}{\creturn{\vinst{l}}}{\creturn{42}}})}}}{\capp{f}{0}}} \\
+& \opsem{} \tag{\textsc{S-RunscopeCong, S-Seq, S-RuninstReturn}} \\
+& \chandlec{s}{\cdo{f}{\creturn{(\vabs{st}{\creturn{(\vabs{\_}{\cdo{r'}{\creturn{\vinst{l}}}{\creturn{42}}})}})}}{\capp{f}{0}}} \\
+\end{align*}
+
+At this point the $\vinst{l}$ is no longer under the $\chandlei{l}{s,\mathsf{State}}{h}{...}$, it has escaped its scope.
+Because $\vinst{l}$ is not actually used, this is no problem for the semantics.
+However the program does not typecheck anymore.
+Once we get to $\vinst{l}$ we would use the typing rule $\textsc{T-Inst}$ to try to type it.
+This will not work because $l$ is not in the static environment $\Delta$, because $l$ is only in $\Delta$ under $\chandlei{l}{s,\mathsf{State}}{h}{...}$!
+Because of this Preservation does not hold, and we are unable to proof type safety.
+This does not mean that type safety does not hold for \lang{}, it only means that the given dynamic typing rules for the intermediate forms are incomplete or incorrect.
 \\\\
-Again we need to generalize the progress lemma in order to be able to proof it.
-We slightly modify the notion of $\mathsf{effectful}$ of \cref{sec:theory-algeff} for our calculus, changing the operation calls to now have an instance location.
-	\[ \mathsf{effectful}(\comp) \;\mathsf{if}\; (\exists l \; op \; \val. \comp = \cop{\vinst{l}}{op}{\val}) \;\mathsf{or}\; (\exists x \; l \; op \; \val \; \comp'. \comp = \cdo{x}{\cop{\vinst{l}}{op}{\val}}{\comp'}) \]
-
-We can now state the generalized version of the progress lemma, for the case where $\comp$ does have effects.
-
-\begin{lemma}[Progress effectful]
+One possible approach to solving this problem is to look at a type safety proof for the simply-typed lambda calculus with references given in~\autocite{tapl}.
+A store $\mu$ for reference assignments is used for the semantics.
+The semantics judgment then has the form $t, \mu \rightsquigarrow t', \mu'$, with $\mu'$ being a possibly updated store (and $t$ some term).
+For the typing rules a static environment $\Sigma$ is introduced which assign references to types.
+The Preservation lemma then has the following form:
+ 
+\begin{lemma}[Preservation]
 \[
 	\mathsf{if}\;
-		\cdot;\Sigma;\cdot \vdash \comp : \aty{\ty}{r}
-	\;\mathsf{then}\;
-		\mathsf{value}(\comp)
-		\;\mathsf{or}\;
-		\mathsf{effectful}(\comp)
-		\;\mathsf{or}\;
-		(\exists \comp' \; \Sigma'.\; \comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma')
-\]
-\end{lemma}
-
-Finally we give two lemmas which will be useful when proving the type soundness theorem.
-The first allows the dynamic environment $\Sigma$ to be weakened.
-Adding fresh scope and instance locations to $\Sigma$ should not disallow a previously well-typed computation from being well-typed.
-
-\begin{lemma}[$\Sigma$ weakening]
-\[
-	\mathsf{if}\;
-		(\Delta;\Sigma;\Gamma \vdash \comp : \cty)
+		(\Sigma;\Gamma \vdash t : \ty)
 		\;\mathsf{and}\;
-		\vdash \Sigma'
+		(\Sigma;\Gamma \vdash \mu)
 		\;\mathsf{and}\;
-		\Sigma \subseteq \Sigma'
-	\;\mathsf{then}\;
-		\Delta;\Sigma';\Gamma \vdash \comp : \cty
+		(t,\mu \opsem{} t',\mu')
+	\;\mathsf{then}\; \\
+		(\exists \Sigma'.
+			(\Sigma \subseteq \Sigma')
+			\;\mathsf{and}\;
+			(\Sigma';\Gamma \vdash t' : \ty)
+			\;\mathsf{and}\;
+			(\Sigma';\Gamma \vdash \mu')
+		)
 \]
 \end{lemma}
 
-The second lemma states that the operational semantics will always extend $\Sigma$ monotonically.
-No scope or instance location occuring in $\Sigma$ will be removed.
-
-\begin{lemma}[Semantics does valid monotonic extension]
-\[
-	\mathsf{if}\;
-		\comp \;|\; \Sigma \rightsquigarrow \comp' \;|\; \Sigma'
-	\;\mathsf{then}\;
-		\Sigma \subseteq \Sigma'
-\]
-\end{lemma}
-
-Unfortunately due to time constraints we have not been able to formalize and prove the type soundness theorem in Coq at the time of writing.
+This states that given a well-typed term $t$ and a well-typed store $\mu$.
+If we take a step from $t$ to $t'$ with the store being updated to $\mu$.
+Then there exists some static environment $\Sigma'$ that is an extension of $\Sigma$ such that $t$ is still well-typed with the same type under $\Sigma'$ and the updated store is also well-typed under $\Sigma'$.
+\\\\
+For our dynamic instances we can take a similar approach with our version of $\mu$ storing scope and instance locations. The static environment $\Sigma$ would have to store assignments of instance locations $l$ to scope locations $s_{loc}$ and effects $\eff$, so that we are able to give $\vinst{l}$ the correct instance type $(\tinst{s_{loc}}{\eff})$.
+Due to time constraints we are unable to try out this approach but we conjecture it may allow use to prove a Preservation lemma and type safety.
 
 }

@@ -133,7 +133,7 @@ The difficulty in coming up with dynamic typing rules is that effect instances c
 The dynamic typing rules have to give these escaped instance a valid type, but since they have escaped their effect scope this is tricky because the type of an instance depends on the effect scope, which it has escaped from.
 The escaped instances do however have no computational effect and so we conjecture that type safety still holds.
 Type safety might still be provable in other ways, given correct dynamic typing rules.
-In this thesis we will show the problems with proving type preservation for \lang{} and we will discuss other approaches that may allow us to prove type safety.
+In this thesis we will show the problems with proving type preservation for \lang{} and we will give a possible approach that may allow us to prove type safety.
 
 \section*{Contributions}
 \begin{itemize}
@@ -147,9 +147,11 @@ We give examples in \lang{} that would be difficult or impossible to express wit
 \item \textbf{Operational semantics and type system.}
 We define a core calculus of \lang{} together with a small-step operational semantics and a type system.
 
+\iffalse
 \item \textbf{Research on type safety for dynamic instances.}
 We show the problems we encountered when trying to prove type safety for \lang{}.
 We discuss the other approaches that may allow us to prove type safety.
+\fi
 
 \item \textbf{Formalizations.}
 We have formalized algebraic effects and handlers with and without static instances and have proven type safety in Coq\footnote{https://github.com/atennapel/dynamicinstances}.
