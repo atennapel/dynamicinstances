@@ -322,10 +322,10 @@ X process small fixes from Robbert
 X process small fixes from Casper
 X Fix future work (polymorphic operations)
 X fix/remove cover picture
-- Fix intro
+X Fix intro
+X acknowledgments
 - Fix calculus chapter
 - Fix conclusion
 - Fix background chapter
 - Check other chapters
 - abstract
-- acknowledgments
