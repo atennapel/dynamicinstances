@@ -4,4 +4,6 @@ Thesis: https://github.com/atennapel/dynamicinstances/blob/master/thesis/thesis.
 
 backup - unordered files that are no longer useful <br/>
 coq - formalizations of different type systems <br/>
+hs - Prototype Haskell implementation <br/>
 thesis - the final thesis <br/>
+
