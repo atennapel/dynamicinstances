@@ -6,7 +6,7 @@ Require Import Coq.Lists.List.
 Require Import Coq.Init.Nat.
 Require Import Coq.omega.Omega.
 Require Import Util.
-From stdpp Require Import fin_collections gmap.
+From stdpp Require Import gmap.
 
 (* effects and static instances *)
 Definition eff := nat.
@@ -619,11 +619,14 @@ Proof.
       constructor.
       remember (pred n - length Gamma) as m.
       assert (pred n = m + length Gamma).
-      omega.
+      rewrite Heqm.
+      apply gt_to_geq_pred in eq.
+      apply sub_same; auto.
       rewrite H3.
       apply nth_error_pred_app with (h := U).
       assert (n = S (m + length Gamma)).
-      omega.
+      rewrite Heqm.
+      rewrite <- sub_same2; auto.
       rewrite <- H5.
       auto.
   - inversion_try_solve H0.

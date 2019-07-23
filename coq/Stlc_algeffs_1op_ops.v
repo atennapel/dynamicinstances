@@ -1,32 +1,22 @@
 (*
   A formalization of simple algebraic effects, with the following limitations:
-  - every effect has only one operation.
   - a handler can only handle one operation.
 *)
 Require Import Coq.Lists.List.
 Require Import Coq.Init.Nat.
 Require Import Coq.omega.Omega.
 Require Import Util.
-From stdpp Require Import fin_collections gmap.
+From stdpp Require Import gmap.
 
 (* effects *)
-Definition eff := nat.
-Notation effs := (gset eff).
-
 Definition op := nat.
 Notation ops := (gset op).
 
-(* get the effect that the operation is part of *)
-Axiom eff_of : op -> eff.
-
-(* all effects have a single operation *)
-Axiom op_unique : forall o o', o <> o' -> eff_of o <> eff_of o'.
-
 (* ast *)
 Inductive ty : Type :=
-  | tarr : ty -> effs -> ty -> ty
+  | tarr : ty -> ops -> ty -> ty
   | tunit : ty
-  | thandler : effs -> ty -> effs -> ty -> ty.
+  | thandler : ops -> ty -> ops -> ty -> ty.
 
 Inductive val : Type :=
   | unit : val
@@ -205,12 +195,12 @@ Inductive has_type_val : context -> val -> ty -> Prop :=
   | T_Handler : forall Gamma cr o co E1 T1 E2 T2,
     (T1 :: Gamma) |-c cr in T2 ; E2 ->
     (tarr (returnty o) E2 T2 :: paramty o :: Gamma) |-c co in T2 ; E2 ->
-    (E1 ∖  {[eff_of o]}) ⊆ E2 ->
+    o ∈ E1 /\ (E1 ∖  {[o]}) ⊆ E2 ->
     Gamma |- handler cr o co in thandler E1 T1 E2 T2
 
 where "Gamma '|-' t 'in' T" := (has_type_val Gamma t T)
 
-with has_type_comp : context -> comp -> ty -> effs -> Prop :=
+with has_type_comp : context -> comp -> ty -> ops -> Prop :=
   | T_Return : forall Gamma v T E,
     Gamma |- v in T ->
     Gamma |-c ret v in T ; E
@@ -225,7 +215,7 @@ with has_type_comp : context -> comp -> ty -> effs -> Prop :=
   | T_Op : forall Gamma o v c T E,
     Gamma |- v in paramty o ->
     (returnty o :: Gamma) |-c c in T ; E ->
-    eff_of o ∈ E ->
+    o ∈ E ->
     Gamma |-c opc o v c in T ; E
   | T_Handle : forall Gamma v c E1 T1 E2 T2,
     Gamma |- v in thandler E1 T1 E2 T2 ->
@@ -592,11 +582,14 @@ Proof.
       constructor.
       remember (pred n - length Gamma) as m.
       assert (pred n = m + length Gamma).
-      omega.
+      rewrite Heqm.
+      apply gt_to_geq_pred in eq.
+      apply sub_same; auto.
       rewrite H4.
       apply nth_error_pred_app with (h := U).
       assert (n = S (m + length Gamma)).
-      omega.
+      rewrite Heqm.
+      rewrite <- sub_same2; auto.
       rewrite <- H5.
       auto.
   - inversion_try_solve H0.
@@ -658,18 +651,6 @@ Proof.
   - apply H0 with (U := U); auto.
   - apply H1 with (U := U); auto.
 Qed.
-
-Lemma effect_through : forall o o' Gamma cr co v c T E,
-  o <> o' ->
-  eff_of o = eff_of o' ->
-  Gamma |-c handle (handler cr o co) (opc o' v c) in T ; E ->
-  eff_of o ∈ E.
-Proof.
-  intros.
-  inversion_try_solve H1.
-  inversion_try_solve H5.
-  inversion_try_solve H8.
-  
 
 Theorem preservation : forall Gamma t t' T E,
   Gamma |-c t in T ; E ->
@@ -744,7 +725,7 @@ Proof with eauto.
             ((take 2 (tarr (returnty o) E2 T2 :: paramty o :: Gamma)) ++ [returnty o'] ++
               (drop 2 (tarr (returnty o) E2 T2 :: paramty o :: Gamma))); auto.
           apply shift_typing; auto. }
-      * apply op_unique in H8.
+      * inversion H10.
         set_solver.
 Qed.
 
