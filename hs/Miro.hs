@@ -27,6 +27,7 @@ module Miro (
   gammaFromList,
 
   EffEnv,
+  effEnvFromList,
 
   Err,
 
@@ -379,6 +380,9 @@ checkOp :: EffEnv -> Eff -> Op -> Err ()
 checkOp ev eff op = do
   _ <- opTypes ev eff op
   return ()
+
+effEnvFromList :: [(Eff, [(Op, (Type, Type))])] -> EffEnv
+effEnvFromList l = Map.fromList $ map (\(e, k) -> (e, Map.fromList k)) l
 
 -- judgments
 type Err t = Either String t

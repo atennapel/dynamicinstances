@@ -17,9 +17,9 @@ tUnit = TCon "Unit"
 
 effEnv :: EffEnv
 effEnv =
-  Map.fromList [
-    ("Flip", Map.fromList [("flip", (tUnit, tBool))]),
-    ("State", Map.fromList [("get", (tUnit, tInt)), ("put", (tInt, tUnit))])
+  effEnvFromList [
+    ("Flip", [("flip", (tUnit, tBool))]),
+    ("State", [("get", (tUnit, tInt)), ("put", (tInt, tUnit))])
   ]
 
 delta :: Delta
