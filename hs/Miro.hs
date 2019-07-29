@@ -1,7 +1,57 @@
 {-# LANGUAGE OverloadedStrings #-}
+
+module Miro (
+  Eff,
+  Op,
+
+  SVar,
+  SLoc,
+  Scope(..),
+
+  TCon,
+  Type(..),
+  CType(..),
+  Ann,
+  purety,
+
+  Var,
+  Loc,
+  Val(..),
+  Comp(..),
+  Finally(..),
+  Handler(..),
+
+  Gamma(..),
+  Delta(..),
+  Sigma(..),
+  gammaFromList,
+
+  EffEnv,
+
+  Err,
+
+  wfDelta,
+  wfScope,
+  wfType,
+  wfCType,
+
+  tcVal,
+  tcComp,
+  tcHandler,
+
+  removeAnnotsVal,
+  removeAnnotsComp,
+  removeAnnotsHandler,
+
+  step,
+  steps,
+  stepsShow
+) where
+
 import GHC.Exts (IsString(..))
 
 import qualified Data.Set as Set
+import qualified Data.Map as Map
 import qualified Data.List as List
 
 import Debug.Trace (trace, traceShow, traceShowId)
@@ -310,6 +360,26 @@ freshLoc s = (sigmaMaxLoc s) + 1
 freshLocIn :: Loc -> Set.Set Loc -> Loc
 freshLocIn l s = if Set.member l s then freshLocIn (l + 1) s else l
 
+gammaFromList :: [(Var, Type)] -> Gamma
+gammaFromList l = foldl (\g (x, t) -> GVar g x t) GEmpty l
+
+-- eff environments
+type EffEnv = Map.Map Eff (Map.Map Op (Type, Type))
+
+opTypes :: EffEnv -> Eff -> Op -> Err (Type, Type)
+opTypes ev eff op =
+  case Map.lookup eff ev of
+    Nothing -> Left $ "undefined effect " ++ eff
+    Just ops ->
+      case Map.lookup op ops of
+        Nothing -> Left $ "operation " ++ op ++ " not of effect " ++ eff
+        Just tys -> return tys
+        
+checkOp :: EffEnv -> Eff -> Op -> Err ()
+checkOp ev eff op = do
+  _ <- opTypes ev eff op
+  return ()
+
 -- judgments
 type Err t = Either String t
 
@@ -410,123 +480,124 @@ gammaLookup GEmpty x = Left $ "undefined var " ++ (show x)
 gammaLookup (GVar _ x t) y | x == y = return t
 gammaLookup (GVar g _ _) x = gammaLookup g x
 
-tcVal :: Delta -> Gamma -> Val -> Err Type
+tcVal :: EffEnv -> Delta -> Gamma -> Val -> Err Type
 -- T-Var
-tcVal d g (Var x) = do
+tcVal es d g (Var x) = do
   wfDelta d
   gammaLookup g x
 -- T-Inst
-tcVal d _ (Inst l) = do
+tcVal es d _ (Inst l) = do
   wfDelta d
   (sloc, eff) <- deltaLoc d l
   return $ TInst (SLoc sloc) eff
 -- T-Abs
-tcVal d g (SAbs s c) = do
-  t <- tcComp (DSVar d s) g c
+tcVal es d g (SAbs s c) = do
+  t <- tcComp es (DSVar d s) g c
   return $ TForall s t
 -- T-SubVal
-tcVal d g (VAnn v t) = do
+tcVal es d g (VAnn v t) = do
   wfType d t
-  checkVal d g v t
+  checkVal es d g v t
   return t
-tcVal d g (Pair a b) = do
-  t1 <- tcVal d g a
-  t2 <- tcVal d g b
+tcVal es d g (Pair a b) = do
+  t1 <- tcVal es d g a
+  t2 <- tcVal es d g b
   return $ TPair t1 t2
-tcVal _ _ v = Left $ "cannot synth " ++ (show v)
+tcVal _ _ _ v = Left $ "cannot synth " ++ (show v)
 
-checkVal :: Delta -> Gamma -> Val -> Type -> Err ()
-checkVal d g (Abs x c) (TFun a b) = checkComp d (GVar g x a) c b
-checkVal d g (SAbs s c) (TForall s' t) | s == s' = checkComp (DSVar d s) g c t
-checkVal d g (Pair a b) (TPair ta tb) = do
-  checkVal d g a ta
-  checkVal d g b tb
-checkVal d g v t = do
-  t' <- tcVal d g v
+checkVal :: EffEnv -> Delta -> Gamma -> Val -> Type -> Err ()
+checkVal es d g (Abs x c) (TFun a b) =
+  checkComp es d (GVar g x a) c b
+checkVal es d g (SAbs s c) (TForall s' t) | s == s' =
+  checkComp es (DSVar d s) g c t
+checkVal es d g (Pair a b) (TPair ta tb) = do
+  checkVal es d g a ta
+  checkVal es d g b tb
+checkVal es d g v t = do
+  t' <- tcVal es d g v
   sub t' t
 
-tcComp :: Delta -> Gamma -> Comp -> Err CType
+tcComp :: EffEnv -> Delta -> Gamma -> Comp -> Err CType
 -- T-Return
-tcComp d g (Return v) = do
-  t <- tcVal d g v
+tcComp es d g (Return v) = do
+  t <- tcVal es d g v
   return $ CType t Set.empty
 -- T-App
-tcComp d g v@(App v1 v2) = do
-  t <- tcVal d g v1
+tcComp es d g v@(App v1 v2) = do
+  t <- tcVal es d g v1
   case t of
     TFun a b -> do
-      checkVal d g v2 a
+      checkVal es d g v2 a
       return b
     _ -> Left $ "expected function but got " ++ (show t) ++ " in " ++ (show v)
 -- T-SApp
-tcComp d g v@(SApp v1 s) = do
+tcComp es d g v@(SApp v1 s) = do
   wfScope d s
-  t <- tcVal d g v1
+  t <- tcVal es d g v1
   case t of
     TForall x b -> return $ substScopeCType x s b
     _ -> Left $ "expected forall but got " ++ (show t) ++ " in " ++ (show v)
 -- T-Seq
-tcComp d g (Seq x a b) = do
-  CType t r <- tcComp d g a
-  CType t' r' <- tcComp d (GVar g x t) b
+tcComp es d g (Seq x a b) = do
+  CType t r <- tcComp es d g a
+  CType t' r' <- tcComp es d (GVar g x t) b
   return $ CType t' (Set.union r r')
 -- T-Op
-tcComp d g v@(OpCall v1 op v2) = do
-  t <- tcVal d g v1
+tcComp es d g v@(OpCall v1 op v2) = do
+  t <- tcVal es d g v1
   case t of
     TInst s e -> do
-      checkOp e op
-      (t1, t2) <- opTypes op
-      checkVal d g v2 t1
+      (t1, t2) <- opTypes es e op
+      checkVal es d g v2 t1
       return $ CType t2 (Set.singleton s)
     _ -> Left $ "expected instance but got " ++ (show t) ++ " in " ++ (show v)
 -- T-New
-tcComp d g (New e s h (Finally y c') x c) = do
+tcComp es d g (New e s h (Finally y c') x c) = do
   wfScope d s
-  CType t1 r1 <- tcComp d (GVar g x (TInst s e)) c
-  CType t2 r2 <- tcHandler d g t1 h
+  CType t1 r1 <- tcComp es d (GVar g x (TInst s e)) c
+  CType t2 r2 <- tcHandler es d g e t1 h
   check (Set.isSubsetOf r2 r1) $ "cannot have extra effects in handler"
-  checkComp d (GVar g y t2) c' (CType t1 r1)
+  checkComp es d (GVar g y t2) c' (CType t1 r1)
   return $ CType t1 (Set.unions [r1, Set.singleton s])
 -- T-Handle
-tcComp d g (Runscope s c) = do
-  CType t r <- tcComp (DSVar d s) g c
+tcComp es d g (Runscope s c) = do
+  CType t r <- tcComp es (DSVar d s) g c
   check (not $ containsScopeType (SVar s) t) $ "scope " ++ (show s) ++ " escaping " ++ (show t)
   return $ CType t (Set.delete (SVar s) r)
 -- T-HandleScope
-tcComp d g (RunscopeLoc s c) = do
+tcComp es d g (RunscopeLoc s c) = do
   fails (deltaScope d (SLoc s)) $ "duplicate SLoc " ++ (show s)
-  CType t r <- tcComp (DSLoc d s) g c
+  CType t r <- tcComp es (DSLoc d s) g c
   check (not $ containsScopeType (SLoc s) t) $ "scope " ++ (show s) ++ " escaping " ++ (show t)
   return $ CType t (Set.delete (SLoc s) r)
 -- T-HandleInst
-tcComp d g (Runinst l s e h c) = do
+tcComp es d g (Runinst l s e h c) = do
   wfScope d (SLoc s)
   fails (deltaLoc d l) $ "duplicate Loc " ++ (show l)
-  CType t1 r1 <- tcComp (DLoc d l s e) g c
-  CType t2 r2 <- tcHandler d g t1 h
+  CType t1 r1 <- tcComp es (DLoc d l s e) g c
+  CType t2 r2 <- tcHandler es d g e t1 h
   return $ CType t2 (Set.union r1 r2)
 -- T-SubComp
-tcComp d g (CAnn c t) = do
+tcComp es d g (CAnn c t) = do
   wfCType d t
-  checkComp d g c t
+  checkComp es d g c t
   return t
 
-checkComp :: Delta -> Gamma -> Comp -> CType -> Err ()
-checkComp d g (Return v) (CType t _) = checkVal d g v t
-checkComp d g c t = do
-  t' <- tcComp d g c
+checkComp :: EffEnv -> Delta -> Gamma -> Comp -> CType -> Err ()
+checkComp es d g (Return v) (CType t _) = checkVal es d g v t
+checkComp es d g c t = do
+  t' <- tcComp es d g c
   subComp t' t
 
-tcHandler :: Delta -> Gamma -> Type -> Handler -> Err CType
+tcHandler :: EffEnv -> Delta -> Gamma -> Eff -> Type -> Handler -> Err CType
 -- T-HandlerOp
-tcHandler d g t1 (HOp op x k c h) = do
-  (tpar, tret) <- opTypes op
-  tr <- tcHandler d g t1 h
-  checkComp d (GVar (GVar g x tpar) k (TFun tret tr)) c tr
+tcHandler es d g e t1 (HOp op x k c h) = do
+  (tpar, tret) <- opTypes es e op
+  tr <- tcHandler es d g e t1 h
+  checkComp es d (GVar (GVar g x tpar) k (TFun tret tr)) c tr
   return $ tr
 -- T-HandlerReturn
-tcHandler d g t1 (HReturn x c) = tcComp d (GVar g x t1) c
+tcHandler es d g e t1 (HReturn x c) = tcComp es d (GVar g x t1) c
 
 -- semantics
 findOp :: Op -> Handler -> Maybe (Var, Var, Comp)
@@ -611,90 +682,4 @@ stepsShow c = do
   case step SgEmpty c of
     Just c' -> stepsShow c'
     Nothing -> return ()
-
--- testing
-tUnit :: Type
-tUnit = TCon "Unit"
-
-tBool :: Type
-tBool = TCon "Bool"
-
-tInt :: Type
-tInt = TCon "Int"
-
-checkOp :: Eff -> Op -> Err ()
-checkOp "Flip" "flip" = return ()
-checkOp "State" "get" = return ()
-checkOp "State" "put" = return ()
-checkOp e o = Left $ "undefined eff or op: " ++ (show (e, o))
-
-opTypes :: Op -> Err (Type, Type)
-opTypes "flip" = return (tUnit, tBool)
-opTypes "get" = return (tUnit, tInt)
-opTypes "put" = return (tInt, tUnit)
-opTypes o = Left $ "undefined op " ++ o
-
-delta :: Delta
-delta = DEmpty
-
-gamma :: Gamma
-gamma = GVar (GVar (GVar (GVar (GVar (GVar GEmpty "False" tBool) "two" tInt) "one" tInt) "zero" tInt) "Unit" tUnit) "True" tBool
-
-refh :: CType -> Handler
-refh t =
-  HOp "get" "x" "k" (Return $ Abs "s" $ Seq "f" (App "k" "s") (App "f" "s")) $
-  HOp "put" "x" "k" (Return $ Abs "s" $ Seq "f" (App "k" "Unit") (App "f" "x")) $
-  HReturn "x" (Return $ VAnn (Abs "s" "x") (TFun "Int" t))
-
-ref :: Scope -> Var -> Val -> CType -> Comp -> Comp
-ref s x v t c =
-  New "State" s (refh t) (Finally "f" $ App "f" v) x c
-
-fliph :: Handler
-fliph =
-  HOp "flip" "x" "k" (App "k" "True") $
-  HReturn "x" "x"
-
-newflip :: Scope -> Var -> Comp -> Comp
-newflip s x c =
-  New "Flip" s fliph (Finally "x" "x") x c
-
-{-
-runscope(s ->
-  ff <- new State@s {
-    get x k -> \s -> k s s
-    put x k -> \s -> k () x
-    return x -> \s -> x
-    finally f -> f
-  } as r in r);
-  rr <- ff 0;
-  rr#get ()
--}
-term :: Comp
-term =
-  Runscope "s1" $
-  Seq "r1" (ref "s1" "rx1" "zero" (purety $ TInst "s1" "State") "rx1") $
-  Runscope "s2" $
-  Seq "r2" (ref "s2" "rx2" "zero" (purety $ TInst "s2" "State") "rx2") $
-  Seq "r3" (ref "s2" "rx3" "two" (purety $ TInst "s2" "State") (Seq "_" (OpCall "r1" "put" "one") "rx3")) $
-  Seq "f1" (newflip "s1" "f1" "f1") $
-  Seq "xx" (OpCall "r1" "get" "Unit") $
-  Seq "yy" (OpCall "r2" "get" "Unit") $
-  Seq "zz" (OpCall "r3" "get" "Unit") $
-  Seq "aa" (OpCall "f1" "flip" "Unit") $
-  Return $ Pair "xx" $ Pair "yy" $ Pair "zz" "aa"
-
-main :: IO ()
-main = do
-  putStrLn $ "term: " ++ (show term)
-  putStrLn ""
-  putStrLn "TYPECHECKING"
-  case tcComp delta gamma term of
-    Left err -> putStrLn $ "type error: " ++ err
-    Right ty -> do
-      putStrLn $ "type: " ++ (show ty)
-  putStrLn ""
-  putStrLn "EVALUATION"
-  let term' = removeAnnotsComp term
-  stepsShow term'
-  return ()
+  
