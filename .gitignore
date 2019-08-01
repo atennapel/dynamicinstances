@@ -16,3 +16,12 @@ coq/.coqdeps.d
 thesis/*.bbl
 thesis/*.blg
 thesis/*.out
+
+presentation/_minted-*
+presentation/presentation.log
+presentation/presentation.nav
+presentation/presentation.out
+presentation/presentation.snm
+presentation/presentation.synctex.gz
+presentation/presentation.toc
+presentation/presentation.vrb

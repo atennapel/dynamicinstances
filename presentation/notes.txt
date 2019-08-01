@@ -1,0 +1,24 @@
+- What are effects
+  - explain pure vs impure
+  - advantages of pure code
+  - need for impure code
+- Algebraic effects and handlers
+  - what are they and why are they useful
+  - Algebraic effects
+  - Handlers
+  - Dynamic instances
+- Miro
+  - effect scopes
+  - creating instances
+  - using instances
+  - running instances
+- Semantics
+  - show the intermediate forms
+  - show some rules
+- Type system
+  - 
+  - Type soundness
+- Future work
+  - maybe not?
+  - show global scope idea
+- Questions
