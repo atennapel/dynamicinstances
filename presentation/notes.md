@@ -25,7 +25,7 @@
 
 
 
-- Preface
+# Preface
 Thank you all for being here
 Welcome to my thesis defence
 The plan today is as follows
@@ -34,11 +34,11 @@ Then you will have the chance to ask some questions
 After that the commitee and me will go somewhere else for me to defend my thesis
 And finally my final grade will be given
 
-- Cover slide
+# Cover slide
 The title of my thesis is "A type system for dynamic instances"
 In order to explain what that means I will start broadly before zooming in on my contribution
 
-- Outline
+# Outline
 First I will talk about what I mean when I talk about effects and what the issues with them are
 Then I will talk about algebraic effects and handlers, which is a way to deal with effects
 I will show some examples and talk about a limitation of algebraic effects
@@ -48,7 +48,7 @@ I will then show some parts of the semantics, which is the way that Miro program
 Lastly I will give a type system for Miro, which makes sure that there will be no runtime errors
 And I will talk about issues I encountered when trying to prove type safety
 
-- Effects
+# Effects
 Side-effects (also just called effects) are everywhere in programming.
 <show example in C with many side-effects>
 In this function we can see many examples
@@ -72,4 +72,9 @@ We want to make network requests.
 So our programs will have some impure parts
 The goal is then to split the pure and impure parts and maximize the pure ones.
 
+There are many research papers and programming languages trying to tackle the problem
+of giving the user more control over the pure and impure parts of their programs
+I will now focus on one such approach
+
+# Algebraic effects and handlers
 
