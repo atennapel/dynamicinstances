@@ -11,16 +11,13 @@
   - effect scopes
   - creating instances
   - using instances
-  - running instances
+  - runscope
 - Semantics
   - show the intermediate forms
-  - show some rules
+  - show some rules and example program
 - Type system
-  - 
-  - Type soundness
-- Future work
-  - maybe not?
-  - show global scope idea
+  - show most important rules
+  - Type safety problems
 - Questions
 
 # Preface
@@ -231,7 +228,7 @@ which we call "ref".
 This instance is seperate from all other State instances
 and can be handled seperatedly
 We pass our fresh instance "ref" to factorialLoop, which can use the instance
-by directly calling operations on it.
+by directly calling operations on it using the hash-operator.
 We can then handle the state operations as before but we have to say what
 instance we want to handle.
 *needs better explanation*
@@ -269,8 +266,147 @@ So this was the goal of my thesis.
 Restricting these dynamic instances so that we can be sure we have handled all of them.
 
 # Miro (examples/effect scopes)
+I will now introduce the calculus I designed named Miro.
+Which has dynamic effect instances in a more restricted form, in order make sure
+that all operation calls will be handled.
 
+```
+effect State {
+  get : () -> Int
+  put : Int -> ()
+}
+
+ref : forall s. Int -> (Inst s State)!{s}
+ref [s] v =
+  new State@s {
+    get () k -> \st -> k st st
+    put st' k -> \st -> k () st'
+    return x -> \st -> return x
+    finally f -> f v
+  } as x in return x
+```
+In the example we define the State effect again, notice how the effect interface stays the same as before.
+Then we define a function named "ref" which dynamically creates a new State instance.
+This State instance functions basically the same as a mutable reference would
+in imperative languages.
+Looking at the type we can see things are a little more complicated than before
+we have this universally quantified type "forall s."
+This s is a type variable that represents an "effect scope"
+An effect scope groups together effect instances.
+We can read the type annotation as:
+"for every effect scope s, given an initial value of type Int (initial value of ref),
+we return an effect instance of State in s, and we may perform effects in s"
+In the definition we also explicitly mention the type variable "s".
+And the initial value "v".
+
+with "new" we can create new instances in Miro.
+When creating a new instance we have to give the effect that
+the instance is of, the effect scope we are creating the instance in
+and a handler for the instance.
+we name the new instance "x" which can be used in the body of the "new" construct
+in this case we simply return the instance.
+
+the handler itself does the same thing as before when we implemented the State handler.
+it transforms the computation to a function that expects an initial state.
+what's new here is that we also have a "finally" case, which gets executed after the handler is done.
+we use this finally case to run the state function with the initial value given to "ref".
+
+We can also write functions using instances:
+```
+postInc : forall s. Inst s State -> Int!{s}
+postInc [s] inst =
+  x <- inst#get();
+  inst#put(x + 1);
+  return x
+```
+Here is the same "postInc" function as before, but written in Miro.
+This time though it acts on a specific State instance instead of on a global implicit state.
+Again the function is universally quantified over the specific effect scope.
+So this function works on any effect scope.
+From the type we can see "for any effect scope s and a State instance in s, we return an integer and may perform effects in s doing so"
+The function itself is the same as before but now we call the operations on the instance using the hash-operator.
+
+Now to actually create the instances and perform the operations on them,
+we have to provide a concrete effect scope.
+This is done with the "runscope" construct.
+```
+result : Int
+result = -- result = 3
+  runscope(s1 ->
+    r1 <- ref [s1] 1;
+    r2 <- ref [s1] 2;
+    x <- postInc [s1] r1;
+    y <- r2#get ();
+    r2#put(x + y);
+    z <- r2#get();
+    return z)
+```
+With runscope we can create a new effect scope and run computations on the scope.
+When runscope is called, any instance creation in usage on that scope will actually be performed.
+*explain example*
+Notice from the type that "result" is pure, all operation calls will be handled.
+runscope make sure that no effects in its scope can escape, the resulting computation
+will be pure with regards to that scope.
+
+```
+result : Int
+result =
+  runscope(s1 ->
+    r1 <- ref [s1] 10;
+    ret <- runscope(s2 ->
+      r2 <- ref [s2] 20;
+      x <- postInc [s2] r2;
+      r1#put(x);
+      return x);
+    y <- r1#get ();
+    return y) -- result is 20
+```
+runscopes can also be nested, any effect on an outer scope will pass through the inner scope.
+*short explanation needed, out of time for long one*
+
+These are all the new constructs in Miro.
+With these we can simulate mutable references as seen in imperative languages,
+something that is not possible with regular algebraic effects
+we also guarantee that instances will not be used outside of their scope,
+so runscope can encapsulate effects, from the outside we cannot tell if a function uses some effect.
+This is similar to how safety works for the ST monad in Haskell.
+
+*MUTABLE VECTOR SHUFFLING EXAMPLE IF TIME*
 
 # Semantics
+*show core language*
+*show example program with semantics*
+
 # Type system and issues
+*show important typing rules*
+
+*show type safety theorem and preservation*
+Initially my goal was to also prove type safety
+in order to gain certainty that the system is actually type safe.
+*explain theorem*
+Type safety is usually proven via a preservation lemma
+*explain preservation*
+Here is where I ran in to problems, in that I found a counter-example
+*show counter-example derivation*
+
+We end up with an instance that has escaped its scope
+This instance is not actually used, so it will not result in a program getting stuck.
+So for the semantics it's not actually a problem
+But for the typing rules it is. We cannot typecheck "inst(l)", since l is not in scope anymore.
+
+So I conjecture that Miro is typesafe, since the type system will
+ensure that any escape instance is unused in a closure
+But we cannot prove this using the typing rules we have now.
+
+We believe the typing rules for the intermediate forms are the main problem
+They will probably need to be different
+One approach is for the semantics to keep track of a global store of instance locations
+which is then also used by the typing rules, but this does not
+straightforwardly solve the problems because the type of an instance depends on an effect scope which may be out of scope.
+
 # Conclusion
+So in conclusion, I have shown how Miro allows for the definition of
+mutable references, which was not possible with regular algebraic effects
+I have also shown why type safety is difficult to prove
+thank you for listening, please see my thesis for more details
+are there any questions?
