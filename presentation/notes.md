@@ -26,8 +26,8 @@ Welcome to my thesis defence
 The plan today is as follows
 First I will give a presentation of my work for about 30 minutes
 Then you will have the chance to ask some questions
-After that the commitee and me will go somewhere else for me to defend my thesis
-And finally we'll be back and my final grade will be given
+After that the commitee will go somewhere else to discuss my thesis
+And finally they'll be back and my final grade will be given
 
 # Cover slide
 The title of my thesis is "A type system for dynamic instances"
@@ -45,13 +45,24 @@ And I will talk about issues I encountered when trying to prove type safety
 
 # Effects
 Side-effects (also just called effects) are everywhere in programming.
-<show example in C with many side-effects>
-In this function we can see many examples
-- mutable state
+
+```
+guesses = 0
+
+def guess():
+  global guesses
+  n = input("give a number: ")
+  guesses += 1
+  if n == "42":
+    print("you guessed correctly!")
+  else:
+    print("wrong number")
+```
+In this function we can see a couple examples of effects:
+- global mutable state
 - input/output
 Anything that a function does except computing some results from input is a side-effect
 
-<show example of pure function>
 We call a function with side-effects impure and a function without effects pure
 A pure function will always have the same result for the same inputs,
 they only use the arguments that they are given and no other global state,
