@@ -43,7 +43,7 @@ I will then show some parts of the semantics, which is the way that Miro program
 Lastly I will give a type system for Miro, which makes sure that there will be no runtime errors
 And I will talk about issues I encountered when trying to prove type safety
 
-# Effects
+# Effects (~5min)
 Side-effects (also just called effects) are everywhere in programming.
 Examples include:
 - mutable state and references
@@ -97,7 +97,23 @@ effect State {
   get : () -> Int
   put : Int -> ()
 }
+
+effect IO {
+  input : () -> String
+  print : String -> ()
+}
+
+guess : () -> ()!{State, IO}
+guess () =
+  n <- #input("give a number: ");
+  x <- #get();
+  #put(x + 1);
+  if n == "42" then
+    #print("you guessed correctly!")
+  else:
+    #print("wrong number")
 ```
+
 Here we see the definition of an algebraic effect.
 We are defining global mutable integer state.
 An algebraic effect consists of operations, in this case: get and put.
