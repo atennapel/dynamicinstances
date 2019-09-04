@@ -13,6 +13,7 @@
   - using instances
   - runscope
 - Syntax and semantics
+  - probably have to skip because of time constraints
   - show the intermediate forms
   - show some rules
 - Type system
@@ -223,6 +224,7 @@ Explain:
 - runscope can be nested
 
 # Syntax and semantics (~5min)
+HAVE TO SKIP THIS
 *show core language*
 *explain 3 semantics rules: runscope, runscope^l, runinst*
 
