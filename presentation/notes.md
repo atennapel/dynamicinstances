@@ -183,119 +183,50 @@ but its not always statically possible to do so.
 So this was the goal of my thesis.
 Restricting these dynamic instances so that we can be sure we have handled all of them.
 
-# Miro (examples/effect scopes)
+# Miro (examples/effect scopes) (~8min)
 I will now introduce the calculus I designed named Miro.
 Which has dynamic effect instances in a more restricted form, in order make sure
 that all operation calls will be handled.
 
 ```
-effect State {
+effect Config {
   get : () -> Int
-  put : Int -> ()
 }
 
-ref : forall s. Int -> (Inst s State)!{s}
-ref [s] v =
-  new State@s {
-    get () k -> \st -> k st st
-    put st' k -> \st -> k () st'
-    return x -> \st -> return x
-    finally f -> f v
+makeconfig : forall s. Int -> (Inst s Config)!{s}
+makeconfig [s] v =
+  new Config@s {
+    get () k -> k v
+    return x -> return x
+    finally x -> x
   } as x in return x
 ```
-In the example we define the State effect again, notice how the effect interface stays the same as before.
-Then we define a function named "ref" which dynamically creates a new State instance.
-This State instance functions basically the same as a mutable reference would
-in imperative languages.
-Looking at the type we can see things are a little more complicated than before
-we have this universally quantified type "forall s."
-This s is a type variable that represents an "effect scope"
-An effect scope groups together effect instances.
-We can read the type annotation as:
-"for every effect scope s, given an initial value of type Int (initial value of ref),
-we return an effect instance of State in s, and we may perform effects in s"
-In the definition we also explicitly mention the type variable "s".
-And the initial value "v".
 
-with "new" we can create new instances in Miro.
-When creating a new instance we have to give the effect that
-the instance is of, the effect scope we are creating the instance in
-and a handler for the instance.
-we name the new instance "x" which can be used in the body of the "new" construct
-in this case we simply return the instance.
-
-the handler itself does the same thing as before when we implemented the State handler.
-it transforms the computation to a function that expects an initial state.
-what's new here is that we also have a "finally" case, which gets executed after the handler is done.
-we use this finally case to run the state function with the initial value given to "ref".
-
-We can also write functions using instances:
-```
-postInc : forall s. Inst s State -> Int!{s}
-postInc [s] inst =
-  x <- inst#get();
-  inst#put(x + 1);
-  return x
-```
-Here is the same "postInc" function as before, but written in Miro.
-This time though it acts on a specific State instance instead of on a global implicit state.
-Again the function is universally quantified over the specific effect scope.
-So this function works on any effect scope.
-From the type we can see "for any effect scope s and a State instance in s, we return an integer and may perform effects in s doing so"
-The function itself is the same as before but now we call the operations on the instance using the hash-operator.
-
-Now to actually create the instances and perform the operations on them,
-we have to provide a concrete effect scope.
-This is done with the "runscope" construct.
-```
-result : Int
-result = -- result = 3
-  runscope(s1 ->
-    r1 <- ref [s1] 1;
-    r2 <- ref [s1] 2;
-    x <- postInc [s1] r1;
-    y <- r2#get ();
-    r2#put(x + y);
-    z <- r2#get();
-    return z)
-```
-With runscope we can create a new effect scope and run computations on the scope.
-When runscope is called, any instance creation in usage on that scope will actually be performed.
-*explain example*
-Notice from the type that "result" is pure, all operation calls will be handled.
-runscope make sure that no effects in its scope can escape, the resulting computation
-will be pure with regards to that scope.
+Explain:
+- effect interface stays the same
+- notion of effect scopes
+- creating new instances, handler is needed
+- effect scope polymorphism
 
 ```
-result : Int
-result =
-  runscope(s1 ->
-    r1 <- ref [s1] 10;
-    ret <- runscope(s2 ->
-      r2 <- ref [s2] 20;
-      x <- postInc [s2] r2;
-      r1#put(x);
-      return x);
-    y <- r1#get ();
-    return y) -- result is 20
+useconfig : Int
+useconfig =
+  runscope(myscope ->
+    c <- makeconfig [myscope] 42; // c : Inst myscope Config
+    x <- c#get();
+    return x)
 ```
-runscopes can also be nested, any effect on an outer scope will pass through the inner scope.
-*short explanation needed, out of time for long one*
 
-These are all the new constructs in Miro.
-With these we can simulate mutable references as seen in imperative languages,
-something that is not possible with regular algebraic effects
-we also guarantee that instances will not be used outside of their scope,
-so runscope can encapsulate effects, from the outside we cannot tell if a function uses some effect.
-This is similar to how safety works for the ST monad in Haskell.
+Explain:
+- runscope creates a scope
+- runscope handles all instance creation and usage on a specific scope
+- runscope can be nested
 
-*MUTABLE VECTOR SHUFFLING EXAMPLE IF TIME*
-
-# Semantics
+# Semantics (~5min)
 *show core language*
-*show example program with semantics*
+*explain 3 semantics rules: runscope, runscope^l, runinst*
 
-# Type system and issues
+# Type system and issues (~6min)
 *show important typing rules*
 
 *show type safety theorem and preservation*
