@@ -12,9 +12,9 @@
   - creating instances
   - using instances
   - runscope
-- Semantics
+- Syntax and semantics
   - show the intermediate forms
-  - show some rules and example program
+  - show some rules
 - Type system
   - show most important rules
   - Type safety problems
@@ -119,8 +119,8 @@ guess () =
 ```
 
 ```
-testGuess : (List Int)!{State}
-testGuess =
+handleGuessIO : (List Int)!{State}
+handleGuessIO =
   handle( guess() ) {
     input msg k -> (k "13") ++ (k "42")
     print msg k -> k ()
@@ -137,6 +137,7 @@ effect State1 {
   get1 : () -> Int
   put1 : Int -> ()
 }
+
 effect State2 {
   get2 : () -> Int
   put2 : Int -> ()
@@ -151,8 +152,10 @@ Dynamic instances:
 ```
 r1 <- new State;
 r2 <- new State;
-x <- r1#get();
-r2#put (x + 1)
+handle#r1 (
+  x <- r1#get();
+  r2#put (x + 1)
+) { ... }
 ```
 *explain in short what they are*
 - dynamically create effect instances
@@ -160,16 +163,12 @@ r2#put (x + 1)
 
 The problem with these effect instances is that they may escape the scope of their handler.
 ```
-escape ref =
-  return \() -> ref#get ()
+escape r =
+  return \() -> r#get ()
 
 escaped =
   ref <- new State;
-  fn <- handle#ref (escape ref) {
-    get () k -> ...
-    put v k -> ...
-    return v -> ...
-  };
+  fn <- handle#ref (escape ref) { ... };
   return fn
 ```
 Here the "escape" computation returns a closure that calls an operation on "ref"
@@ -193,8 +192,8 @@ effect Config {
   get : () -> Int
 }
 
-makeconfig : forall s. Int -> (Inst s Config)!{s}
-makeconfig [s] v =
+makeConfig : forall s. Int -> (Inst s Config)!{s}
+makeConfig [s] v =
   new Config@s {
     get () k -> k v
     return x -> return x
@@ -209,10 +208,11 @@ Explain:
 - effect scope polymorphism
 
 ```
-useconfig : Int
-useconfig =
+useConfig : Int
+useConfig =
   runscope(myscope ->
-    c <- makeconfig [myscope] 42; // c : Inst myscope Config
+    -- c : Inst myscope Config
+    c <- makeconfig [myscope] 42;
     x <- c#get();
     return x)
 ```
@@ -222,7 +222,7 @@ Explain:
 - runscope handles all instance creation and usage on a specific scope
 - runscope can be nested
 
-# Semantics (~5min)
+# Syntax and semantics (~5min)
 *show core language*
 *explain 3 semantics rules: runscope, runscope^l, runinst*
 

@@ -28,10 +28,6 @@
 % Define the title of the "Table of Contents" frame
 \newcommand*\titleTOC{Outline}
 
-% define a symbol which can be removed if you don't need it
-\newcommand{\field}[1]{\mathbb{#1}}
-\newcommand{\Zset}{\field{Z}}
-
 \begin{document}
 
 {
@@ -47,73 +43,157 @@
 \end{frame}
 }
 
-\section{What are effects}
+\section{Effects}
 
 \begin{frame}[fragile]\frametitle{Effects}
 	\begin{example}
-		\begin{minted}{haskell}
-x = 10
-5 - 6
+		\begin{minted}{python}
+guesses = 0
+
+// guess : () -> Int
+def guess():
+  global guesses
+  n = input("give a number: ")
+  guesses += 1
+  if n == "42":
+    print("you guessed correctly!")
+  else:
+    print("wrong number")
+  return guesses
 		\end{minted}
 	\end{example}
 \end{frame}
 
 \section{Algebraic effects and handlers}
 
+\begin{frame}[fragile]\frametitle{Algebraic effect interfaces}
+	\begin{example}
+		\begin{minted}{haskell}
+effect State {
+  get : () -> Int
+  put : Int -> ()
+}
+
+effect IO {
+  input : String -> String
+  print : String -> ()
+}
+		\end{minted}
+	\end{example}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{Using algebraic effects}
+	\begin{example}
+		\begin{minted}{haskell}
+guess : () -> Int!{State, IO}
+guess () =
+  n <- #input("give a number: ");
+  x <- #get();
+  #put(x + 1);
+  if n == "42" then
+    #print("you guessed correctly!")
+  else:
+    #print("wrong number");
+  guesses <- #get();
+  return guesses
+		\end{minted}
+	\end{example}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{Handling algebraic effects}
+	\begin{example}
+		\begin{minted}{haskell}
+handleGuessIO : (List Int)!{State}
+handleGuessIO =
+  handle( guess() ) {
+    input msg k -> (k "13") ++ (k "42")
+    print msg k -> k ()
+    return x -> return [x]
+  }
+		\end{minted}
+	\end{example}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{Multiple state cells}
+	\begin{example}
+		\begin{minted}{haskell}
+effect State1 {
+  get1 : () -> Int
+  put1 : Int -> ()
+}
+
+effect State2 {
+  get2 : () -> Int
+  put2 : Int -> ()
+}
+		\end{minted}
+	\end{example}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{Dynamic effect instances}
+	\begin{example}
+		\begin{minted}{haskell}
+r1 <- new State;
+r2 <- new State;
+handle#r1 (
+  x <- r1#get();
+  r2#put (x + 1)
+) { ... }
+		\end{minted}
+	\end{example}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{Escaping instances}
+	\begin{example}
+		\begin{minted}{haskell}
+escape ref =
+  return \() -> ref#get ()
+
+escaped =
+  ref <- new State;
+  fn <- handle#ref (escape ref) { ... };
+  return fn
+		\end{minted}
+	\end{example}
+\end{frame}
+
 \section{Miro}
 
 \begin{frame}[fragile]\frametitle{Miro - Creating instances}
 \begin{example}
 \begin{minted}[tabsize=2]{haskell}
-ref : forall s. Int -> (Inst s State)!{s}
-ref [s] v =
-	new State@s {
-		get () k -> \st -> k st st
-		put st' k -> \st -> k () st'
-		return x -> \st -> return x
-		finally f -> f v
-	} as x in return x
+effect Config {
+  get : () -> Int
+}
+
+makeConfig : forall s. Int -> (Inst s Config)!{s}
+makeConfig [s] v =
+  new Config@s {
+    get () k -> k v
+    return x -> return x
+    finally x -> x
+  } as x in return x
 \end{minted}
 \end{example}
 \end{frame}
 
-\begin{frame}[fragile]\frametitle{Miro - Using instances}
+\begin{frame}[fragile]\frametitle{Miro - Using and handling instances}
 \begin{example}
 \begin{minted}[tabsize=2]{haskell}
-postInc : forall s. Inst s State -> Int!{s}
-postInc [s] inst =
-	x <- inst#get();
-	inst#put(x + 1);
-	return x
+useConfig : Int
+useConfig =
+  runscope(myscope ->
+    -- c : Inst myscope Config
+    c <- makeconfig [myscope] 42;
+    x <- c#get();
+    return x)
 \end{minted}
 \end{example}
 \end{frame}
 
-\begin{frame}[fragile]\frametitle{Miro - Running instances}
-\begin{example}
-\begin{minted}[tabsize=2]{haskell}
-result : Int!{}
-result =
-	runscope(s1 ->
-		r1 <- ref [s1] 10;
-		runscope(s2 ->
-			r2 <- ref [s2] 20;
-			x <- postInc [s2] r2;
-			r1#put(x);
-			return x);
-		y <- r1#get ();
-		return y) -- result is 20
-\end{minted}
-\end{example}
-\end{frame}
-
-\section{Semantics}
+\section{Syntax and semantics}
 
 \section{Type system}
-
-\subsection{Type safety}
-
-\section{Future work}
 
 \section{Questions}
 
