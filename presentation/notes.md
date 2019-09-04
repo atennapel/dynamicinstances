@@ -249,11 +249,9 @@ So I conjecture that Miro is typesafe, since the type system will
 ensure that any escape instance is unused in a closure
 But we cannot prove this using the typing rules we have now.
 
-We believe the typing rules for the intermediate forms are the main problem
-They will probably need to be different
-One approach is for the semantics to keep track of a global store of instance locations
-which is then also used by the typing rules, but this does not
-straightforwardly solve the problems because the type of an instance depends on an effect scope which may be out of scope.
+We believe the typing rules for the intermediate forms are the main problem.
+They will probably need to be different.
+We still conjecture the system is type safe and that a different strategy will be able to formally proof this.
 
 # Conclusion
 So in conclusion, I have shown how Miro allows for the definition of
