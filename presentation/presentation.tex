@@ -184,7 +184,7 @@ useConfig : Int
 useConfig =
   runscope(myscope ->
     -- c : Inst myscope Config
-    c <- makeconfig [myscope] 42;
+    c <- makeConfig [myscope] 42;
     x <- c#get();
     return x)
 \end{minted}
