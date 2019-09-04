@@ -45,7 +45,14 @@ And I will talk about issues I encountered when trying to prove type safety
 
 # Effects
 Side-effects (also just called effects) are everywhere in programming.
+Examples include:
+- mutable state and references
+- input/output
+- reading and writing to files/channels
+- non-determinism and randomness
 
+We call a function that uses side-effects "impure".
+Here is an example in Python:
 ```
 guesses = 0
 
@@ -61,16 +68,16 @@ def guess():
 In this function we can see a couple examples of effects:
 - global mutable state
 - input/output
-Anything that a function does except computing some results from input is a side-effect
 
-We call a function with side-effects impure and a function without effects pure
+A function that does not have any side-effects is called pure.
 A pure function will always have the same result for the same inputs,
 they only use the arguments that they are given and no other global state,
 and the only observable effect is the computation of the result of the function itself.
 
-This deterministic behaviour makes pure functions easier to understand, debug and test, than impure functions.
-We do not have to keep track of global state, mutations or mock anything
-We can always test the function in isolation of the rest of the application
+Advantages, pure functions:
+- easier to reason about (local reasoning, reasoning in isolation)
+- compose better
+- easier to test and debug
 
 Of course effects are necessary for most applications.
 We want to get user input and display things on the screen.
