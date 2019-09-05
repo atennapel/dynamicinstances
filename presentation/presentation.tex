@@ -222,11 +222,12 @@ useConfig =
 \end{center}
 \end{frame}
 
-\begin{frame}[fragile]\frametitle{How to make instances safe}
+\begin{frame}[fragile]\frametitle{How does Miro make instances safe?}
 \begin{itemize}
 \item Effect scopes: instances belong to a specific effect scope
 \item Instances always have a handler associated with them
 \item All instances of an effect scope are handled all at once
+\item Check that an effect scope does not escape its $\mathsf{runscope}$
 \end{itemize}
 \end{frame}
 
