@@ -46,6 +46,14 @@
 \section{Effects}
 
 \begin{frame}[fragile]\frametitle{Effects}
+\begin{itemize}
+\item Used everywhere in programming
+\item Examples: mutable state, input/output, reading/writing to files/channels, randomness, ...
+\item Makes reasoning, testing and debugging difficult
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{Effects}
 	\begin{example}
 		\begin{minted}{python}
 guesses = 0
@@ -65,6 +73,14 @@ def guess():
 \end{frame}
 
 \section{Algebraic effects and handlers}
+
+\begin{frame}[fragile]\frametitle{Algebraic effects and handlers}
+\begin{itemize}
+\item Approach to programming with effects
+\item Composable: easily combine different effects
+\item Type safe
+\end{itemize}
+\end{frame}
 
 \begin{frame}[fragile]\frametitle{Algebraic effect interfaces}
 	\begin{example}
@@ -103,31 +119,23 @@ guess () =
 \begin{frame}[fragile]\frametitle{Handling algebraic effects}
 	\begin{example}
 		\begin{minted}{haskell}
-handleGuessIO : (List Int)!{State}
+handleGuessIO : Int!{State}
 handleGuessIO =
   handle( guess() ) {
-    input msg k -> (k "13") ++ (k "42")
+    input msg k -> k "42"
     print msg k -> k ()
-    return x -> return [x]
+    return x -> return x
   }
 		\end{minted}
 	\end{example}
 \end{frame}
 
-\begin{frame}[fragile]\frametitle{Multiple state cells}
-	\begin{example}
-		\begin{minted}{haskell}
-effect State1 {
-  get1 : () -> Int
-  put1 : Int -> ()
-}
-
-effect State2 {
-  get2 : () -> Int
-  put2 : Int -> ()
-}
-		\end{minted}
-	\end{example}
+\begin{frame}[fragile]\frametitle{Shortcoming}
+\begin{itemize}
+\item How to express multiple mutable references?
+\item How to express opening and reading/writing to files/channels?
+\item How to express local effects?
+\end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]\frametitle{Dynamic effect instances}
@@ -157,7 +165,24 @@ escaped =
 	\end{example}
 \end{frame}
 
+\begin{frame}[fragile]\frametitle{The problem}
+\begin{itemize}
+\item Dynamic instances allows us to express more (local) effects
+\item Dynamic instances are not type-safe
+\item How to ensure that all operations will be handled?
+\end{itemize}
+\end{frame}
+
 \section{Miro}
+
+\begin{frame}[fragile]\frametitle{Miro}
+\begin{itemize}
+\item Language with algebraic effects and handlers
+\item With a restricted form of dynamic instances
+\item We can define mutable references and local effects
+\item Type safe: ensures that all operations will be handled
+\end{itemize}
+\end{frame}
 
 \begin{frame}[fragile]\frametitle{Miro - Creating instances}
 \begin{example}
@@ -191,20 +216,18 @@ useConfig =
 \end{example}
 \end{frame}
 
-\section{Syntax}
-
-\begin{frame}[fragile]\frametitle{Miro - Syntax}
-\begin{center}
-\includegraphics[width=270pt]{images/syntax.png}
-\end{center}
-\end{frame}
-
-\section{Type safety}
-
 \begin{frame}[fragile]\frametitle{Miro - Runscope typing rule}
 \begin{center}
 \includegraphics[width=270pt]{images/typing-rule.png}
 \end{center}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{How to make instances safe}
+\begin{itemize}
+\item Effect scopes: instances belong to a specific effect scope
+\item Instances always have a handler associated with them
+\item All instances of an effect scope are handled all at once
+\end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]\frametitle{Miro - Type safety}
@@ -219,17 +242,23 @@ useConfig =
 \end{center}
 \end{frame}
 
-\section{Conclusion}
-
 \begin{frame}[fragile]\frametitle{Conclusion}
 \begin{itemize}
 \item Algebraic effects are great, but can be improved upon
-\item Miro - safely combining algebraic effects and instances
-\item Proving type safety is hard
+\item Miro - safely combine algebraic effects and dynamic instances
+\item Proving type safety is difficult
 \end{itemize}
 \end{frame}
 
-\section{Questions}
+\begin{frame}[fragile]\frametitle{More in the thesis}
+\begin{itemize}
+\item More examples
+\item Formalization of algebraic effects and handlers with static instances
+\item Formalization of Miro, type system and a small-step operational semantics
+\item Mechanization of algebraic effects and handlers with static instances in Coq (with type safety proofs)
+\item Prototype implementation of Miro in Haskell
+\end{itemize}
+\end{frame}
 
 \begin{frame}[fragile]\frametitle{Questions}
 Any questions?
