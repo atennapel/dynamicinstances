@@ -132,9 +132,9 @@ handleGuessIO =
 
 \begin{frame}[fragile]\frametitle{Shortcoming}
 \begin{itemize}
+\item We can only manipulate a single global state cell
 \item How to express multiple mutable references?
 \item How to express opening and reading/writing to files/channels?
-\item How to express local effects?
 \end{itemize}
 \end{frame}
 
@@ -167,7 +167,7 @@ escaped =
 
 \begin{frame}[fragile]\frametitle{The problem}
 \begin{itemize}
-\item Dynamic instances allows us to express more (local) effects
+\item Dynamic instances allows us to express more effects
 \item Dynamic instances are not type-safe
 \item How to ensure that all operations will be handled?
 \end{itemize}
@@ -179,7 +179,7 @@ escaped =
 \begin{itemize}
 \item Language with algebraic effects and handlers
 \item With a restricted form of dynamic instances
-\item We can define mutable references and local effects
+\item We can define mutable references, dynamic opening of files/channels, ...
 \item Type safe: ensures that all operations will be handled
 \end{itemize}
 \end{frame}
