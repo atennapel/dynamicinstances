@@ -196,7 +196,7 @@ makeConfig [s] v =
   new Config@s {
     get () k -> k v
     return x -> return x
-    finally x -> x
+    finally x -> return x
   } as x in return x
 \end{minted}
 \end{example}
